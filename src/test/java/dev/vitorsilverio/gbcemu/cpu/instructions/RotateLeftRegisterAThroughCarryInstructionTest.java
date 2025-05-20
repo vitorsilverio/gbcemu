@@ -9,12 +9,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
-public class RotateInstructionTest {
+public class RotateLeftRegisterAThroughCarryInstructionTest {
 
     @Test
     public void testRLA() {
         // Arrange
-        var instruction = new RotateInstruction(RotateDirection.LEFT, SourceA.INSTANCE, DestinationA.INSTANCE, 4, false, false, true);
+        var instruction = RotateLeftRegisterAThroughCarryInstruction.INSTANCE;
         var bus = mock(Bus.class);
         var cpu = new Cpu(bus);
         cpu.setA((byte) 0b10101010);

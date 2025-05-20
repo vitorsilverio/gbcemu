@@ -48,7 +48,7 @@ public class Decoder {
         instructionSet.put(0x14, new IncrementInstruction(SourceD.INSTANCE, DestinationD.INSTANCE, 4, true));
         instructionSet.put(0x15, new DecrementInstruction(SourceD.INSTANCE, DestinationD.INSTANCE, 4, true));
         instructionSet.put(0x16, new LoadInstruction(SourceImmediate8Bits.INSTANCE, DestinationD.INSTANCE, 2, 8));
-        instructionSet.put(0x17, new RotateInstruction(RotateDirection.LEFT, SourceA.INSTANCE, DestinationA.INSTANCE, 4, false, false, true));
+        instructionSet.put(0x17, RotateLeftRegisterAThroughCarryInstruction.INSTANCE);
         instructionSet.put(0x18, new JumpInstruction(SourceImmediate8Bits.INSTANCE, 3, 12, true));
         instructionSet.put(0x19, new AdditionInstruction(SourceDE.INSTANCE, SourceHL.INSTANCE, DestinationHL.INSTANCE));
         instructionSet.put(0x1A, new LoadInstruction(SourceReferenceDE.INSTANCE, DestinationA.INSTANCE, 1, 8));
@@ -56,7 +56,7 @@ public class Decoder {
         instructionSet.put(0x1C, new IncrementInstruction(SourceE.INSTANCE, DestinationE.INSTANCE, 4, true));
         instructionSet.put(0x1D, new DecrementInstruction(SourceE.INSTANCE, DestinationE.INSTANCE, 4, true));
         instructionSet.put(0x1E, new LoadInstruction(SourceImmediate8Bits.INSTANCE, DestinationE.INSTANCE, 2, 8));
-        instructionSet.put(0x1F, new RotateInstruction(RotateDirection.RIGHT, SourceA.INSTANCE, DestinationA.INSTANCE, 4, false, false, true));
+        instructionSet.put(0x1F, RotateRightRegisterAThroughCarryInstruction.INSTANCE);
         instructionSet.put(0x20, new JumpInstruction(Condition.NOT_ZERO, SourceImmediate8Bits.INSTANCE, 2, 12,8, true));
         instructionSet.put(0x21, new LoadInstruction(SourceImmediate16bits.INSTANCE, DestinationHL.INSTANCE, 3, 12));
         instructionSet.put(0x22, new LoadInstruction(SourceA.INSTANCE, DestinationReferenceHL.INSTANCE_INCREMENT, 1, 8));
