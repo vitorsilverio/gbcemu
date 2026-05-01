@@ -212,14 +212,6 @@ public class Cpu implements MachineCycle {
             pc++;
         }
 
-        logger.debug("CPU State: " + this);
-
-        if (pc == 0x0606){
-            logger.debug("PC: " + Integer.toHexString(pc));
-            logger.debug("Opcode: " + Integer.toHexString(peekStack()));
-
-        }
-
         // Decode and execute the instruction
         Optional<Instruction> instruction = decoder.decode(opcode);
         if (instruction.isEmpty()) {

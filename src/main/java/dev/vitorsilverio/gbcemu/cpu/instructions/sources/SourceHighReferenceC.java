@@ -12,8 +12,8 @@ public class SourceHighReferenceC implements Source {
 
     @Override
     public int getValue(dev.vitorsilverio.gbcemu.cpu.Cpu cpu) {
-        var address = cpu.getC() + 0xff00;
-        return cpu.getBus().read(address);
+        var address = (cpu.getC() & 0xFF) + 0xff00;
+        return cpu.getBus().read(address) & 0xFF;
     }
 
     @Override

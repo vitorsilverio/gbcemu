@@ -13,7 +13,7 @@ public class SourceE implements Source {
 
     @Override
     public int getValue(Cpu cpu) {
-        return cpu.getE();
+        return cpu.getE() & 0xFF;
     }
 
     @Override

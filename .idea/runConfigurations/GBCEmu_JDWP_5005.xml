@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="GBCEmu - JDWP 5005" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="dev.vitorsilverio.gbcemu.Main" />
+    <module name="gbcemu" />
+    <option name="VM_PARAMETERS" value="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:5005" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

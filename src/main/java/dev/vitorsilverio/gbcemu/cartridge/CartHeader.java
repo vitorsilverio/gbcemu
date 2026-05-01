@@ -38,6 +38,10 @@ public class CartHeader {
         globalChecksum = new String(rom, 0x014E, 2);
     }
 
+    public CartridgeType getCartridgeType() {
+        return cartridgeType;
+    }
+
     @Override
     public String toString() {
         return String.format("""

@@ -13,7 +13,7 @@ public class SourceReferenceDE implements Source {
 
     @Override
     public int getValue(Cpu cpu) {
-        return cpu.getBus().read(cpu.getDe());
+        return cpu.getBus().read(cpu.getDe()) & 0xFF;
     }
 
     @Override

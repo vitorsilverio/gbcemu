@@ -12,8 +12,8 @@ public class SourceHighReference8bits implements Source {
 
     @Override
     public int getValue(dev.vitorsilverio.gbcemu.cpu.Cpu cpu) {
-        var address = cpu.getBus().read(cpu.getPc()+1) + 0xff00;
-        return cpu.getBus().read(address);
+        var address = (cpu.getBus().read(cpu.getPc()+1) & 0xFF) + 0xff00;
+        return cpu.getBus().read(address) & 0xFF;
     }
 
     @Override

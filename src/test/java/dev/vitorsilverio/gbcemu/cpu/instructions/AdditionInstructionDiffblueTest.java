@@ -174,7 +174,7 @@ class AdditionInstructionDiffblueTest {
 
         // Assert
         verify(source).getValue(isA(Cpu.class));
-        assertEquals(0, cpu.getAf());
+        assertEquals(0x2A00, cpu.getAf());
         assertEquals(1, actualExecuteResult);
         assertFalse(cpu.isCarryFlag());
         assertFalse(cpu.isHalfCarryFlag());

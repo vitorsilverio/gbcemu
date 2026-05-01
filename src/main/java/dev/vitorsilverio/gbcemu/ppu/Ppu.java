@@ -17,6 +17,12 @@ public class Ppu implements MemorySpace, MachineCycle {
     private static final int OAM_SCANLINE_CYCLES = 80;
     private static final int SCANLINE_CYCLES = 376;
     private static final int VBLANK_CYCLES = 456;
+    private static final int[] DMG_COLORS = {
+            0xFFFFFFFF,
+            0xFFAAAAAA,
+            0xFF555555,
+            0xFF000000
+    };
 
     private final int LCDC = 0xFF40;
     private final int STAT = 0xFF41;
@@ -152,15 +158,16 @@ public class Ppu implements MemorySpace, MachineCycle {
         if (map.isFlipY()) {
             tileY = 7 - tileY;
         }
+        var pixel = tile.getPixel(tileX, tileY);
         // Draw the current tile (background)
-        frameBuffer[currentColumn][currentLine] = bgPalette.getColor(map.getPaletteIndex(), tile.getPixel(tileX, tileY));
+        frameBuffer[currentColumn][currentLine] = getDmgBackgroundColor(pixel);
 
         // TODO: Draw window
         // TODO: Draw sprites
 
         currentColumn++;
         // when line finished then go to HBLANK
-        if (currentColumn == 159) {
+        if (currentColumn == 160) {
             // End of the scanline
             mode = PpuMode.HBLANK;
         }
@@ -365,6 +372,10 @@ public class Ppu implements MemorySpace, MachineCycle {
             }
         }
         return image;
+    }
+
+    private int getDmgBackgroundColor(int pixel) {
+        return DMG_COLORS[bgPaletteDmg.getColor(pixel) & 0x03];
     }
 
 }

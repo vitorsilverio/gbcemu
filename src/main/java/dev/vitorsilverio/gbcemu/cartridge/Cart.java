@@ -14,7 +14,8 @@ public class Cart implements MemorySpace {
     private final CartHeader header;
     private final byte[] rom;
     private final byte[] ram;
-    private int romBank;
+    private final int romBanks;
+    private int romBank = 1;
 
     public Cart(File romFile) {
         try(var inputStream = romFile.toURI().toURL().openStream()) {
@@ -23,6 +24,7 @@ public class Cart implements MemorySpace {
             throw new RuntimeException(e);
         }
         this.ram = new byte[0x2000];
+        this.romBanks = Math.max(1, rom.length / 0x4000);
         this.header = new CartHeader(rom);
         logger.info("Cartridge: " + header);
     }
@@ -37,7 +39,7 @@ public class Cart implements MemorySpace {
         if (address < 0x4000) {
             return rom[address];
         } else if (address < 0x8000) {
-            int bankOffset = (romBank) * 0x4000;
+            int bankOffset = normalizeRomBank(romBank) * 0x4000;
             return rom[bankOffset + (address - 0x4000)];
         } else if (address >= 0xA000 && address < 0xC000) {
             return ram[address - 0xA000];
@@ -47,10 +49,11 @@ public class Cart implements MemorySpace {
 
     @Override
     public void write(int address, byte value) {
-        if(address < 0x2000){
-
+        if (header.getCartridgeType() == CartridgeType.ROM_ONLY) {
+            return;
         }
-        if (address < 0x4000) {
+
+        if (address >= 0x2000 && address < 0x4000) {
             romBank = value & 0x1F;
             if (romBank == 0) {
                 romBank = 1;
@@ -60,5 +63,13 @@ public class Cart implements MemorySpace {
 
     public CartHeader getHeader() {
         return header;
+    }
+
+    private int normalizeRomBank(int bank) {
+        if (romBanks == 1) {
+            return 0;
+        }
+        int normalized = bank % romBanks;
+        return normalized == 0 ? 1 : normalized;
     }
 }

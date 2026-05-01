@@ -62,10 +62,6 @@ public class Display implements Runnable{
 
     @Override
     public void run() {
-        BufferStrategy bs = window.getBufferStrategy();
-        if (bs == null) {
-            window.createBufferStrategy(3); // Use double or triple buffering
-        }
         window.setVisible(true);
         while (true) {
            try {

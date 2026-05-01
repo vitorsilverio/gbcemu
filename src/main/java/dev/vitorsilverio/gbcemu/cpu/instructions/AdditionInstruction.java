@@ -44,7 +44,7 @@ public class AdditionInstruction implements Instruction {
     public int execute(Cpu cpu) {
         var value1 = source1.getValue(cpu);
         var value2 = source2.getValue(cpu);
-        var sum = value1 + value2 + (cpu.isCarryFlag() ? 1 : 0);
+        var sum = value1 + value2 + (carryFlag && cpu.isCarryFlag() ? 1 : 0);
         if (source1.toString().length() > 1) {
             cpu.setCarryFlag(sum > 0xFFFF);
         } else {
@@ -53,8 +53,9 @@ public class AdditionInstruction implements Instruction {
         cpu.setHalfCarryFlag(((value1 & 0x0F) + (value2 & 0x0F)) > 0x0F);
         cpu.setNegativeFlag(false);
         if (zeroFlag) {
-            cpu.setZeroFlag(sum == 0);
+            cpu.setZeroFlag((sum & 0xFF) == 0);
         }
+        destination.setValue(cpu, sum);
         cpu.incrementProgramCounter(bytes);
         return cycles;
     }

@@ -13,7 +13,7 @@ public class SourceReferenceBC implements Source {
 
     @Override
     public int getValue(Cpu cpu) {
-        return cpu.getBus().read(cpu.getBc());
+        return cpu.getBus().read(cpu.getBc()) & 0xFF;
     }
 
     @Override
