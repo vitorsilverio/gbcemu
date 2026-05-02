@@ -15,8 +15,6 @@ public class Bus {
 
     private final List<MemorySpace> memorySpaces;
     private final InterruptManager interruptManager;
-    private final List<DeferredWrite> deferredWrites = new ArrayList<>();
-    private boolean deferringCpuWrites;
 
     public Bus() {
         this.memorySpaces = new ArrayList<>();
@@ -69,36 +67,6 @@ public class Bus {
     }
 
     public void write(int address, byte value) {
-        address = address & 0xFFFF; // Ensure address is within 16-bit range
-        if (deferringCpuWrites) {
-            deferredWrites.add(new DeferredWrite(address, value, 0));
-            return;
-        }
-        writeNow(address, value);
-    }
-
-    public void beginCpuInstructionWrites() {
-        deferringCpuWrites = true;
-    }
-
-    public void endCpuInstructionWrites(int remainingCycles) {
-        deferringCpuWrites = false;
-        for (int i = 0; i < deferredWrites.size(); i++) {
-            DeferredWrite write = deferredWrites.get(i);
-            deferredWrites.set(i, new DeferredWrite(write.address(), write.value(), Math.max(remainingCycles - 3, 0)));
-        }
-        applyDueDeferredWrites();
-    }
-
-    public void tickDeferredCpuWrites() {
-        for (int i = 0; i < deferredWrites.size(); i++) {
-            DeferredWrite write = deferredWrites.get(i);
-            deferredWrites.set(i, new DeferredWrite(write.address(), write.value(), write.remainingCycles() - 1));
-        }
-        applyDueDeferredWrites();
-    }
-
-    private void writeNow(int address, byte value) {
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {
                 memorySpace.write(address, value);
@@ -106,18 +74,6 @@ public class Bus {
             }
         }
         logger.warn("Address " + Integer.toHexString(address) + " not found in any memory space");
-    }
-
-    private void applyDueDeferredWrites() {
-        for (int i = 0; i < deferredWrites.size(); ) {
-            DeferredWrite write = deferredWrites.get(i);
-            if (write.remainingCycles() <= 0) {
-                deferredWrites.remove(i);
-                writeNow(write.address(), write.value());
-            } else {
-                i++;
-            }
-        }
     }
 
     public void requestInterrupt(Interrupt interrupt) {
@@ -144,6 +100,4 @@ public class Bus {
         write(address + 1, (byte) ((value >> 8) & 0xFF));
     }
 
-    private record DeferredWrite(int address, byte value, int remainingCycles) {
-    }
 }

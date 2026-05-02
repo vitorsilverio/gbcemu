@@ -190,7 +190,6 @@ public class Cpu implements MachineCycle {
     public void tick() {
         if (cycles > 0) {
             cycles--;
-            bus.tickDeferredCpuWrites();
             return;
         }
         Optional<Interrupt> pendingInterrupt = bus.getPendingInterrupt();
@@ -228,9 +227,7 @@ public class Cpu implements MachineCycle {
             throw new IllegalStateException("Invalid opcode: " + Integer.toHexString(opcode));
         }
 
-        bus.beginCpuInstructionWrites();
         cycles = (instruction.get().execute(this) / speedRate) - 1;
-        bus.endCpuInstructionWrites(cycles);
 
         if (haltBug && opcode != 0x76) {
             pc --;
@@ -244,8 +241,6 @@ public class Cpu implements MachineCycle {
         // Clear the interrupt flag
         bus.clearInterrupt(interrupt);
 
-        bus.beginCpuInstructionWrites();
-
         // Push the current program counter to the stack
         pushStack(pc);
 
@@ -253,7 +248,6 @@ public class Cpu implements MachineCycle {
         pc = interrupt.getVectorAddress();
 
         cycles = (20 / speedRate) - 1;
-        bus.endCpuInstructionWrites(cycles);
 
         // Disable interrupts
         ime = false;
