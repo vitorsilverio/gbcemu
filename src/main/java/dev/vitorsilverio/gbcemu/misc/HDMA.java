@@ -97,6 +97,6 @@ public class HDMA implements MachineCycle, MemorySpace {
     }
 
     public boolean isGeneralPurposeMode() {
-        return mode == 1;
+        return mode == 0;
     }
 }

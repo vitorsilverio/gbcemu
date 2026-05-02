@@ -68,14 +68,28 @@ public class Emulator {
         displayThread.start();
         int dots = 0;
         long frameStart = System.nanoTime();
+        boolean cpuCanRun = true;
         while (true) {
             if (hdma.isActive()) {
-                hdma.tick();
+
+                if (hdma.isHBlankMode()) {
+                    // Wait till hblank
+                    if(ppu.isHBlank()) {
+                        hdma.tick();
+                    }
+                }
+
+                if (hdma.isGeneralPurposeMode()) {
+                    //halt cpu till hblank
+                    hdma.tick();
+                }
             }
             if (dma.isActive()) {
                 dma.tick();
             }
-            cpu.tick();
+            if (!hdma.isActive() || (hdma.isActive() && !hdma.isGeneralPurposeMode())) {
+                cpu.tick();
+            }
             timer.tick();
             ppu.tick();
             apu.tick();

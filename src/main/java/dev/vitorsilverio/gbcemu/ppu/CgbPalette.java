@@ -27,7 +27,8 @@ public class CgbPalette {
         if (colorIndex < 0 || colorIndex > 3) {
             throw new IllegalArgumentException("Index must be between 0 and 3");
         }
-        return paletteData[paletteIndex * 4 + colorIndex] | ( paletteData[paletteIndex * 4 + colorIndex + 1] << 8);
+        var palette = (paletteIndex * 4 + colorIndex);
+        return ((paletteData[ palette * 2 ]) | ( paletteData[palette * 2 + 1]  << 8 ));
     }
 
     public void setPaletteIndex(byte value) {

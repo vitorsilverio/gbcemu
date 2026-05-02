@@ -160,7 +160,8 @@ public class Ppu implements MemorySpace, MachineCycle {
         }
         var pixel = tile.getPixel(tileX, tileY);
         // Draw the current tile (background)
-        frameBuffer[currentColumn][currentLine] = getDmgBackgroundColor(pixel);
+        var palette = map.getPaletteIndex();
+        frameBuffer[currentColumn][currentLine] = bgPalette.getColor(palette, pixel);
 
         // TODO: Draw window
         // TODO: Draw sprites
@@ -378,4 +379,7 @@ public class Ppu implements MemorySpace, MachineCycle {
         return DMG_COLORS[bgPaletteDmg.getColor(pixel) & 0x03];
     }
 
+    public boolean isHBlank() {
+        return mode == PpuMode.HBLANK;
+    }
 }
