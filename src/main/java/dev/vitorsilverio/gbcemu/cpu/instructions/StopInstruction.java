@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.cpu.instructions;
 
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.cpu.Instruction;
+import dev.vitorsilverio.gbcemu.misc.Key1;
 
 public class StopInstruction implements Instruction {
 
@@ -13,8 +14,9 @@ public class StopInstruction implements Instruction {
 
     @Override
     public int execute(Cpu cpu) {
-        // Stop the CPU until an interrupt occurs
-        cpu.setStopped(true);
+        cpu.getBus().findMemorySpace(Key1.class)
+                .filter(Key1::switchSpeedIfPrepared)
+                .ifPresent(key1 -> cpu.setSpeedRate(key1.isDoubleSpeed() ? 2 : 1));
         cpu.incrementProgramCounter(2);
         return 4;
     }

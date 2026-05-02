@@ -25,8 +25,8 @@ public class Display implements Runnable{
 
     public Display(Ppu ppu, KeyListener keyListener) {
         this.ppu = ppu;
-        initializeWindow();
         this.keyListener = keyListener;
+        initializeWindow();
     }
 
     private void initializeWindow() {

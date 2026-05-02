@@ -18,14 +18,15 @@ public class DecrementInstruction implements Instruction {
 
     @Override
     public int execute(Cpu cpu) {
-        int value = source.getValue(cpu) - 1;
-        destination.setValue(cpu, value);
+        int value = source.getValue(cpu);
+        int result = value - 1;
+        destination.setValue(cpu, result);
         cpu.incrementProgramCounter(1);
         if(arithmetic){
             // Set the zero flag if the result is zero
-            cpu.setZeroFlag(value == 0x00);
+            cpu.setZeroFlag((result & 0xFF) == 0);
 
-            // Set the half carry flag if the result is less than 0x10
+            // Set the half carry flag if there was a borrow from bit 4
             cpu.setHalfCarryFlag((value & 0x0F) == 0x00);
 
             cpu.setNegativeFlag(true);

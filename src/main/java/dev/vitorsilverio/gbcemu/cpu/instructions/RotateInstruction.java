@@ -25,29 +25,25 @@ public class RotateInstruction implements Instruction {
 
     @Override
     public int execute(Cpu cpu) {
-        var value = source.getValue(cpu);
+        var value = source.getValue(cpu) & 0xFF;
         int bitout;
+        int result;
         if (RotateDirection.LEFT.equals(direction)) {
             bitout = (value & 0x80) != 0 ? 1 : 0;
-            value = (value << 1) | (carryFlag && cpu.isCarryFlag() ? 1 : 0);
+            result = ((value << 1) & 0xFF) | (throughCarry ? (cpu.isCarryFlag() ? 1 : 0) : bitout);
         } else {
             bitout = (value & 0x01) != 0 ? 1 : 0;
-            value = (value >> 1) | (carryFlag && cpu.isCarryFlag() ? 0x80 : 0);
+            result = (value >> 1) | (throughCarry ? (cpu.isCarryFlag() ? 0x80 : 0) : (bitout << 7));
         }
-        if (carryFlag) {
-            cpu.setCarryFlag(bitout != 0);
-        }
-        if(throughCarry) {
-            cpu.setCarryFlag(bitout != 0);
-        }
+        cpu.setCarryFlag(bitout != 0);
         cpu.setNegativeFlag(false);
         cpu.setHalfCarryFlag(false);
         if(zeroFlag){
-            cpu.setZeroFlag(value == 0);
+            cpu.setZeroFlag(result == 0);
         } else {
             cpu.setZeroFlag(false);
         }
-        destination.setValue(cpu, value);
+        destination.setValue(cpu, result);
         cpu.incrementProgramCounter(1);
         return cycles;
     }

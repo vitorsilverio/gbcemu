@@ -44,7 +44,14 @@ public class Cpu implements MachineCycle {
     }
 
     public void setSpeedRate(int speedRate) {
+        if (speedRate != 1 && speedRate != 2) {
+            throw new IllegalArgumentException("Speed rate must be 1 or 2");
+        }
         this.speedRate = speedRate;
+    }
+
+    public int getSpeedRate() {
+        return speedRate;
     }
 
     public int getPc() {
@@ -219,7 +226,7 @@ public class Cpu implements MachineCycle {
             throw new IllegalStateException("Invalid opcode: " + Integer.toHexString(opcode));
         }
 
-        cycles = instruction.get().execute(this) * speedRate;
+        cycles = instruction.get().execute(this) / speedRate;
 
         if (haltBug && opcode != 0x76) {
             pc --;
@@ -240,7 +247,7 @@ public class Cpu implements MachineCycle {
         pc = interrupt.getVectorAddress();
 
         // set cycles to 20
-        cycles = 20 * speedRate;
+        cycles = 20 / speedRate;
 
         // Disable interrupts
         ime = false;

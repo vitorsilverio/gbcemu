@@ -44,7 +44,7 @@ public class VideoRam implements MemorySpace {
         // Tile Map
         address -= 0x9800;
         if (bank == 0) {
-            return tileMaps[address].getIndex();
+            return (byte) tileMaps[address].getIndex();
         } else {
             return tileMaps[address].getAttributes();
         }

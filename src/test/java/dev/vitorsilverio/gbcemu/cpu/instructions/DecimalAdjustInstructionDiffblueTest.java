@@ -69,11 +69,11 @@ class DecimalAdjustInstructionDiffblueTest {
         DecimalAdjustInstruction.INSTANCE.execute(cpu);
 
         // Assert
-        assertEquals((byte) -96, cpu.getA());
-        assertEquals(40960, cpu.getAf());
-        assertFalse(cpu.isCarryFlag());
+        assertEquals((byte) 0, cpu.getA());
+        assertEquals(144, cpu.getAf());
+        assertTrue(cpu.isCarryFlag());
         assertFalse(cpu.isHalfCarryFlag());
-        assertFalse(cpu.isZeroFlag());
+        assertTrue(cpu.isZeroFlag());
     }
 
     /**
@@ -155,8 +155,8 @@ class DecimalAdjustInstructionDiffblueTest {
         DecimalAdjustInstruction.INSTANCE.execute(cpu);
 
         // Assert
-        assertEquals(24576, cpu.getAf());
-        assertFalse(cpu.isCarryFlag());
+        assertEquals(24592, cpu.getAf());
+        assertTrue(cpu.isCarryFlag());
         assertFalse(cpu.isHalfCarryFlag());
         assertFalse(cpu.isZeroFlag());
         assertEquals('`', cpu.getA());
@@ -186,8 +186,8 @@ class DecimalAdjustInstructionDiffblueTest {
 
         // Assert
         assertEquals((byte) -96, cpu.getA());
-        assertEquals(41024, cpu.getAf());
-        assertFalse(cpu.isCarryFlag());
+        assertEquals(41040, cpu.getAf());
+        assertTrue(cpu.isCarryFlag());
         assertFalse(cpu.isHalfCarryFlag());
         assertFalse(cpu.isZeroFlag());
     }

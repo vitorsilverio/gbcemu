@@ -13,30 +13,32 @@ public class DecimalAdjustInstruction implements Instruction {
 
     @Override
     public int execute(Cpu cpu) {
-        int a = cpu.getA();
+        int a = cpu.getA() & 0xFF;
+        boolean carry = cpu.isCarryFlag();
 
-        if (cpu.isNegativeFlag()){
-            if (cpu.isHalfCarryFlag()) {
-                a -= 0x06;
-            }
+        if (cpu.isNegativeFlag()) {
             if (cpu.isCarryFlag()) {
                 a -= 0x60;
             }
+            if (cpu.isHalfCarryFlag()) {
+                a -= 0x06;
+            }
         } else {
+            if (cpu.isCarryFlag() || a > 0x99) {
+                a += 0x60;
+                carry = true;
+            }
             if (cpu.isHalfCarryFlag() || (a & 0x0F) > 0x09) {
                 a += 0x06;
             }
-            if (cpu.isCarryFlag() || a > 0x99) {
-                a += 0x60;
-            }
         }
         cpu.setHalfCarryFlag(false);
-        cpu.setCarryFlag(a > 0xFF);
-        cpu.setZeroFlag(a == 0);
+        cpu.setCarryFlag(carry);
+        cpu.setZeroFlag((a & 0xFF) == 0);
 
         cpu.setA((byte) a);
         cpu.incrementProgramCounter(1);
-        return 0;
+        return 4;
     }
 
     @Override

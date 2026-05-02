@@ -37,7 +37,7 @@ public class ShiftArithmeticallyInstruction implements Instruction {
             }
             cpu.setCarryFlag((value & 0x01) != 0);
         }
-        cpu.setZeroFlag(result == 0);
+        cpu.setZeroFlag((result & 0xFF) == 0);
         cpu.setNegativeFlag(false);
         cpu.setHalfCarryFlag(false);
         destination.setValue(cpu, (byte) result);

@@ -30,9 +30,9 @@ public class Tile extends BufferedImage {
         }
         int byteIndex = y * 2;
         int bitIndex = 7 - x;
-        int color1 = (data[byteIndex] >> bitIndex) & 1;
-        int color2 = (data[byteIndex + 1] >> bitIndex) & 1;
-        return (color1 << 1) | color2;
+        int lowBit = (data[byteIndex] >> bitIndex) & 1;
+        int highBit = (data[byteIndex + 1] >> bitIndex) & 1;
+        return lowBit | (highBit << 1);
     }
 
     public void setData(int index, byte value) {

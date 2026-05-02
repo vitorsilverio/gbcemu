@@ -15,8 +15,9 @@ public class AdditionInstruction implements Instruction {
     private final int cycles;
     private final boolean carryFlag;
     private final boolean zeroFlag;
+    private final boolean wordOperation;
 
-    public AdditionInstruction(Source source1, Source source2, Destination destination, int bytes, int cycles, boolean carryFlag, boolean zeroFlag) {
+    public AdditionInstruction(Source source1, Source source2, Destination destination, int bytes, int cycles, boolean carryFlag, boolean zeroFlag, boolean wordOperation) {
         this.source1 = source1;
         this.source2 = source2;
         this.destination = destination;
@@ -24,6 +25,7 @@ public class AdditionInstruction implements Instruction {
         this.cycles = cycles;
         this.carryFlag = carryFlag;
         this.zeroFlag = zeroFlag;
+        this.wordOperation = wordOperation;
     }
 
     /**
@@ -33,24 +35,30 @@ public class AdditionInstruction implements Instruction {
      * @param destination
      */
     public AdditionInstruction(Source source1, Source source2, Destination destination) {
-        this(source1, source2, destination, 1, 8, false, false);
+        this(source1, source2, destination, 1, 8, false, false, true);
     }
 
     public AdditionInstruction(Source source, int cycles, boolean carryFlag) {
-        this(source, SourceA.INSTANCE, DestinationA.INSTANCE, 1, cycles, carryFlag, true);
+        this(source, cycles, carryFlag, 1);
+    }
+
+    public AdditionInstruction(Source source, int cycles, boolean carryFlag, int bytes) {
+        this(source, SourceA.INSTANCE, DestinationA.INSTANCE, bytes, cycles, carryFlag, true, false);
     }
 
     @Override
     public int execute(Cpu cpu) {
         var value1 = source1.getValue(cpu);
         var value2 = source2.getValue(cpu);
-        var sum = value1 + value2 + (carryFlag && cpu.isCarryFlag() ? 1 : 0);
-        if (source1.toString().length() > 1) {
+        int carry = carryFlag && cpu.isCarryFlag() ? 1 : 0;
+        var sum = value1 + value2 + carry;
+        if (wordOperation) {
             cpu.setCarryFlag(sum > 0xFFFF);
+            cpu.setHalfCarryFlag(((value1 & 0x0FFF) + (value2 & 0x0FFF)) > 0x0FFF);
         } else {
             cpu.setCarryFlag(sum > 0xFF);
+            cpu.setHalfCarryFlag(((value1 & 0x0F) + (value2 & 0x0F) + carry) > 0x0F);
         }
-        cpu.setHalfCarryFlag(((value1 & 0x0F) + (value2 & 0x0F)) > 0x0F);
         cpu.setNegativeFlag(false);
         if (zeroFlag) {
             cpu.setZeroFlag((sum & 0xFF) == 0);

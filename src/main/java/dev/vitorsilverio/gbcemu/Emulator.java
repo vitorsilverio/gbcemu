@@ -8,6 +8,7 @@ import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.DMA;
 import dev.vitorsilverio.gbcemu.misc.HDMA;
 import dev.vitorsilverio.gbcemu.misc.Key0;
+import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
@@ -17,6 +18,9 @@ import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import java.io.File;
 
 public class Emulator {
+
+    private static final int DOTS_PER_FRAME = 70224;
+    private static final long NANOS_PER_FRAME = 16_742_706L;
 
     private final Cpu cpu;
     private final Timer timer;
@@ -52,6 +56,7 @@ public class Emulator {
         bus.addMemorySpace(zeroPage);
         bus.addMemorySpace(new Cart(romFile));
         bus.addMemorySpace(new Key0());
+        bus.addMemorySpace(new Key1());
         this.display = new Display(ppu, controller);
         var serial = new Serial(bus);
         bus.addMemorySpace(serial);
@@ -61,6 +66,8 @@ public class Emulator {
     public void start() {
         Thread displayThread = new Thread(display);
         displayThread.start();
+        int dots = 0;
+        long frameStart = System.nanoTime();
         while (true) {
             if (hdma.isActive()) {
                 hdma.tick();
@@ -72,6 +79,23 @@ public class Emulator {
             timer.tick();
             ppu.tick();
             apu.tick();
+            dots++;
+            if (dots >= DOTS_PER_FRAME) {
+                long elapsed = System.nanoTime() - frameStart;
+                if (elapsed < NANOS_PER_FRAME) {
+                    sleepNanos(NANOS_PER_FRAME - elapsed);
+                }
+                dots = 0;
+                frameStart = System.nanoTime();
+            }
+        }
+    }
+
+    private void sleepNanos(long nanos) {
+        try {
+            Thread.sleep(nanos / 1_000_000L, (int) (nanos % 1_000_000L));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

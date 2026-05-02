@@ -20,14 +20,11 @@ public class WorkRam implements MemorySpace{
         if (address < 0xD000) {
             return bank0[address - 0xC000];
         }
-        return banks[getBank()][address - 0xD000];
+        return banks[getBank() - 1][address - 0xD000];
     }
 
     public int getBank() {
-        if (bank == 0) {
-            bank = 1;
-        }
-        return bank;
+        return bank == 0 ? 1 : bank;
     }
 
     @Override
@@ -40,10 +37,7 @@ public class WorkRam implements MemorySpace{
         } else if (address < 0xD000) {
             bank0[address - 0xC000] = value;
         } else {
-            if (bank == 0) {
-                bank = 1;
-            }
-            banks[bank - 1][address - 0xD000] = value;
+            banks[getBank() - 1][address - 0xD000] = value;
         }
     }
 }

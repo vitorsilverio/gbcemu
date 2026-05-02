@@ -17,7 +17,6 @@ public class ComplementCarryInstruction implements Instruction {
         cpu.setCarryFlag(!cpu.isCarryFlag());
         cpu.setHalfCarryFlag(false);
         cpu.setNegativeFlag(false);
-        cpu.setZeroFlag(false);
         cpu.incrementProgramCounter(1);
         return 4;
     }

@@ -52,7 +52,7 @@ public class PpuControl {
         byte data = 0;
         data |= (byte) (enabled ? 0x80 : 0);
         data |= (byte) (windowTileMapArea.getValue() << 6);
-        data |= (byte) (windowEnabled ? 0x40 : 0);
+        data |= (byte) (windowEnabled ? 0x20 : 0);
         data |= (byte) (tileArea.getValue() << 4);
         data |= (byte) (bgTileMapArea.getValue() << 3);
         data |= (byte) (spriteSize << 2);
@@ -64,7 +64,7 @@ public class PpuControl {
     public void setData(byte value){
         this.enabled = (value & 0x80) != 0;
         this.windowTileMapArea = TileMapArea.fromValue((value >> 6) & 0x01);
-        this.windowEnabled = (value & 0x40) != 0;
+        this.windowEnabled = (value & 0x20) != 0;
         this.tileArea = TileArea.fromValue((value >> 4) & 0x01);
         this.bgTileMapArea = TileMapArea.fromValue((value >> 3) & 0x01);
         this.spriteSize = (byte) ((value >> 2) & 0x01);

@@ -81,9 +81,9 @@ class IncrementInstructionDiffblueTest {
         verify(source).getValue(isA(Cpu.class));
         assertEquals(1, cpu.getPc());
         assertEquals(1, actualExecuteResult);
-        assertFalse(cpu.isZeroFlag());
+        assertTrue(cpu.isZeroFlag());
         assertTrue(cpu.isHalfCarryFlag());
-        assertEquals(Integer.SIZE, cpu.getAf());
+        assertEquals(160, cpu.getAf());
     }
 
     /**

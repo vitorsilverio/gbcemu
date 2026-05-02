@@ -14,8 +14,8 @@ public class TileMap {
         this.index = index;
     }
 
-    public byte getIndex() {
-        return index;
+    public int getIndex() {
+        return index & 0xFF;
     }
 
     public void setAttributes(byte value) {

@@ -19,6 +19,7 @@ public class Serial implements MemorySpace {
     private final List<Integer> registers = List.of(SB_REGISTER, SC_REGISTER);
     private final List<Byte> data = new ArrayList<>();
     private final Bus bus;
+    private final StringBuilder text = new StringBuilder();
     private int SB = 0;
     private int SC = 0;
 
@@ -45,24 +46,28 @@ public class Serial implements MemorySpace {
     public void write(int address, byte value) {
         if (address == SB_REGISTER) {
             SB = value;
-            data.add(value);
         } else if (address == SC_REGISTER) {
+            SC= value & 0b1000_0011;
             if ((value & 0x80) != 0) {
-                // Start transmission
-                //Print the data to the console
-                if ((SC & 0x80) != 0 && ((value & 0x80) ==0)) { // Transfer complete
-                    logger.info("Serial transfer data complete");
-                    bus.requestInterrupt(Interrupt.SERIAL);
-                }
-                SC= value & 0b1000_0011;
-                byte[] primitiveData = new byte[data.size()];
-                for (int i = 0; i < primitiveData.length; i++) {
-                    primitiveData[i] = data.get(i);
-                }
+                data.add((byte) SB);
+                byte[] primitiveData = new byte[]{(byte) SB};
                 logger.info("Serial data: " + HexFormat.of().formatHex(primitiveData));
+                appendText((byte) SB);
+                SC &= 0x7F;
+                bus.requestInterrupt(Interrupt.SERIAL);
                 data.clear();
             }
         }
 
+    }
+
+    private void appendText(byte value) {
+        int unsignedValue = value & 0xFF;
+        if (unsignedValue == '\n') {
+            logger.info("Serial text: {}", text);
+            text.setLength(0);
+        } else if (unsignedValue >= 0x20 && unsignedValue <= 0x7E) {
+            text.append((char) unsignedValue);
+        }
     }
 }

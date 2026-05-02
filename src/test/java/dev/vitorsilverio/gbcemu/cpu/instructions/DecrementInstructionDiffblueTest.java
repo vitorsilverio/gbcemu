@@ -81,8 +81,8 @@ class DecrementInstructionDiffblueTest {
         // Assert
         verify(destination).setValue(isA(Cpu.class), eq(0));
         verify(source).getValue(isA(Cpu.class));
-        assertEquals(224, cpu.getAf());
-        assertTrue(cpu.isHalfCarryFlag());
+        assertEquals(192, cpu.getAf());
+        assertFalse(cpu.isHalfCarryFlag());
         assertTrue(cpu.isNegativeFlag());
         assertTrue(cpu.isZeroFlag());
     }

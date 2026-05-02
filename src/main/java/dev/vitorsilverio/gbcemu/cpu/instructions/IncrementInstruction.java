@@ -19,11 +19,12 @@ public class IncrementInstruction implements Instruction {
     @Override
     public int execute(Cpu cpu) {
         int value = source.getValue(cpu);
-        destination.setValue(cpu, value + 1);
+        int result = value + 1;
+        destination.setValue(cpu, result);
         cpu.incrementProgramCounter(1);
         if(arithmetic){
             // Set the zero flag if the result is zero
-            cpu.setZeroFlag(value == 0xFF);
+            cpu.setZeroFlag((result & 0xFF) == 0);
             // Set the half carry flag if there was a carry from bit 3 to bit 4
             cpu.setHalfCarryFlag((value & 0x0F) == 0x0F);
             cpu.setNegativeFlag(false);

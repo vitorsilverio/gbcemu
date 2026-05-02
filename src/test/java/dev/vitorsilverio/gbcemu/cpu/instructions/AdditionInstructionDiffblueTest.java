@@ -83,8 +83,8 @@ class AdditionInstructionDiffblueTest {
         verify(source2).getValue(isA(Cpu.class));
         assertEquals(8, actualExecuteResult);
         assertFalse(cpu.isCarryFlag());
-        assertTrue(cpu.isHalfCarryFlag());
-        assertEquals(Integer.SIZE, cpu.getAf());
+        assertFalse(cpu.isHalfCarryFlag());
+        assertEquals(0, cpu.getAf());
     }
 
     /**
@@ -146,8 +146,8 @@ class AdditionInstructionDiffblueTest {
         verify(source2).getValue(isA(Cpu.class));
         assertEquals(8, actualExecuteResult);
         assertFalse(cpu.isCarryFlag());
-        assertTrue(cpu.isHalfCarryFlag());
-        assertEquals(Integer.SIZE, cpu.getAf());
+        assertFalse(cpu.isHalfCarryFlag());
+        assertEquals(0, cpu.getAf());
     }
 
     /**

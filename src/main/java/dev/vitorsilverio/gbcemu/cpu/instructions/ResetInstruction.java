@@ -14,7 +14,7 @@ public class ResetInstruction implements Instruction {
     @Override
     public int execute(Cpu cpu) {
         // Push the current program counter onto the stack
-        cpu.pushStack(cpu.getPc());
+        cpu.pushStack((cpu.getPc() + 1) & 0xFFFF);
         // Set the program counter to the reset vector address
         cpu.setPc(address);
         return 16; // 16 cycles for a reset instruction

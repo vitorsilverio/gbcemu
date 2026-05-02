@@ -22,11 +22,12 @@ public class CompareInstruction implements Instruction {
     @Override
     public int execute(Cpu cpu) {
         int value = source.getValue(cpu);
-        int result = (cpu.getA() & 0x00ff) - value;
-        cpu.setCarryFlag(result < 0);
-        cpu.setHalfCarryFlag(((cpu.getA() & 0x0F) - (value & 0x0F)) < 0);
+        int a = cpu.getA() & 0xFF;
+        int result = a - value;
+        cpu.setCarryFlag(a < value);
+        cpu.setHalfCarryFlag((a & 0x0F) < (value & 0x0F));
         cpu.setNegativeFlag(true);
-        cpu.setZeroFlag(result == 0);
+        cpu.setZeroFlag((result & 0xFF) == 0);
         cpu.incrementProgramCounter(bytes);
         return cycles;
     }

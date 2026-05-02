@@ -229,9 +229,9 @@ public class Ppu implements MemorySpace, MachineCycle {
             case LCDC:
                 return control.getData();
             case SCY:
-                return (byte) scrollY;
+                return (byte) (scrollY & 0xFF);
             case SCX:
-                return (byte) scrollX;
+                return (byte) (scrollX & 0xFF);
             case LY:
                 return (byte) currentLine;
             case LYC:
@@ -261,12 +261,12 @@ public class Ppu implements MemorySpace, MachineCycle {
             case OBP1:
                 return obj1PaletteDmg.getData();
             case WX:
-                return (byte) windowX;
+                return (byte) (windowX & 0xFF);
             case WY:
-                return (byte) windowY;
+                return (byte) (windowY & 0xFF);
             case STAT:
                 return (byte) (stat.getData() |
-                        (control.isEnabled() ? 0: mode.getValue() & 0x3 ) |
+                        (control.isEnabled() ? mode.getValue() & 0x3 : 0 ) |
                         (currentLine == lineCompare ? 0x04 : 0));
         }
 
@@ -311,10 +311,10 @@ public class Ppu implements MemorySpace, MachineCycle {
                 control.setData(value);
                 return;
             case SCY:
-                scrollY = value;
+                scrollY = value & 0xFF;
                 return;
             case SCX:
-                scrollX = value;
+                scrollX = value & 0xFF;
                 return;
             case LYC:
                 lineCompare = value;
@@ -355,10 +355,10 @@ public class Ppu implements MemorySpace, MachineCycle {
                 obj1PaletteDmg.setData(value);
                 return;
             case WX:
-                windowX = value;
+                windowX = value & 0xFF;
                 return;
             case WY:
-                windowY = value;
+                windowY = value & 0xFF;
                 return;
         }
     }
