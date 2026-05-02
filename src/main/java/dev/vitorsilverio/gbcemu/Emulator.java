@@ -53,7 +53,8 @@ public class Emulator {
         bus.addMemorySpace(new Cart(romFile));
         bus.addMemorySpace(new Key0());
         this.display = new Display(ppu, controller);
-        bus.addMemorySpace(new Serial());
+        var serial = new Serial(bus);
+        bus.addMemorySpace(serial);
     }
 
 

@@ -40,6 +40,9 @@ public class WorkRam implements MemorySpace{
         } else if (address < 0xD000) {
             bank0[address - 0xC000] = value;
         } else {
+            if (bank == 0) {
+                bank = 1;
+            }
             banks[bank - 1][address - 0xD000] = value;
         }
     }
