@@ -19,12 +19,6 @@ public class Ppu implements MemorySpace, MachineCycle {
     private static final int OAM_SCANLINE_CYCLES = 80;
     private static final int SCANLINE_CYCLES = 376;
     private static final int VBLANK_CYCLES = 456;
-    private static final int[] DMG_COLORS = {
-            0xFFFFFFFF,
-            0xFFAAAAAA,
-            0xFF555555,
-            0xFF000000
-    };
 
     private final int LCDC = 0xFF40;
     private final int STAT = 0xFF41;
@@ -117,7 +111,7 @@ public class Ppu implements MemorySpace, MachineCycle {
     }
 
     private void statInterrupt() {
-        if (stat.isLycInterrupt() && currentLine == lineCompare) {
+        if (stat.isLycInterrupt() && (currentLine & 0xff) == (lineCompare & 0xff)) {
             bus.requestInterrupt(Interrupt.LCD_STAT);
         }
         if (stat.isOamInterrupt() && mode == PpuMode.OAM_READ) {
@@ -483,10 +477,6 @@ public class Ppu implements MemorySpace, MachineCycle {
             }
         }
         return image;
-    }
-
-    private int getDmgBackgroundColor(int pixel) {
-        return DMG_COLORS[bgPaletteDmg.getColor(pixel) & 0x03];
     }
 
     public boolean isHBlank() {
