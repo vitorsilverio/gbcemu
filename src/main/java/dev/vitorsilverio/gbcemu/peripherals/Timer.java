@@ -52,18 +52,13 @@ public class Timer implements MemorySpace, MachineCycle {
 
     @Override
     public byte read(int address) {
-        switch (address) {
-            case DIVIDER_REG:
-                return (byte)((systemCounter >> 8) & 0xFF);
-            case TIMER_COUNTER_REG:
-                return timerCounter;
-            case TIMER_MODULO_REG:
-                return timerModulo;
-            case TIMER_CONTROL_REG:
-                return (byte) (0xF8 | (timerControl & 0x07));
-            default:
-                throw new IllegalArgumentException("Address " + address + " not found in any memory space");
-        }
+        return switch (address) {
+            case DIVIDER_REG -> (byte) ((systemCounter >> 8) & 0xFF);
+            case TIMER_COUNTER_REG -> timerCounter;
+            case TIMER_MODULO_REG -> timerModulo;
+            case TIMER_CONTROL_REG -> (byte) (0xF8 | (timerControl & 0x07));
+            default -> throw new IllegalArgumentException("Address " + address + " not found in any memory space");
+        };
     }
 
     @Override
