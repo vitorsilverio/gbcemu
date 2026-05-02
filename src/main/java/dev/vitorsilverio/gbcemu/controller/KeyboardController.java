@@ -80,35 +80,35 @@ public class KeyboardController implements Controller, KeyListener {
         switch (e.getKeyCode()) {
             case KeyEvent.VK_Z -> {
                 buttonA_Pressed = true;
-                onButtonPress.accept(ButtonType.ACTION);
+                emit(ButtonType.ACTION);
             }
             case KeyEvent.VK_X -> {
                 buttonB_Pressed = true;
-                onButtonPress.accept(ButtonType.ACTION);
+                emit(ButtonType.ACTION);
             }
             case KeyEvent.VK_ENTER -> {
                 buttonStart_Pressed = true;
-                onButtonPress.accept(ButtonType.ACTION);
+                emit(ButtonType.ACTION);
             }
             case KeyEvent.VK_SPACE -> {
                 buttonSelect_Pressed = true;
-                onButtonPress.accept(ButtonType.ACTION);
+                emit(ButtonType.ACTION);
             }
             case KeyEvent.VK_UP -> {
                 buttonUp_Pressed = true;
-                onButtonPress.accept(ButtonType.DIRECTIONAL);
+                emit(ButtonType.DIRECTIONAL);
             }
             case KeyEvent.VK_DOWN -> {
                 buttonDown_Pressed = true;
-                onButtonPress.accept(ButtonType.DIRECTIONAL);
+                emit(ButtonType.DIRECTIONAL);
             }
             case KeyEvent.VK_LEFT -> {
                 buttonLeft_Pressed = true;
-                onButtonPress.accept(ButtonType.DIRECTIONAL);
+                emit(ButtonType.DIRECTIONAL);
             }
             case KeyEvent.VK_RIGHT -> {
                 buttonRight_Pressed = true;
-                onButtonPress.accept(ButtonType.DIRECTIONAL);
+                emit(ButtonType.DIRECTIONAL);
             }
             default -> {
                 // Do nothing
@@ -127,6 +127,12 @@ public class KeyboardController implements Controller, KeyListener {
             case KeyEvent.VK_DOWN -> buttonDown_Pressed = false;
             case KeyEvent.VK_LEFT -> buttonLeft_Pressed = false;
             case KeyEvent.VK_RIGHT -> buttonRight_Pressed = false;
+        }
+    }
+
+    private void emit(ButtonType buttonType) {
+        if (onButtonPress != null) {
+            onButtonPress.accept(buttonType);
         }
     }
 }

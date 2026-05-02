@@ -6,7 +6,7 @@ public class Main {
     public static void main(String[] args) {
         var emulator = new Emulator(
                 new File("cgb_bios.bin"),
-                new File("tetris.gb"),
+                new File("sml.gb"),
                 new File("save.sav")
         );
         //emulator.skipBios();

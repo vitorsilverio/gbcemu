@@ -5,10 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.KeyListener;
-import java.awt.image.BufferStrategy;
 
 public class Display implements Runnable{
 
@@ -31,17 +28,7 @@ public class Display implements Runnable{
 
     private void initializeWindow() {
         window = new JFrame("GBC EMU");
-        window.addKeyListener(keyListener);
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        window.setSize(width * scale, height * scale);
-        window.addComponentListener( new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                scale = e.getComponent().getWidth() / width;
-                e.getComponent().setSize(width * scale, height * scale);
-            }
-
-        });
         screen = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -49,9 +36,13 @@ public class Display implements Runnable{
                 drawFrame(g);
             }
         };
+        screen.setFocusable(true);
+        screen.addKeyListener(keyListener);
         screen.setPreferredSize(new Dimension(width * scale, height * scale));
         window.setContentPane(screen);
+        window.setResizable(false);
         window.pack();
+        window.setLocationRelativeTo(null);
     }
 
     private void drawFrame(Graphics g) {
@@ -63,6 +54,7 @@ public class Display implements Runnable{
     @Override
     public void run() {
         window.setVisible(true);
+        screen.requestFocusInWindow();
         while (true) {
            try {
                 Thread.sleep(16);

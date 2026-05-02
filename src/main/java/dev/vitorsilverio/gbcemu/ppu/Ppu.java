@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class Ppu implements MemorySpace, MachineCycle {
@@ -60,6 +62,8 @@ public class Ppu implements MemorySpace, MachineCycle {
     private final DmgPalette obj1PaletteDmg = new DmgPalette();
     private final Stat stat = new Stat();
     private final int[][] frameBuffer; // 160x144 pixels
+    private final int[][] bgColorIndexes; // 160x144 pixels
+    private final boolean[][] bgPriorities; // 160x144 pixels
 
     private int cycles;
     private PpuMode mode = PpuMode.OAM_READ;
@@ -79,6 +83,8 @@ public class Ppu implements MemorySpace, MachineCycle {
     public Ppu(Bus bus) {
         this.bus = bus;
         this.frameBuffer = new int[160][144];
+        this.bgColorIndexes = new int[160][144];
+        this.bgPriorities = new boolean[160][144];
     }
 
 
@@ -143,28 +149,11 @@ public class Ppu implements MemorySpace, MachineCycle {
             penaltyDelay = scrollX % 8;
             return;
         }
-        // Fetch the tile data
-        int indexY = (((currentLine + scrollY) / 8 ) % 32);
-        int indexX = (((currentColumn + scrollX) / 8 ) % 32);
-        int index = ((indexY * 32) + indexX) & 0x3ff;
-        TileMap map = videoRam.getTileMap(control.getBgTileArea(), index);
-        Tile tile = videoRam.getTile(control.getTileArea(), map.getBank(), map.getIndex());
-
-        var tileX = ((currentColumn + scrollX) % 8) & 0x7;
-        var tileY = ((currentLine + scrollY) % 8) & 0x7;
-        if (map.isFlipX()) {
-            tileX = 7 - tileX;
-        }
-        if (map.isFlipY()) {
-            tileY = 7 - tileY;
-        }
-        var pixel = tile.getPixel(tileX, tileY);
-        // Draw the current tile (background)
-        var palette = map.getPaletteIndex();
-        frameBuffer[currentColumn][currentLine] = bgPalette.getColor(palette, pixel);
-
-        // TODO: Draw window
-        // TODO: Draw sprites
+        Pixel bgPixel = getBackgroundOrWindowPixel(currentColumn, currentLine);
+        bgColorIndexes[currentColumn][currentLine] = bgPixel.colorIndex();
+        bgPriorities[currentColumn][currentLine] = bgPixel.priority();
+        Pixel pixel = getSpritePixel(currentColumn, currentLine, bgPixel);
+        frameBuffer[currentColumn][currentLine] = pixel.color();
 
         currentColumn++;
         // when line finished then go to HBLANK
@@ -173,6 +162,127 @@ public class Ppu implements MemorySpace, MachineCycle {
             mode = PpuMode.HBLANK;
         }
 
+    }
+
+    private Pixel getBackgroundOrWindowPixel(int x, int y) {
+        TileMapArea tileMapArea = control.getBgTileArea();
+        int pixelX = (x + scrollX) & 0xFF;
+        int pixelY = (y + scrollY) & 0xFF;
+
+        if (isWindowVisibleAt(x, y)) {
+            tileMapArea = control.getWindowTileArea();
+            pixelX = x - (windowX - 7);
+            pixelY = y - windowY;
+        }
+
+        int indexY = ((pixelY / 8) % 32);
+        int indexX = ((pixelX / 8) % 32);
+        int index = ((indexY * 32) + indexX) & 0x3ff;
+        TileMap map = videoRam.getTileMap(tileMapArea, index);
+        Tile tile = videoRam.getTile(control.getTileArea(), map.getBank(), map.getIndex());
+
+        int tileX = pixelX & 0x7;
+        int tileY = pixelY & 0x7;
+        if (map.isFlipX()) {
+            tileX = 7 - tileX;
+        }
+        if (map.isFlipY()) {
+            tileY = 7 - tileY;
+        }
+
+        int colorIndex = tile.getPixel(tileX, tileY);
+        return new Pixel(colorIndex, bgPalette.getColor(map.getPaletteIndex(), colorIndex), map.isPriority());
+    }
+
+    private boolean isWindowVisibleAt(int x, int y) {
+        return control.isWindowEnabled() &&
+                y >= windowY &&
+                x >= windowX - 7 &&
+                windowX <= 166 &&
+                windowY <= 143;
+    }
+
+    private Pixel getSpritePixel(int x, int y, Pixel bgPixel) {
+        if (!control.isSpriteEnabled()) {
+            return bgPixel;
+        }
+
+        SpritePixel spritePixel = findSpritePixel(x, y);
+        if (spritePixel == null) {
+            return bgPixel;
+        }
+
+        if (isBackgroundAboveSprite(bgPixel, spritePixel.attribute())) {
+            return bgPixel;
+        }
+
+        return new Pixel(spritePixel.colorIndex(),
+                objPalette.getColor(spritePixel.attribute().getCgbPalette(), spritePixel.colorIndex()),
+                false);
+    }
+
+    private SpritePixel findSpritePixel(int x, int y) {
+        int spriteHeight = control.getSpriteSize() == 0 ? 8 : 16;
+        List<SpriteCandidate> candidates = new ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            ObjectAtribute object = oam.getObjectAtribute(i);
+            int spriteY = object.getScreenY();
+            if (y >= spriteY && y < spriteY + spriteHeight) {
+                candidates.add(new SpriteCandidate(i, object));
+                if (candidates.size() == 10) {
+                    break;
+                }
+            }
+        }
+
+        if (objectPriorityMode == ObjectPriorityMode.DMG) {
+            candidates.sort(Comparator
+                    .comparingInt((SpriteCandidate sprite) -> sprite.attribute().getScreenX())
+                    .thenComparingInt(SpriteCandidate::index));
+        }
+
+        for (SpriteCandidate candidate : candidates) {
+            ObjectAtribute object = candidate.attribute();
+            int spriteX = object.getScreenX();
+            if (x < spriteX || x >= spriteX + 8) {
+                continue;
+            }
+
+            int tileX = x - spriteX;
+            int tileY = y - object.getScreenY();
+            if (object.isFlipX()) {
+                tileX = 7 - tileX;
+            }
+            if (object.isFlipY()) {
+                tileY = spriteHeight - 1 - tileY;
+            }
+
+            int tileIndex = object.getTileIndexUnsigned();
+            if (spriteHeight == 16) {
+                tileIndex &= 0xFE;
+                if (tileY >= 8) {
+                    tileIndex++;
+                    tileY -= 8;
+                }
+            }
+
+            Tile tile = videoRam.getTile(TileArea.METHOD_8000, object.getBank(), tileIndex);
+            int colorIndex = tile.getPixel(tileX, tileY);
+            if (colorIndex != 0) {
+                return new SpritePixel(colorIndex, object);
+            }
+        }
+        return null;
+    }
+
+    private boolean isBackgroundAboveSprite(Pixel bgPixel, ObjectAtribute object) {
+        if (bgPixel.colorIndex() == 0) {
+            return false;
+        }
+        if (!control.isBgOrWindowPriority()) {
+            return false;
+        }
+        return bgPixel.priority() || object.isPriority();
     }
 
     private void execOAMRead() {
@@ -381,5 +491,14 @@ public class Ppu implements MemorySpace, MachineCycle {
 
     public boolean isHBlank() {
         return mode == PpuMode.HBLANK;
+    }
+
+    private record Pixel(int colorIndex, int color, boolean priority) {
+    }
+
+    private record SpritePixel(int colorIndex, ObjectAtribute attribute) {
+    }
+
+    private record SpriteCandidate(int index, ObjectAtribute attribute) {
     }
 }

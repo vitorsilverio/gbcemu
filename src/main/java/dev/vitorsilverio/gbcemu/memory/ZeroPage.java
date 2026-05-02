@@ -6,7 +6,7 @@ public class ZeroPage implements MemorySpace{
 
     @Override
     public boolean contains(int address) {
-        return 0xff80 <= address && address < 0xfffe;
+        return 0xff80 <= address && address <= 0xfffe;
     }
 
     @Override

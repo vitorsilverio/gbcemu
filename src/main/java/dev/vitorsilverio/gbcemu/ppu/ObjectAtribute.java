@@ -16,12 +16,24 @@ public class ObjectAtribute {
         return y;
     }
 
+    public int getScreenY() {
+        return (y & 0xFF) - 16;
+    }
+
     public byte getX() {
         return x;
     }
 
+    public int getScreenX() {
+        return (x & 0xFF) - 8;
+    }
+
     public byte getTileIndex() {
         return tileIndex;
+    }
+
+    public int getTileIndexUnsigned() {
+        return tileIndex & 0xFF;
     }
 
     public boolean isPriority() {

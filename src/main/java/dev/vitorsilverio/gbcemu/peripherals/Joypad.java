@@ -9,11 +9,13 @@ import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 public class Joypad implements MemorySpace {
 
     private static final int JOYPAD_REG = 0xFF00;
+    private static final int SELECT_DPAD = 0x10;
+    private static final int SELECT_BUTTONS = 0x20;
 
     private final Bus bus;
     private final Controller controller;
 
-    private byte requestedButtons;
+    private int selectedLines = SELECT_DPAD | SELECT_BUTTONS;
 
     public Joypad(Bus bus, Controller controller) {
         this.bus = bus;
@@ -35,43 +37,38 @@ public class Joypad implements MemorySpace {
         // We need to know which buttons are requested (Action or Directional Buttons)
         // and return the corresponding state
 
-        switch (requestedButtons) {
-            // No buttons are requested, return 0xFF
-            case 3 -> {return (byte) 0x3F;}
-            case 2 -> {
-                // Only action buttons are requested
-                return getActionButtonsState(controller);
-            }
-            case 1 -> {
-                // Only directional buttons are requested
-                return getDirectionalButtonsState(controller);
-            }
+        int state = 0x0F;
+        if ((selectedLines & SELECT_BUTTONS) == 0) {
+            state &= getActionButtonsState(controller);
         }
-        return (byte) 0x3F; // Default case, no buttons are requested
+        if ((selectedLines & SELECT_DPAD) == 0) {
+            state &= getDirectionalButtonsState(controller);
+        }
+        return (byte) (0xC0 | selectedLines | state);
     }
 
-    private byte getActionButtonsState(Controller controller) {
-        int state = 0b0010_1111;
-        state &= controller.isButtonA_Pressed() ? 0b1111_1110 : 0b1111_1111;
-        state &= controller.isButtonB_Pressed() ? 0b1111_1101 : 0b1111_1111;
-        state &= controller.isButtonStart_Pressed() ? 0b1111_1011 : 0b1111_1111;
-        state &= controller.isButtonSelect_Pressed() ? 0b1111_0111 : 0b1111_1111;
-        return (byte)state;
+    private int getActionButtonsState(Controller controller) {
+        int state = 0x0F;
+        state &= controller.isButtonA_Pressed() ? 0b1110 : 0x0F;
+        state &= controller.isButtonB_Pressed() ? 0b1101 : 0x0F;
+        state &= controller.isButtonSelect_Pressed() ? 0b1011 : 0x0F;
+        state &= controller.isButtonStart_Pressed() ? 0b0111 : 0x0F;
+        return state;
     }
 
-    private byte getDirectionalButtonsState(Controller controller) {
-        int state = 0b0001_1111;
-        state &= controller.isButtonUp_Pressed() ? 0b1111_1110 : 0b1111_1111;
-        state &= controller.isButtonDown_Pressed() ? 0b1111_1101 : 0b1111_1111;
-        state &= controller.isButtonLeft_Pressed() ? 0b1111_1011 : 0b1111_1111;
-        state &= controller.isButtonRight_Pressed() ? 0b1111_0111 : 0b1111_1111;
-        return (byte)state;
+    private int getDirectionalButtonsState(Controller controller) {
+        int state = 0x0F;
+        state &= controller.isButtonRight_Pressed() ? 0b1110 : 0x0F;
+        state &= controller.isButtonLeft_Pressed() ? 0b1101 : 0x0F;
+        state &= controller.isButtonUp_Pressed() ? 0b1011 : 0x0F;
+        state &= controller.isButtonDown_Pressed() ? 0b0111 : 0x0F;
+        return state;
     }
 
     @Override
     public void write(int address, byte value) {
         if (address == JOYPAD_REG) {
-            requestedButtons = (byte) (value >> 4); // The requested buttons are in the upper nibble
+            selectedLines = value & (SELECT_DPAD | SELECT_BUTTONS);
         } else {
             throw new IllegalArgumentException("Address " + address + " not found in any memory space");
         }
@@ -79,10 +76,10 @@ public class Joypad implements MemorySpace {
 
     private void onButtonPress(ButtonType buttonType) {
         // Notify the bus that the joypad state has changed
-        if(ButtonType.ACTION.equals(buttonType) && requestedButtons == 2) {
+        if(ButtonType.ACTION.equals(buttonType) && (selectedLines & SELECT_BUTTONS) == 0) {
             bus.requestInterrupt(Interrupt.JOYPAD);
         }
-        if(ButtonType.DIRECTIONAL.equals(buttonType) && requestedButtons == 1) {
+        if(ButtonType.DIRECTIONAL.equals(buttonType) && (selectedLines & SELECT_DPAD) == 0) {
             bus.requestInterrupt(Interrupt.JOYPAD);
         }
     }

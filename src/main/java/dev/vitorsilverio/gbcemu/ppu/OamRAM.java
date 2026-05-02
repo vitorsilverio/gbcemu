@@ -34,7 +34,7 @@ public class OamRAM implements MemorySpace {
     public void write(int address, byte value) {
         address -= 0xFE00;
         int index = address / 4;
-        switch (index % 4) {
+        switch (address % 4) {
             case 0:
                 objectAtributes[index].setY(value);
                 break;
@@ -50,5 +50,12 @@ public class OamRAM implements MemorySpace {
             default:
                 throw new IllegalArgumentException("Invalid address: " + address);
         }
+    }
+
+    public ObjectAtribute getObjectAtribute(int index) {
+        if (index < 0 || index >= objectAtributes.length) {
+            throw new IllegalArgumentException("Invalid object index: " + index);
+        }
+        return objectAtributes[index];
     }
 }
