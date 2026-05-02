@@ -1,12 +1,15 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
-import dev.vitorsilverio.gbcemu.cartridge.Cart;
+import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
+import dev.vitorsilverio.gbcemu.controller.Controller;
+import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.DMA;
 import dev.vitorsilverio.gbcemu.misc.HDMA;
+import dev.vitorsilverio.gbcemu.misc.InfraredPort;
 import dev.vitorsilverio.gbcemu.misc.Key0;
 import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
@@ -29,23 +32,35 @@ public class Emulator {
     private final HDMA hdma;
     private final DMA dma;
     private final Display display;
+    private final boolean throttled;
 
     public Emulator(File biosFile, File romFile, File saveFile) {
+        this(biosFile, romFile, saveFile, false);
+    }
+
+    public Emulator(File biosFile, File romFile, File saveFile, boolean headless) {
+        this(biosFile, romFile, saveFile, headless, null);
+    }
+
+    public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorMenuActions menuActions) {
         Bus bus = new Bus();
-        Bios bios = new Bios(biosFile);
-        bus.addMemorySpace(bios);
+        if (biosFile != null) {
+            Bios bios = new Bios(biosFile);
+            bus.addMemorySpace(bios);
+        }
         this.cpu = new Cpu(bus);
         this.timer = new Timer(bus);
         this.ppu = new Ppu(bus);
-        this.apu = new Apu();
+        this.apu = headless ? Apu.muted() : new Apu();
         this.hdma = new HDMA(bus);
         this.dma = new DMA(bus);
+        this.throttled = !headless;
         bus.addMemorySpace(timer);
         bus.addMemorySpace(ppu);
         bus.addMemorySpace(apu);
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
-        KeyboardController controller = new KeyboardController();
+        Controller controller = headless ? new IdleController() : new KeyboardController();
         var joypad = new Joypad(bus, controller);
         bus.addMemorySpace(joypad);
         var workRam = new WorkRam();
@@ -54,19 +69,22 @@ public class Emulator {
         bus.addMemorySpace(echoRam);
         var zeroPage = new ZeroPage();
         bus.addMemorySpace(zeroPage);
-        bus.addMemorySpace(new Cart(romFile));
+        bus.addMemorySpace(CartFactory.fromFile(romFile, saveFile));
         bus.addMemorySpace(new Key0());
         bus.addMemorySpace(new Key1());
+        bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
-        this.display = new Display(ppu, controller);
+        this.display = headless ? null : new Display(ppu, (KeyboardController) controller, menuActions);
         var serial = new Serial(bus);
         bus.addMemorySpace(serial);
     }
 
 
     public void start() {
-        Thread displayThread = new Thread(display);
-        displayThread.start();
+        if (display != null) {
+            Thread displayThread = new Thread(display);
+            displayThread.start();
+        }
         int dots = 0;
         long frameStart = System.nanoTime();
         boolean cpuCanRun = true;
@@ -95,13 +113,15 @@ public class Emulator {
             ppu.tick();
             apu.tick();
             dots++;
-            if (dots >= DOTS_PER_FRAME) {
+            if (throttled && dots >= DOTS_PER_FRAME) {
                 long elapsed = System.nanoTime() - frameStart;
                 if (elapsed < NANOS_PER_FRAME) {
                     sleepNanos(NANOS_PER_FRAME - elapsed);
                 }
                 dots = 0;
                 frameStart = System.nanoTime();
+            } else if (dots >= DOTS_PER_FRAME) {
+                dots = 0;
             }
         }
     }

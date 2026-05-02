@@ -1,0 +1,119 @@
+package dev.vitorsilverio.gbcemu.cpu;
+
+import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
+import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class CpuTimingTest {
+
+    @Test
+    void fourCycleInstructionFetchesNextInstructionOnFifthTick() {
+        Cpu cpu = new Cpu(busWithMemory());
+
+        tick(cpu, 4);
+
+        assertEquals(0x0001, cpu.getPc());
+
+        cpu.tick();
+
+        assertEquals(0x0002, cpu.getPc());
+    }
+
+    @Test
+    void interruptConsumesFirstTickWithoutExecutingVectorInstruction() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        cpu.setPc(0x1234);
+        cpu.setSp(0xFFFE);
+        cpu.setIme(true);
+        bus.write(0xFFFF, (byte) Interrupt.VBLANK.getMask());
+        bus.write(0xFF0F, (byte) Interrupt.VBLANK.getMask());
+
+        cpu.tick();
+
+        assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
+
+        tick(cpu, 19);
+
+        assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
+
+        cpu.tick();
+
+        assertEquals(Interrupt.VBLANK.getVectorAddress() + 1, cpu.getPc());
+    }
+
+    @Test
+    void cpuMemoryWritesBecomeVisibleAtEndOfInstructionCycles() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        cpu.setA((byte) 0x05);
+        bus.write(0x0000, (byte) 0xE0);
+        bus.write(0x0001, (byte) 0x07);
+
+        cpu.tick();
+
+        assertEquals(0x00, bus.read(0xFF07) & 0xFF);
+
+        tick(cpu, 6);
+
+        assertEquals(0x00, bus.read(0xFF07) & 0xFF);
+
+        cpu.tick();
+
+        assertEquals(0x05, bus.read(0xFF07) & 0xFF);
+    }
+
+    @Test
+    void takenConditionalReturnConsumesTwentyCycles() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        cpu.setSp(0xFFFC);
+        cpu.setZeroFlag(false);
+        bus.write(0x0000, (byte) 0xC0);
+        bus.writeWord(0xFFFC, 0x1234);
+
+        cpu.tick();
+
+        assertEquals(0x1234, cpu.getPc());
+
+        tick(cpu, 19);
+
+        assertEquals(0x1234, cpu.getPc());
+
+        cpu.tick();
+
+        assertEquals(0x1235, cpu.getPc());
+    }
+
+    private void tick(Cpu cpu, int ticks) {
+        for (int i = 0; i < ticks; i++) {
+            cpu.tick();
+        }
+    }
+
+    private Bus busWithMemory() {
+        Bus bus = new Bus();
+        bus.addMemorySpace(new MemorySpace() {
+            private final byte[] bytes = new byte[0x10000];
+
+            @Override
+            public boolean contains(int address) {
+                return true;
+            }
+
+            @Override
+            public byte read(int address) {
+                return bytes[address & 0xFFFF];
+            }
+
+            @Override
+            public void write(int address, byte value) {
+                bytes[address & 0xFFFF] = value;
+            }
+        });
+        return bus;
+    }
+}

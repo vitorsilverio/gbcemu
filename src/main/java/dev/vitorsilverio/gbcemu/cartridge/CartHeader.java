@@ -42,6 +42,18 @@ public class CartHeader {
         return cartridgeType;
     }
 
+    public int getRamSizeBytes() {
+        return switch (ramSize & 0xFF) {
+            case 0x00 -> 0;
+            case 0x01 -> 2 * 1024;
+            case 0x02 -> 8 * 1024;
+            case 0x03 -> 32 * 1024;
+            case 0x04 -> 128 * 1024;
+            case 0x05 -> 64 * 1024;
+            default -> 0;
+        };
+    }
+
     @Override
     public String toString() {
         return String.format("""

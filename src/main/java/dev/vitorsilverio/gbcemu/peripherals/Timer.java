@@ -14,15 +14,15 @@ public class Timer implements MemorySpace, MachineCycle {
     private static final int TIMER_MODULO_REG = 0xFF06;
     private static final int TIMER_CONTROL_REG = 0xFF07;
     private static final List<Integer> REGISTERS = List.of(DIVIDER_REG, TIMER_COUNTER_REG, TIMER_MODULO_REG, TIMER_CONTROL_REG);
-    private static final int[] CLOCK_SPEEDS = {1024, 16, 64, 256};
+    private static final int[] TIMER_BITS = {9, 3, 5, 7};
 
 
-    private int divider;
+    private int systemCounter;
     private byte timerCounter;
     private byte timerModulo;
+    private byte timerControl;
 
-    private int clockSpeed = 1024;
-    private boolean timerEnabled = false;
+    private int overflowDelay;
 
     private final Bus bus;
 
@@ -32,16 +32,17 @@ public class Timer implements MemorySpace, MachineCycle {
 
     @Override
     public void tick() {
-        divider++;
-        if (timerEnabled) {
-            if ((divider & (clockSpeed - 1)) == 0) {
-                timerCounter++;
-                if (timerCounter == 0) { // Overflow
-                    timerCounter = timerModulo;
-                    bus.requestInterrupt(Interrupt.TIMER);
-                }
+        if (overflowDelay > 0) {
+            overflowDelay--;
+            if (overflowDelay == 0) {
+                timerCounter = timerModulo;
+                bus.requestInterrupt(Interrupt.TIMER);
             }
         }
+
+        boolean oldSignal = timerSignal();
+        systemCounter = (systemCounter + 1) & 0xFFFF;
+        incrementOnFallingEdge(oldSignal);
     }
 
     @Override
@@ -53,18 +54,13 @@ public class Timer implements MemorySpace, MachineCycle {
     public byte read(int address) {
         switch (address) {
             case DIVIDER_REG:
-                return (byte)((divider >> 8) & 0xFF);
+                return (byte)((systemCounter >> 8) & 0xFF);
             case TIMER_COUNTER_REG:
                 return timerCounter;
             case TIMER_MODULO_REG:
                 return timerModulo;
             case TIMER_CONTROL_REG:
-                var value = 0;
-                if (timerEnabled) {
-                    value |= 0b100;
-                }
-                value |= (clockSpeed == 16 ? 0b01 : clockSpeed == 64 ? 0b10 : 0b11);
-                return (byte) value;
+                return (byte) (0xF8 | (timerControl & 0x07));
             default:
                 throw new IllegalArgumentException("Address " + address + " not found in any memory space");
         }
@@ -72,23 +68,54 @@ public class Timer implements MemorySpace, MachineCycle {
 
     @Override
     public void write(int address, byte value) {
+        boolean oldSignal;
         switch (address) {
             case DIVIDER_REG:
-                divider = 0;
+                oldSignal = timerSignal();
+                systemCounter = 0;
+                incrementOnFallingEdge(oldSignal);
                 break;
             case TIMER_COUNTER_REG:
                 timerCounter = value;
+                overflowDelay = 0;
                 break;
             case TIMER_MODULO_REG:
                 timerModulo = value;
+                if (overflowDelay == 1) {
+                    timerCounter = value;
+                }
                 break;
             case TIMER_CONTROL_REG:
-                timerEnabled = (value & 0b100) != 0;
-                clockSpeed = CLOCK_SPEEDS[value & 0b11];
+                oldSignal = timerSignal();
+                timerControl = (byte) (value & 0x07);
+                incrementOnFallingEdge(oldSignal);
                 break;
             default:
                 throw new IllegalArgumentException("Address " + address + " not found in any memory space");
         }
 
+    }
+
+    private void incrementOnFallingEdge(boolean oldSignal) {
+        if (oldSignal && !timerSignal()) {
+            incrementTimerCounter();
+        }
+    }
+
+    private boolean timerSignal() {
+        if ((timerControl & 0x04) == 0) {
+            return false;
+        }
+        int bit = TIMER_BITS[timerControl & 0x03];
+        return (systemCounter & (1 << bit)) != 0;
+    }
+
+    private void incrementTimerCounter() {
+        int value = (timerCounter & 0xFF) + 1;
+        timerCounter = (byte) value;
+        if (value > 0xFF) {
+            timerCounter = 0;
+            overflowDelay = 4;
+        }
     }
 }

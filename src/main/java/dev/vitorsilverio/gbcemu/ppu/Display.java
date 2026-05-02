@@ -1,5 +1,6 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
+import dev.vitorsilverio.gbcemu.EmulatorMenuActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,10 +20,16 @@ public class Display implements Runnable{
     private JPanel screen;
     private JFrame window;
     private final KeyListener keyListener;
+    private final EmulatorMenuActions menuActions;
 
     public Display(Ppu ppu, KeyListener keyListener) {
+        this(ppu, keyListener, null);
+    }
+
+    public Display(Ppu ppu, KeyListener keyListener, EmulatorMenuActions menuActions) {
         this.ppu = ppu;
         this.keyListener = keyListener;
+        this.menuActions = menuActions;
         initializeWindow();
     }
 
@@ -41,8 +48,29 @@ public class Display implements Runnable{
         screen.setPreferredSize(new Dimension(width * scale, height * scale));
         window.setContentPane(screen);
         window.setResizable(false);
+        installMenu();
         window.pack();
         window.setLocationRelativeTo(null);
+    }
+
+    private void installMenu() {
+        if (menuActions == null) {
+            return;
+        }
+
+        JMenuBar menuBar = new JMenuBar();
+        JMenu fileMenu = new JMenu("File");
+
+        JMenuItem openRom = new JMenuItem("Open ROM...");
+        openRom.addActionListener(event -> menuActions.openRom().run());
+        fileMenu.add(openRom);
+
+        JMenuItem configureBios = new JMenuItem("Set default BIOS...");
+        configureBios.addActionListener(event -> menuActions.configureDefaultBios().run());
+        fileMenu.add(configureBios);
+
+        menuBar.add(fileMenu);
+        window.setJMenuBar(menuBar);
     }
 
     private void drawFrame(Graphics g) {

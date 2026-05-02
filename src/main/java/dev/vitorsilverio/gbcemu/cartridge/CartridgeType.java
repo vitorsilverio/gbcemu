@@ -13,9 +13,10 @@ public enum CartridgeType {
     MMM01_RAM(0x0C),
     MMM01_RAM_BATTERY(0x0D),
     MBC3_TIMER_BATTERY(0x0F),
-    MBC3(0x10),
-    MBC3_RAM(0x11),
-    MBC3_RAM_BATTERY(0x12),
+    MBC3_TIMER_RAM_BATTERY(0x10),
+    MBC3(0x11),
+    MBC3_RAM(0x12),
+    MBC3_RAM_BATTERY(0x13),
     MBC5(0x19),
     MBC5_RAM(0x1A),
     MBC5_RAM_BATTERY(0x1B),
@@ -37,6 +38,34 @@ public enum CartridgeType {
 
     public int getCode() {
         return code;
+    }
+
+    public boolean isMbc1() {
+        return this == MBC1 || this == MBC1_RAM || this == MBC1_RAM_BATTERY;
+    }
+
+    public boolean isMbc3() {
+        return this == MBC3_TIMER_BATTERY ||
+                this == MBC3_TIMER_RAM_BATTERY ||
+                this == MBC3 ||
+                this == MBC3_RAM ||
+                this == MBC3_RAM_BATTERY;
+    }
+
+    public boolean hasBattery() {
+        return this == MBC1_RAM_BATTERY ||
+                this == ROM_RAM_BATTERY ||
+                this == MBC3_TIMER_BATTERY ||
+                this == MBC3_TIMER_RAM_BATTERY ||
+                this == MBC3_RAM_BATTERY ||
+                this == MBC5_RAM_BATTERY ||
+                this == MBC5_RUMBLE_RAM_BATTERY ||
+                this == MBC7_SENSOR_RUMBLE_RAM_BATTERY ||
+                this == HuC1_RAM_BATTERY;
+    }
+
+    public boolean hasTimer() {
+        return this == MBC3_TIMER_BATTERY || this == MBC3_TIMER_RAM_BATTERY;
     }
 
     public static CartridgeType fromCode(int code) {

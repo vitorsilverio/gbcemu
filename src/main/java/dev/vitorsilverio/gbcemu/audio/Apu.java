@@ -93,6 +93,11 @@ public class Apu implements MemorySpace, MachineCycle {
         this(createDefaultSink());
     }
 
+    public static Apu muted() {
+        return new Apu((buffer, length) -> {
+        });
+    }
+
     Apu(AudioSink sink) {
         this.sink = sink;
         registers[index(NR50_MASTER_VOLUME)] = 0x77;
