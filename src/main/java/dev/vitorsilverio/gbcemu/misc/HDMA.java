@@ -8,7 +8,6 @@ import java.util.List;
 
 public class HDMA implements MachineCycle, MemorySpace {
 
-
     private final int HDMA1 = 0xFF51;
     private final int HDMA2 = 0xFF52;
     private final int HDMA3 = 0xFF53;
@@ -27,6 +26,7 @@ public class HDMA implements MachineCycle, MemorySpace {
     private int mode;
     private int cycles;
     private int counter;
+    private boolean completed = true;
 
     public HDMA(Bus bus) {
         this.bus = bus;
@@ -34,14 +34,28 @@ public class HDMA implements MachineCycle, MemorySpace {
 
     @Override
     public void tick() {
-        cycles++;
-
-        if (cycles <= 8) {
+        if (!active) {
             return;
         }
-        bus.write(destinationAddress + counter, bus.read(sourceAddress + counter));
-        counter++;
+
+        cycles++;
+
+        if (cycles < 8) {
+            return;
+        }
+
+        for (int i = 0; i < 0x10 && counter < total; i++) {
+            bus.write(destinationAddress, bus.read(sourceAddress));
+            sourceAddress = (sourceAddress + 1) & 0xFFFF;
+            destinationAddress = 0x8000 | ((destinationAddress + 1) & 0x1FFF);
+            counter++;
+        }
         cycles = 0;
+
+        if (counter >= total) {
+            active = false;
+            completed = true;
+        }
     }
 
     @Override
@@ -56,7 +70,7 @@ public class HDMA implements MachineCycle, MemorySpace {
                 return (byte) ((sourceAddress >> 8) & 0xFF);
             }
             case HDMA2 -> {
-                return (byte) (sourceAddress & 0xF);
+                return (byte) (sourceAddress & 0xF0);
             }
             case HDMA3 -> {
                 return (byte) ((destinationAddress >> 8) & 0xFF);
@@ -65,7 +79,11 @@ public class HDMA implements MachineCycle, MemorySpace {
                 return (byte) (destinationAddress & 0xFF);
             }
             case HDMA5 -> {
-                return (byte) ((byte) (((total - counter)/16) -1) | (active ? 0x80 : 0));
+                if (completed) {
+                    return (byte) 0xFF;
+                }
+                int remainingBlocks = Math.max(0, ((total - counter) / 0x10) - 1);
+                return (byte) (remainingBlocks | (active ? 0x00 : 0x80));
             }
         }
         return 0;
@@ -75,14 +93,21 @@ public class HDMA implements MachineCycle, MemorySpace {
     public void write(int address, byte value) {
         switch (address) {
             case HDMA1 -> sourceAddress = (sourceAddress & 0x00FF) | ((value & 0xFF) << 8);
-            case HDMA2 -> sourceAddress = (sourceAddress & 0xFF00) | (value & 0xFC);
-            case HDMA3 -> destinationAddress = (destinationAddress & 0x00FF) | ((value & 0xFF) << 8);
-            case HDMA4 -> destinationAddress = (destinationAddress & 0xFF00) | (value & 0xFC);
+            case HDMA2 -> sourceAddress = (sourceAddress & 0xFF00) | (value & 0xF0);
+            case HDMA3 -> destinationAddress = 0x8000 | ((value & 0x1F) << 8) | (destinationAddress & 0x00F0);
+            case HDMA4 -> destinationAddress = 0x8000 | (destinationAddress & 0x1F00) | (value & 0xF0);
             case HDMA5 -> {
+                if (active && mode == 1 && (value & 0x80) == 0) {
+                    active = false;
+                    completed = false;
+                    return;
+                }
                 active = true;
                 mode = (value & 0x80) >> 7;
-                total = (value & 0x7F) * 16 - 1 ;
+                total = ((value & 0x7F) + 1) * 0x10;
+                counter = 0;
                 cycles = 0;
+                completed = false;
             }
         }
 

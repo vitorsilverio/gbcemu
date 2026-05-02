@@ -18,7 +18,10 @@ public class Bios implements MemorySpace {
 
     @Override
     public boolean contains(int address) {
-        if ((address < 0x900 && !(address >= 0x100 && address < 0x200)) || address == 0xFF50) {
+        if (address == 0xFF50) {
+            return true;
+        }
+        if (address < 0x900 && !(address >= 0x100 && address < 0x200)) {
             return enabled;
         }
         return false;
@@ -26,6 +29,9 @@ public class Bios implements MemorySpace {
 
     @Override
     public byte read(int address) {
+        if (address == 0xFF50) {
+            return (byte) (enabled ? 0 : 1);
+        }
         return bios[address];
     }
 
