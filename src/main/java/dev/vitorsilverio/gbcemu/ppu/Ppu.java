@@ -71,6 +71,10 @@ public class Ppu implements MemorySpace, MachineCycle {
     private int windowX;
     private int windowY;
 
+    private int prevCurrentLine = 0;
+    private PpuMode prevMode = PpuMode.VRAM_READ;
+    private byte prevStat = 0;
+
 
 
 
@@ -111,6 +115,16 @@ public class Ppu implements MemorySpace, MachineCycle {
     }
 
     private void statInterrupt() {
+
+        // Compare if anything changed before
+        if (prevCurrentLine == currentLine && prevMode == mode && prevStat == stat.getData()) {
+            return;
+        }
+
+        prevMode = mode;
+        prevCurrentLine = currentLine;
+        prevStat = stat.getData();
+
         if (stat.isLycInterrupt() && (currentLine & 0xff) == (lineCompare & 0xff)) {
             bus.requestInterrupt(Interrupt.LCD_STAT);
         }
