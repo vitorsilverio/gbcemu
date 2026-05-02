@@ -29,6 +29,7 @@ public class Emulator {
     private final Timer timer;
     private final Ppu ppu;
     private final Apu apu;
+    private final Serial serial;
     private final HDMA hdma;
     private final DMA dma;
     private final Display display;
@@ -75,7 +76,7 @@ public class Emulator {
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
         this.display = headless ? null : new Display(ppu, (KeyboardController) controller, menuActions);
-        var serial = new Serial(bus);
+        this.serial = new Serial(bus);
         bus.addMemorySpace(serial);
     }
 
@@ -110,6 +111,7 @@ public class Emulator {
                 cpu.tick();
             }
             timer.tick();
+            serial.tick();
             ppu.tick();
             apu.tick();
             dots++;

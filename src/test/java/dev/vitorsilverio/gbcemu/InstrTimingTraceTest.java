@@ -5,6 +5,7 @@ import dev.vitorsilverio.gbcemu.controller.ButtonType;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.memory.Bios;
 import dev.vitorsilverio.gbcemu.memory.EchoRam;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.memory.UnusedIoRegisters;
@@ -32,12 +33,13 @@ class InstrTimingTraceTest {
     @Disabled("Diagnostic trace for the blargg instr_timing ROM; requires local test-roms/instr_timing.gb.")
     void traceInstrTimingFailure() {
         Bus bus = new Bus();
+        bus.addMemorySpace(new Bios(new File("cgb_bios.bin")));
         Cpu cpu = new Cpu(bus);
-        TraceTimer timer = new TraceTimer(new Timer(bus), cpu::toString);
+        TraceTimer timer = new TraceTimer(bus, cpu::toString);
         Ppu ppu = new Ppu(bus);
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
-        TraceSerial serial = new TraceSerial();
+        TraceSerial serial = new TraceSerial(bus);
         WorkRam workRam = new WorkRam();
 
         bus.addMemorySpace(timer);
@@ -54,9 +56,6 @@ class InstrTimingTraceTest {
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
         bus.addMemorySpace(serial);
-
-        cpu.setPc(0x100);
-        cpu.setSp(0xFFFE);
 
         Queue<String> pcs = new ArrayDeque<>();
         for (int tick = 0; tick < 5_000_000 && !serial.text().contains("Failed") && !serial.text().contains("Passed"); tick++) {
@@ -86,6 +85,7 @@ class InstrTimingTraceTest {
                 cpu.tick();
             }
             timer.tick();
+            serial.tick();
             ppu.tick();
         }
 
@@ -108,41 +108,33 @@ class InstrTimingTraceTest {
         System.out.println(text);
     }
 
-    private static class TraceTimer implements MemorySpace, MachineCycle {
-        private final Timer timer;
+    private static class TraceTimer extends Timer {
         private final Supplier<String> cpuState;
         private final Queue<String> events = new ArrayDeque<>();
         private int tick;
         private int lastTima;
-        private int lastIf;
 
-        private TraceTimer(Timer timer, Supplier<String> cpuState) {
-            this.timer = timer;
+        private TraceTimer(Bus bus, Supplier<String> cpuState) {
+            super(bus);
             this.cpuState = cpuState;
         }
 
         @Override
-        public boolean contains(int address) {
-            return timer.contains(address);
-        }
-
-        @Override
         public byte read(int address) {
-            byte value = timer.read(address);
-            return value;
+            return super.read(address);
         }
 
         @Override
         public void write(int address, byte value) {
             add(String.format("%07d %s WRITE %04X <- %02X", tick, cpuState.get(), address, value & 0xFF));
-            timer.write(address, value);
+            super.write(address, value);
         }
 
         @Override
         public void tick() {
             tick++;
-            timer.tick();
-            int tima = timer.read(0xFF05) & 0xFF;
+            super.tick();
+            int tima = super.read(0xFF05) & 0xFF;
             if (tima != lastTima) {
                 add(String.format("%07d %s TIMA %02X -> %02X", tick, cpuState.get(), lastTima, tima));
                 lastTima = tima;
@@ -161,9 +153,18 @@ class InstrTimingTraceTest {
         }
     }
 
-    private static class TraceSerial implements MemorySpace {
+    private static class TraceSerial implements MemorySpace, MachineCycle {
+        private static final int TRANSFER_START = 0x80;
+        private static final int CLOCK_SELECT = 0x01;
+        private final Bus bus;
         private final StringBuilder text = new StringBuilder();
         private int data;
+        private int transferCyclesRemaining;
+        private int outgoingByte;
+
+        private TraceSerial(Bus bus) {
+            this.bus = bus;
+        }
 
         @Override
         public boolean contains(int address) {
@@ -179,8 +180,22 @@ class InstrTimingTraceTest {
         public void write(int address, byte value) {
             if (address == 0xFF01) {
                 data = value & 0xFF;
-            } else if ((value & 0x80) != 0) {
-                text.append((char) data);
+            } else if ((value & TRANSFER_START) != 0 && (value & CLOCK_SELECT) != 0) {
+                outgoingByte = data;
+                transferCyclesRemaining = 4096;
+            }
+        }
+
+        @Override
+        public void tick() {
+            if (transferCyclesRemaining <= 0) {
+                return;
+            }
+            transferCyclesRemaining--;
+            if (transferCyclesRemaining == 0) {
+                text.append((char) outgoingByte);
+                data = 0xFF;
+                bus.requestInterrupt(dev.vitorsilverio.gbcemu.interrupt.Interrupt.SERIAL);
             }
         }
 
