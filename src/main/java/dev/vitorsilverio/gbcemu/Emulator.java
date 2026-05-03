@@ -34,6 +34,8 @@ public class Emulator {
     private final DMA dma;
     private final Display display;
     private final boolean throttled;
+    private int dots;
+    private long frameStart = System.nanoTime();
 
     public Emulator(File biosFile, File romFile, File saveFile) {
         this(biosFile, romFile, saveFile, false);
@@ -78,6 +80,7 @@ public class Emulator {
         this.display = headless ? null : new Display(ppu, (KeyboardController) controller, menuActions);
         this.serial = new Serial(bus);
         bus.addMemorySpace(serial);
+        cpu.setCycleCallback(this::tickSystemCycle);
     }
 
 
@@ -86,45 +89,42 @@ public class Emulator {
             Thread displayThread = new Thread(display);
             displayThread.start();
         }
-        int dots = 0;
-        long frameStart = System.nanoTime();
-        boolean cpuCanRun = true;
         while (true) {
-            if (hdma.isActive()) {
-
-                if (hdma.isHBlankMode()) {
-                    // Wait till hblank
-                    if(ppu.isHBlank()) {
-                        hdma.tick();
-                    }
-                }
-
-                if (hdma.isGeneralPurposeMode()) {
-                    //halt cpu till hblank
-                    hdma.tick();
-                }
-            }
-            if (dma.isActive()) {
-                dma.tick();
-            }
-            if (!hdma.isActive() || (hdma.isActive() && !hdma.isGeneralPurposeMode())) {
+            if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
                 cpu.tick();
+            } else {
+                tickSystemCycle();
             }
-            timer.tick();
-            serial.tick();
-            ppu.tick();
-            apu.tick();
-            dots++;
-            if (throttled && dots >= DOTS_PER_FRAME) {
-                long elapsed = System.nanoTime() - frameStart;
-                if (elapsed < NANOS_PER_FRAME) {
-                    sleepNanos(NANOS_PER_FRAME - elapsed);
-                }
-                dots = 0;
-                frameStart = System.nanoTime();
-            } else if (dots >= DOTS_PER_FRAME) {
-                dots = 0;
+        }
+    }
+
+    private void tickSystemCycle() {
+        if (hdma.isActive()) {
+            if (hdma.isHBlankMode() && ppu.isHBlank()) {
+                hdma.tick();
             }
+            if (hdma.isGeneralPurposeMode()) {
+                hdma.tick();
+            }
+        }
+        if (dma.isActive()) {
+            dma.tick();
+        }
+
+        timer.tick();
+        serial.tick();
+        ppu.tick();
+        apu.tick();
+        dots++;
+        if (throttled && dots >= DOTS_PER_FRAME) {
+            long elapsed = System.nanoTime() - frameStart;
+            if (elapsed < NANOS_PER_FRAME) {
+                sleepNanos(NANOS_PER_FRAME - elapsed);
+            }
+            dots = 0;
+            frameStart = System.nanoTime();
+        } else if (dots >= DOTS_PER_FRAME) {
+            dots = 0;
         }
     }
 

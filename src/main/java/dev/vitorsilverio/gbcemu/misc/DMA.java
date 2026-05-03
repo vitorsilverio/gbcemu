@@ -9,7 +9,7 @@ public class DMA implements MemorySpace, MachineCycle {
     private static final int DMA_REQUEST_REGISTER = 0xff46;
 
     private int cycles = 0;
-    private byte baseAddress = 0;
+    private int baseAddress = 0;
     private boolean active;
     private final Bus bus;
 
@@ -19,10 +19,10 @@ public class DMA implements MemorySpace, MachineCycle {
 
     @Override
     public void tick() {
-        var address = (byte) (0xa0 - cycles);
-        cycles --;
-        var value = bus.read((baseAddress << 8) | address );
-        bus.write(0xfe00 | address, value);
+        int offset = 0xa0 - cycles;
+        cycles--;
+        var value = bus.read((baseAddress << 8) | offset);
+        bus.write(0xfe00 | offset, value);
         if (cycles == 0) {
             active = false;
         }
@@ -40,7 +40,7 @@ public class DMA implements MemorySpace, MachineCycle {
 
     @Override
     public void write(int address, byte value) {
-        baseAddress = value;
+        baseAddress = value & 0xFF;
         active = true;
         cycles = 160;
     }

@@ -13,7 +13,7 @@ public class SourceImmediate16bits implements Source {
 
     @Override
     public int getValue(Cpu cpu) {
-        return cpu.getBus().readWord(cpu.getPc() + 1) & 0xFFFF;
+        return cpu.readWord(cpu.getPc() + 1);
     }
 
     @Override

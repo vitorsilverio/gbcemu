@@ -11,22 +11,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CpuTimingTest {
 
     @Test
-    void fourCycleInstructionFetchesNextInstructionOnFifthTick() {
+    void fourCycleInstructionConsumesFourTicks() {
         Cpu cpu = new Cpu(busWithMemory());
+        int[] ticks = countCpuCycles(cpu);
 
-        tick(cpu, 4);
+        cpu.tick();
 
         assertEquals(0x0001, cpu.getPc());
+        assertEquals(4, ticks[0]);
 
         cpu.tick();
 
         assertEquals(0x0002, cpu.getPc());
+        assertEquals(8, ticks[0]);
     }
 
     @Test
-    void interruptConsumesFirstTickWithoutExecutingVectorInstruction() {
+    void interruptConsumesTwentyTicksBeforeExecutingVectorInstruction() {
         Bus bus = busWithMemory();
         Cpu cpu = new Cpu(bus);
+        int[] ticks = countCpuCycles(cpu);
         cpu.setPc(0x1234);
         cpu.setSp(0xFFFE);
         cpu.setIme(true);
@@ -36,41 +40,38 @@ class CpuTimingTest {
         cpu.tick();
 
         assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
-
-        tick(cpu, 19);
-
-        assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
+        assertEquals(20, ticks[0]);
 
         cpu.tick();
 
         assertEquals(Interrupt.VBLANK.getVectorAddress() + 1, cpu.getPc());
+        assertEquals(24, ticks[0]);
     }
 
     @Test
     void cpuMemoryWritesBecomeVisibleAtEndOfInstructionCycles() {
         Bus bus = busWithMemory();
         Cpu cpu = new Cpu(bus);
+        int[] ticks = new int[1];
         cpu.setA((byte) 0x05);
         bus.write(0x0000, (byte) 0xE0);
         bus.write(0x0001, (byte) 0x07);
-
-        cpu.tick();
-
-        assertEquals(0x00, bus.read(0xFF07) & 0xFF);
-
-        tick(cpu, 7);
-
-        assertEquals(0x00, bus.read(0xFF07) & 0xFF);
+        cpu.setCycleCallback(() -> {
+            ticks[0]++;
+            assertEquals(0x00, bus.read(0xFF07) & 0xFF);
+        });
 
         cpu.tick();
 
         assertEquals(0x05, bus.read(0xFF07) & 0xFF);
+        assertEquals(12, ticks[0]);
     }
 
     @Test
     void takenConditionalReturnConsumesTwentyCycles() {
         Bus bus = busWithMemory();
         Cpu cpu = new Cpu(bus);
+        int[] ticks = countCpuCycles(cpu);
         cpu.setSp(0xFFFC);
         cpu.setZeroFlag(false);
         bus.write(0x0000, (byte) 0xC0);
@@ -79,14 +80,12 @@ class CpuTimingTest {
         cpu.tick();
 
         assertEquals(0x1234, cpu.getPc());
-
-        tick(cpu, 19);
-
-        assertEquals(0x1234, cpu.getPc());
+        assertEquals(20, ticks[0]);
 
         cpu.tick();
 
         assertEquals(0x1235, cpu.getPc());
+        assertEquals(24, ticks[0]);
     }
 
     @Test
@@ -123,16 +122,17 @@ class CpuTimingTest {
         for (int i = 0; i < 12; i++) {
             timer.tick();
         }
+        cpu.setCycleCallback(timer::tick);
 
         cpu.tick();
 
         assertEquals(Interrupt.TIMER.getMask(), cpu.getA() & 0xFF);
     }
 
-    private void tick(Cpu cpu, int ticks) {
-        for (int i = 0; i < ticks; i++) {
-            cpu.tick();
-        }
+    private int[] countCpuCycles(Cpu cpu) {
+        int[] ticks = new int[1];
+        cpu.setCycleCallback(() -> ticks[0]++);
+        return ticks;
     }
 
     private Bus busWithMemory() {

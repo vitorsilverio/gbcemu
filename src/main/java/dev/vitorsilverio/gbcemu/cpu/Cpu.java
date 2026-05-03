@@ -10,11 +10,16 @@ import java.util.Optional;
 public class Cpu implements MachineCycle {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Cpu.class);
+    private static final int BUS_CYCLE_TICKS = 4;
+    private static final int INTERRUPT_TICKS = 20;
 
     private final Bus bus;
     private final Decoder decoder;
 
-    private int cycles = 0;
+    private int instructionTicks;
+    private Runnable cycleCallback = () -> {
+    };
+
     private int speedRate = 1;
 
     private int pc = 0x0000; // Program Counter
@@ -41,6 +46,11 @@ public class Cpu implements MachineCycle {
     public Cpu(Bus bus) {
         this.bus = bus;
         this.decoder = new Decoder();
+    }
+
+    public void setCycleCallback(Runnable cycleCallback) {
+        this.cycleCallback = cycleCallback == null ? () -> {
+        } : cycleCallback;
     }
 
     public void setSpeedRate(int speedRate) {
@@ -188,71 +198,87 @@ public class Cpu implements MachineCycle {
 
     @Override
     public void tick() {
-        if (cycles > 0) {
-            cycles--;
-            return;
-        }
         Optional<Interrupt> pendingInterrupt = bus.getPendingInterrupt();
         if (halted) {
-            if ( pendingInterrupt.isPresent() ) {
+            if (pendingInterrupt.isPresent()) {
                 halted = false;
             } else {
-                // Continue halted state
+                waitTicks(1);
                 return;
             }
         }
-        if ( pendingInterrupt.isPresent() && ime ) {
-            // Handle the interrupt
+        if (pendingInterrupt.isPresent() && ime) {
             handleInterrupt(pendingInterrupt.get());
             return;
         }
         if (stopped) {
-            // Handle stopped state
+            waitTicks(1);
             return;
         }
 
-        // Fetch the next instruction
-        int opcode = bus.read(pc) & 0xFF;
+        instructionTicks = 0;
+        int opcode = readByte(pc);
 
-        if (opcode == 0xcb) {
-            // Handle CB-prefixed instructions
-            opcode = (0xcb00 | (bus.read(pc + 1) & 0xFF));
+        if (opcode == 0xCB) {
+            opcode = 0xCB00 | readByte(pc + 1);
             pc++;
         }
 
-        // Decode and execute the instruction
         Optional<Instruction> instruction = decoder.decode(opcode);
         if (instruction.isEmpty()) {
             logger.error(Integer.toHexString(pc) + " Invalid opcode: " + Integer.toHexString(opcode));
             throw new IllegalStateException("Invalid opcode: " + Integer.toHexString(opcode));
         }
 
-        cycles = (instruction.get().execute(this) / speedRate) - 1;
+        int totalTicks = instruction.get().execute(this) / speedRate;
+        waitTicks(Math.max(totalTicks - instructionTicks, 0));
 
         if (haltBug && opcode != 0x76) {
-            pc --;
+            pc--;
             haltBug = false;
         }
-
-
     }
 
     private void handleInterrupt(Interrupt interrupt) {
-        // Clear the interrupt flag
+        instructionTicks = 0;
         bus.clearInterrupt(interrupt);
-
-        // Push the current program counter to the stack
+        waitTicks(8 / speedRate);
+        instructionTicks += 8 / speedRate;
         pushStack(pc);
-
-        // Set the program counter to the interrupt vector address
         pc = interrupt.getVectorAddress();
-
-        cycles = (20 / speedRate) - 1;
-
-        // Disable interrupts
+        waitTicks(Math.max((INTERRUPT_TICKS / speedRate) - instructionTicks, 0));
         ime = false;
     }
 
+    public int readByte(int address) {
+        waitTicks(BUS_CYCLE_TICKS / speedRate);
+        instructionTicks += BUS_CYCLE_TICKS / speedRate;
+        return bus.read(address) & 0xFF;
+    }
+
+    public int readWord(int address) {
+        int lowByte = readByte(address);
+        int highByte = readByte(address + 1);
+        return ((highByte << 8) | lowByte) & 0xFFFF;
+    }
+
+    public void writeByte(int address, int value) {
+        waitTicks(BUS_CYCLE_TICKS / speedRate);
+        instructionTicks += BUS_CYCLE_TICKS / speedRate;
+        bus.write(address, (byte) value);
+    }
+
+    public void writeWord(int address, int value) {
+        value &= 0xFFFF;
+        writeByte(address, value & 0xFF);
+        writeByte(address + 1, (value >> 8) & 0xFF);
+    }
+
+    private void waitTicks(int ticks) {
+        for (int i = 0; i < ticks; i++) {
+            cycleCallback.run();
+        }
+    }
 
     public void incrementProgramCounter(int i) {
         pc += i;
@@ -303,7 +329,7 @@ public class Cpu implements MachineCycle {
     }
 
     public int popStack() {
-        int value = bus.readWord(sp);
+        int value = readWord(sp);
         sp += 2;
         sp &= 0xFFFF; // Ensure SP wraps around
         if (value == 0x00f9) {
@@ -321,7 +347,7 @@ public class Cpu implements MachineCycle {
         if ((value & 0xffff) == 0x00f9) {
             logger.debug("Pushed value: " + Integer.toHexString(value));
         }
-        bus.writeWord(sp, value);
+        writeWord(sp, value);
     }
 
     @Override

@@ -14,7 +14,7 @@ public class DestinationReferenceBC implements Destination {
     @Override
     public void setValue(Cpu cpu, int value) {
         int address = cpu.getBc();
-        cpu.getBus().write(address, (byte) value);
+        cpu.writeByte(address, value);
     }
 
     @Override

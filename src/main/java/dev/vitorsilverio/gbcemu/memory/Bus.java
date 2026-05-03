@@ -2,7 +2,6 @@ package dev.vitorsilverio.gbcemu.memory;
 
 import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
-import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -54,19 +53,8 @@ public class Bus {
         return 0;
     }
 
-    public byte readAfterCpuCycles(int address, int cyclesAhead) {
-        address = address & 0xFFFF;
-        Optional<Timer> timer = findMemorySpace(Timer.class);
-        if (timer.isPresent() && timer.get().contains(address)) {
-            return timer.get().readAfterTicks(address, cyclesAhead);
-        }
-        if (address == 0xFF0F && timer.map(value -> value.requestsInterruptAfterTicks(cyclesAhead)).orElse(false)) {
-            return (byte) ((read(address) & 0xFF) | Interrupt.TIMER.getMask());
-        }
-        return read(address);
-    }
-
     public void write(int address, byte value) {
+        address = address & 0xFFFF;
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {
                 memorySpace.write(address, value);
@@ -99,5 +87,4 @@ public class Bus {
         write(address, (byte) (value & 0xFF));
         write(address + 1, (byte) ((value >> 8) & 0xFF));
     }
-
 }

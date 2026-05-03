@@ -16,7 +16,7 @@ public class AddSignedImmediateToStackPointerInstruction implements Instruction 
     @Override
     public int execute(Cpu cpu) {
         int sp = cpu.getSp();
-        int immediate = cpu.getBus().read(cpu.getPc() + 1) & 0xFF;
+        int immediate = cpu.readByte(cpu.getPc() + 1);
         int signedImmediate = (byte) immediate;
         int result = (sp + signedImmediate) & 0xFFFF;
 

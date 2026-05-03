@@ -13,8 +13,8 @@ public class DestinationHighReference8bits implements Destination {
 
     @Override
     public void setValue(Cpu cpu, int value) {
-        var address = (cpu.getBus().read(cpu.getPc() + 1) & 0xFF) + 0xff00; // Read the next byte to get the high byte
-        cpu.getBus().write(address, (byte) value);
+        var address = cpu.readByte(cpu.getPc() + 1) + 0xff00;
+        cpu.writeByte(address, value);
     }
 
     @Override

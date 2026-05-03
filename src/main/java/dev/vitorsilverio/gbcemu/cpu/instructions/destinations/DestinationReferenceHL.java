@@ -19,7 +19,7 @@ public class DestinationReferenceHL implements Destination {
     @Override
     public void setValue(Cpu cpu, int value) {
         int address = cpu.getHl();
-        cpu.getBus().write(address, (byte) value);
+        cpu.writeByte(address, value);
         cpu.setHl((cpu.getHl() + increment) & 0xFFFF);
     }
 

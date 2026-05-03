@@ -50,7 +50,13 @@ public class CgbPalette {
     }
 
     public void setPaletteData(byte value) {
-        paletteData[currentAddress] = value;
+        setPaletteData(value, true);
+    }
+
+    public void setPaletteData(byte value, boolean writable) {
+        if (writable) {
+            paletteData[currentAddress] = value;
+        }
         if (autoIncrement) {
             currentAddress = (currentAddress + 1) & 0x3F;
         }

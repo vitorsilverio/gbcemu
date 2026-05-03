@@ -13,7 +13,7 @@ public class SourceImmediate8Bits implements Source {
 
     @Override
     public int getValue(Cpu cpu) {
-        return  cpu.getBus().read(cpu.getPc() + 1) & 0xFF;
+        return cpu.readByte(cpu.getPc() + 1);
     }
 
     @Override

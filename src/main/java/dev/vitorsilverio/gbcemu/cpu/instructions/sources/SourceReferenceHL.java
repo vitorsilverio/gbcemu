@@ -19,9 +19,9 @@ public class SourceReferenceHL implements Source {
     @Override
     public int getValue(Cpu cpu) {
         var address = cpu.getHl();
-        int value =  cpu.getBus().read(address);
+        int value = cpu.readByte(address);
         cpu.setHl((cpu.getHl() + increment) & 0xFFFF);
-        return value & 0xFF;
+        return value;
     }
 
     @Override

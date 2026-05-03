@@ -26,4 +26,15 @@ class CgbPaletteTest {
 
         assertEquals(0x80, palette.getPaletteIndex() & 0xFF);
     }
+
+    @Test
+    void blockedPaletteWriteStillAutoIncrementsAddress() {
+        CgbPalette palette = new CgbPalette();
+
+        palette.setPaletteIndex((byte) 0x80);
+        palette.setPaletteData((byte) 0x00, false);
+
+        assertEquals(0x81, palette.getPaletteIndex() & 0xFF);
+        assertEquals(0xFFFF, palette.getColor(0, 0) & 0xFFFF);
+    }
 }

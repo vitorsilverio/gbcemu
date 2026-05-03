@@ -17,11 +17,11 @@ public class DestinationReference16bits implements Destination {
 
     @Override
     public void setValue(Cpu cpu, int value) {
-        int address = cpu.getBus().readWord(cpu.getPc() + 1);
+        int address = cpu.readWord(cpu.getPc() + 1);
         if (word) {
-            cpu.getBus().writeWord(address, value);
+            cpu.writeWord(address, value);
         } else {
-            cpu.getBus().write(address, (byte) value);
+            cpu.writeByte(address, value);
         }
     }
 

@@ -17,7 +17,8 @@ public class Ppu implements MemorySpace, MachineCycle {
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Ppu.class);
 
     private static final int OAM_SCANLINE_CYCLES = 80;
-    private static final int SCANLINE_CYCLES = 376;
+    private static final int SCANLINE_CYCLES = 456;
+    private static final int MIN_VRAM_READ_CYCLES = 172;
     private static final int VBLANK_CYCLES = 456;
 
     private final int LCDC = 0xFF40;
@@ -66,14 +67,13 @@ public class Ppu implements MemorySpace, MachineCycle {
     private int scrollX;
     private int scrollY;
     private int penaltyDelay = 0;
-    private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.DMG;
+    private int hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
+    private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.CGB;
     private byte lineCompare = 0;
     private int windowX;
     private int windowY;
 
-    private int prevCurrentLine = 0;
-    private PpuMode prevMode = PpuMode.VRAM_READ;
-    private byte prevStat = 0;
+    private boolean previousStatSignal;
 
 
 
@@ -94,8 +94,6 @@ public class Ppu implements MemorySpace, MachineCycle {
 
         logger.trace("Ppu tick: mode={}, line={}, column={}, cycles={}", mode, currentLine, currentColumn, cycles);
 
-       statInterrupt();
-
         // Execute logic based on the current mode
         switch (mode) {
             case OAM_READ:
@@ -111,32 +109,19 @@ public class Ppu implements MemorySpace, MachineCycle {
                 execVBlank();
                 break;
         }
+        statInterrupt();
         cycles++;
     }
 
     private void statInterrupt() {
-
-        // Compare if anything changed before
-        if (prevCurrentLine == currentLine && prevMode == mode && prevStat == stat.getData()) {
-            return;
-        }
-
-        prevMode = mode;
-        prevCurrentLine = currentLine;
-        prevStat = stat.getData();
-
-        if (stat.isLycInterrupt() && (currentLine & 0xff) == (lineCompare & 0xff)) {
+        boolean signal = (stat.isLycInterrupt() && (currentLine & 0xff) == (lineCompare & 0xff)) ||
+                (stat.isOamInterrupt() && mode == PpuMode.OAM_READ) ||
+                (stat.isVBlankInterrupt() && mode == PpuMode.VBLANK) ||
+                (stat.isHBlankInterrupt() && mode == PpuMode.HBLANK);
+        if (signal && !previousStatSignal) {
             bus.requestInterrupt(Interrupt.LCD_STAT);
         }
-        if (stat.isOamInterrupt() && mode == PpuMode.OAM_READ) {
-            bus.requestInterrupt(Interrupt.LCD_STAT);
-        }
-        if (stat.isVBlankInterrupt() && mode == PpuMode.VBLANK) {
-            bus.requestInterrupt(Interrupt.LCD_STAT);
-        }
-        if (stat.isHBlankInterrupt() && mode == PpuMode.HBLANK) {
-            bus.requestInterrupt(Interrupt.LCD_STAT);
-        }
+        previousStatSignal = signal;
     }
 
     private void execVRAMRead() {
@@ -147,14 +132,8 @@ public class Ppu implements MemorySpace, MachineCycle {
         }
 
         // Draw current line
-        if ( cycles < 12 ){
-            currentColumn = 0;
+        if (cycles < 12) {
             // The 12 extra dots of penalty come from two tile fetches at the beginning of Mode 3. One is the first tile in the scanline (the one that gets shifted by SCX % 8 pixels), the other is simply discarded.
-            return;
-        }
-        // Include penalty delay for scrollX
-        if ( cycles == 12) {
-            penaltyDelay = scrollX % 8;
             return;
         }
         Pixel bgPixel = getBackgroundOrWindowPixel(currentColumn, currentLine);
@@ -167,7 +146,9 @@ public class Ppu implements MemorySpace, MachineCycle {
         // when line finished then go to HBLANK
         if (currentColumn == 160) {
             // End of the scanline
+            hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - (cycles + 1);
             mode = PpuMode.HBLANK;
+            cycles = -1;
         }
 
     }
@@ -296,17 +277,19 @@ public class Ppu implements MemorySpace, MachineCycle {
     private void execOAMRead() {
         // Read from OAM
 
-        if (cycles == OAM_SCANLINE_CYCLES -1) {
+        if (cycles == OAM_SCANLINE_CYCLES - 1) {
             mode = PpuMode.VRAM_READ;
-            cycles = 0;
+            cycles = -1;
+            currentColumn = 0;
+            penaltyDelay = scrollX % 8;
         }
     }
 
     private void execHBlank() {
         // Execute HBlank
-        if (cycles == SCANLINE_CYCLES -1) {
+        if (cycles == hBlankCycles - 1) {
             currentLine++;
-            cycles = 0;
+            cycles = -1;
             if (currentLine == 144) {
                 mode = PpuMode.VBLANK;
                 bus.requestInterrupt(Interrupt.VBLANK);
@@ -318,15 +301,14 @@ public class Ppu implements MemorySpace, MachineCycle {
 
     private void execVBlank() {
         // Execute VBlank
-        int line = currentLine;
-        currentLine = 144 + ((cycles / VBLANK_CYCLES));
-        if (line != currentLine) {
-            bus.requestInterrupt(Interrupt.VBLANK);
+        if (cycles != VBLANK_CYCLES - 1) {
+            return;
         }
-        if (cycles == (VBLANK_CYCLES * 10) - 1) {
+        currentLine++;
+        cycles = -1;
+        if (currentLine > 153) {
             currentLine = 0;
             mode = PpuMode.OAM_READ;
-            cycles = 0;
         }
     }
 
@@ -445,21 +427,13 @@ public class Ppu implements MemorySpace, MachineCycle {
                 bgPalette.setPaletteIndex(value);
                 return;
             case BGPD:
-                if (PpuMode.VRAM_READ.equals(mode)) {
-                    // None can be read in this mode
-                    return;
-                }
-                bgPalette.setPaletteData(value);
+                bgPalette.setPaletteData(value, !PpuMode.VRAM_READ.equals(mode));
                 return;
             case OBPI:
                 objPalette.setPaletteIndex(value);
                 return;
             case OBPD:
-                if (PpuMode.VRAM_READ.equals(mode)) {
-                    // None can be read in this mode
-                    return;
-                }
-                objPalette.setPaletteData(value);
+                objPalette.setPaletteData(value, !PpuMode.VRAM_READ.equals(mode));
                 return;
             case OPRI:
                 objectPriorityMode = ObjectPriorityMode.fromValue((byte) (value & 0x01));
@@ -483,7 +457,7 @@ public class Ppu implements MemorySpace, MachineCycle {
     }
 
     public Image getFrameBuffer() {
-        var image = new BufferedImage(160, 144, BufferedImage.TYPE_USHORT_555_RGB);
+        var image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < 144; y++) {
             for (int x = 0; x < 160; x++) {
                 int color = frameBuffer[x][y];

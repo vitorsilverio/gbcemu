@@ -14,7 +14,7 @@ public class DestinationHighReferenceC implements Destination {
     @Override
     public void setValue(Cpu cpu, int value) {
         var address = (cpu.getC() & 0xFF) + 0xff00;
-        cpu.getBus().write(address, (byte) value);
+        cpu.writeByte(address, value);
     }
 
     @Override

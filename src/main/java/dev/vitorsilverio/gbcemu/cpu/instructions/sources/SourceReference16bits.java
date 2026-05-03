@@ -13,8 +13,8 @@ public class SourceReference16bits implements Source {
 
     @Override
     public int getValue(Cpu cpu) {
-        int address = cpu.getBus().readWord(cpu.getPc() + 1);
-        return cpu.getBus().read(address) & 0xFF;
+        int address = cpu.readWord(cpu.getPc() + 1);
+        return cpu.readByte(address);
     }
 
     @Override
