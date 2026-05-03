@@ -260,23 +260,9 @@ public class DebugWindow {
         StringBuilder builder = new StringBuilder("Instructions near PC\n");
         int address = cpu.getPc();
         for (int i = 0; i < 24; i++) {
-            int opcode = bus.read(address) & 0xFF;
-            int b1 = bus.read(address + 1) & 0xFF;
-            int b2 = bus.read(address + 2) & 0xFF;
-            int length = instructionLength(opcode, b1);
-            builder.append(String.format("%04X: %02X", address, opcode));
-            if (length > 1) {
-                builder.append(String.format(" %02X", b1));
-            } else {
-                builder.append("   ");
-            }
-            if (length > 2) {
-                builder.append(String.format(" %02X", b2));
-            } else {
-                builder.append("   ");
-            }
-            builder.append("  ").append(disassemble(opcode, b1, b2)).append('\n');
-            address = (address + length) & 0xFFFF;
+            Disassembler.Decoded decoded = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
+            builder.append(String.format("%04X: %s%n", address, decoded.text()));
+            address = (address + decoded.length()) & 0xFFFF;
         }
         return builder.toString();
     }
@@ -339,46 +325,6 @@ public class DebugWindow {
         } catch (NumberFormatException e) {
             return fallback;
         }
-    }
-
-    private int instructionLength(int opcode, int nextByte) {
-        if (opcode == 0xCB) {
-            return 2;
-        }
-        return switch (opcode) {
-            case 0x01, 0x08, 0x11, 0x21, 0x31, 0xC2, 0xC3, 0xC4, 0xCA, 0xCC, 0xCD, 0xD2, 0xD4, 0xDA, 0xDC, 0xEA, 0xFA -> 3;
-            case 0x06, 0x0E, 0x10, 0x16, 0x18, 0x1E, 0x20, 0x26, 0x28, 0x2E, 0x30, 0x36, 0x38, 0x3E,
-                 0xC6, 0xCE, 0xD6, 0xDE, 0xE0, 0xE6, 0xE8, 0xEE, 0xF0, 0xF6, 0xF8, 0xFE -> 2;
-            default -> 1;
-        };
-    }
-
-    private String disassemble(int opcode, int b1, int b2) {
-        if (opcode == 0xCB) {
-            return String.format("CB %02X", b1);
-        }
-        return switch (opcode) {
-            case 0x00 -> "NOP";
-            case 0x10 -> "STOP";
-            case 0x18 -> String.format("JR %+d", (byte) b1);
-            case 0x20 -> String.format("JR NZ,%+d", (byte) b1);
-            case 0x28 -> String.format("JR Z,%+d", (byte) b1);
-            case 0x30 -> String.format("JR NC,%+d", (byte) b1);
-            case 0x38 -> String.format("JR C,%+d", (byte) b1);
-            case 0xC3 -> String.format("JP $%04X", word(b1, b2));
-            case 0xCD -> String.format("CALL $%04X", word(b1, b2));
-            case 0xC9 -> "RET";
-            case 0xD9 -> "RETI";
-            case 0xE0 -> String.format("LDH [$FF%02X],A", b1);
-            case 0xF0 -> String.format("LDH A,[$FF%02X]", b1);
-            case 0xEA -> String.format("LD [$%04X],A", word(b1, b2));
-            case 0xFA -> String.format("LD A,[$%04X]", word(b1, b2));
-            default -> String.format("OP %02X", opcode);
-        };
-    }
-
-    private int word(int low, int high) {
-        return low | (high << 8);
     }
 
     private void dump() {
