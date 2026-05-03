@@ -85,7 +85,9 @@ Este documento organiza as melhorias e metas do emulador. A ideia é manter uma 
   - Indicar regioes bloqueadas ou com efeitos colaterais.
 
 - [ ] Melhorar disassembler.
-  - Mostrar nomes reais de todas as instrucoes.
+  - [x] Substituir texto puro por tabela na UI.
+  - [x] Destacar a instrucao atual do PC.
+  - [x] Mostrar nomes reais das familias principais e opcodes CB.
   - Decodificar operandos corretamente.
   - Mostrar bytes e destino de jumps/calls.
 

@@ -29,6 +29,8 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class DebugWindow {
 
@@ -41,7 +43,14 @@ public class DebugWindow {
     private final Runnable pauseAction;
     private final Runnable resumeAction;
     private final JFrame window = new JFrame("GBC EMU Debugger");
-    private final JTextArea cpuText = textArea();
+    private final Map<String, JTextField> stateFields = new LinkedHashMap<>();
+    private final DefaultTableModel instructionModel = new DefaultTableModel() {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable instructionTable = new JTable(instructionModel);
     private final JTextArea memoryMapText = textArea();
     private final JTextField memoryStart = new JTextField("C000", 6);
     private final JTextField memoryLength = new JTextField("0100", 6);
@@ -94,7 +103,7 @@ public class DebugWindow {
         window.add(toolbar, BorderLayout.NORTH);
 
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("CPU / Instructions", new JScrollPane(cpuText));
+        tabs.addTab("CPU / Instructions", cpuPanel());
         tabs.addTab("Breakpoints", breakpointsPanel());
         tabs.addTab("Memory Map", new JScrollPane(memoryMapText));
         tabs.addTab("Memory", memoryPanel());
@@ -110,6 +119,64 @@ public class DebugWindow {
                 refresh();
             }
         }).start();
+    }
+
+    private JPanel cpuPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JPanel statePanel = new JPanel(new GridLayout(0, 6, 4, 4));
+        addStateField(statePanel, "PC");
+        addStateField(statePanel, "SP");
+        addStateField(statePanel, "AF");
+        addStateField(statePanel, "BC");
+        addStateField(statePanel, "DE");
+        addStateField(statePanel, "HL");
+        addStateField(statePanel, "A");
+        addStateField(statePanel, "B");
+        addStateField(statePanel, "C");
+        addStateField(statePanel, "D");
+        addStateField(statePanel, "E");
+        addStateField(statePanel, "H");
+        addStateField(statePanel, "L");
+        addStateField(statePanel, "Flags");
+        addStateField(statePanel, "IME");
+        addStateField(statePanel, "Halted");
+        addStateField(statePanel, "Stopped");
+        addStateField(statePanel, "Speed");
+        addStateField(statePanel, "Break");
+        addStateField(statePanel, "LCDC");
+        addStateField(statePanel, "STAT");
+        addStateField(statePanel, "Mode");
+        addStateField(statePanel, "LY");
+        addStateField(statePanel, "LX");
+        addStateField(statePanel, "Cycles");
+        addStateField(statePanel, "SCX");
+        addStateField(statePanel, "SCY");
+        addStateField(statePanel, "WX");
+        addStateField(statePanel, "WY");
+        addStateField(statePanel, "LYC");
+
+        instructionModel.addColumn("Addr");
+        instructionModel.addColumn("Bytes");
+        instructionModel.addColumn("Instruction");
+        instructionTable.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+        instructionTable.setRowHeight(22);
+        instructionTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        instructionTable.getColumnModel().getColumn(0).setPreferredWidth(70);
+        instructionTable.getColumnModel().getColumn(1).setPreferredWidth(110);
+        instructionTable.getColumnModel().getColumn(2).setPreferredWidth(360);
+
+        panel.add(statePanel, BorderLayout.NORTH);
+        panel.add(new JScrollPane(instructionTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void addStateField(JPanel panel, String name) {
+        panel.add(new JLabel(name));
+        JTextField field = new JTextField();
+        field.setEditable(false);
+        field.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+        stateFields.put(name, field);
+        panel.add(field);
     }
 
     private JPanel breakpointsPanel() {
@@ -197,7 +264,8 @@ public class DebugWindow {
     }
 
     private void refresh() {
-        cpuText.setText(cpuSnapshotText() + "\n\n" + instructionText());
+        refreshStateFields();
+        refreshInstructionTable();
         memoryMapText.setText(memoryMapText());
         refreshBreakpoints();
         tilesBank0.setImage(ppu.debugTileImage(0));
@@ -206,6 +274,49 @@ public class DebugWindow {
         bgMap9C00.setImage(ppu.debugTileMapImage(TileMapArea.IN_9C00));
         bgPalettes.setImage(ppu.debugPaletteImage(false));
         objPalettes.setImage(ppu.debugPaletteImage(true));
+    }
+
+    private void refreshStateFields() {
+        Cpu.Snapshot cpuSnapshot = cpu.snapshot();
+        Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
+        setState("PC", "%04X", cpuSnapshot.pc());
+        setState("SP", "%04X", cpuSnapshot.sp());
+        setState("AF", "%04X", cpuSnapshot.af());
+        setState("BC", "%04X", cpuSnapshot.bc());
+        setState("DE", "%04X", cpuSnapshot.de());
+        setState("HL", "%04X", cpuSnapshot.hl());
+        setState("A", "%02X", cpuSnapshot.a());
+        setState("B", "%02X", cpuSnapshot.b());
+        setState("C", "%02X", cpuSnapshot.c());
+        setState("D", "%02X", cpuSnapshot.d());
+        setState("E", "%02X", cpuSnapshot.e());
+        setState("H", "%02X", cpuSnapshot.h());
+        setState("L", "%02X", cpuSnapshot.l());
+        setState("Flags", "%s%s%s%s",
+                cpuSnapshot.zeroFlag() ? "Z" : "-",
+                cpuSnapshot.negativeFlag() ? "N" : "-",
+                cpuSnapshot.halfCarryFlag() ? "H" : "-",
+                cpuSnapshot.carryFlag() ? "C" : "-");
+        setState("IME", "%s", cpuSnapshot.ime());
+        setState("Halted", "%s", cpuSnapshot.halted());
+        setState("Stopped", "%s", cpuSnapshot.stopped());
+        setState("Speed", "%dx", cpuSnapshot.speedRate());
+        stateFields.get("Break").setText(debugController.breakReason());
+        setState("LCDC", "%02X", ppuSnapshot.lcdc());
+        setState("STAT", "%02X", ppuSnapshot.stat());
+        stateFields.get("Mode").setText(String.valueOf(ppuSnapshot.mode()));
+        setState("LY", "%02X", ppuSnapshot.line());
+        setState("LX", "%03d", ppuSnapshot.column());
+        setState("Cycles", "%03d", ppuSnapshot.cycles());
+        setState("SCX", "%02X", ppuSnapshot.scrollX());
+        setState("SCY", "%02X", ppuSnapshot.scrollY());
+        setState("WX", "%02X", ppuSnapshot.windowX());
+        setState("WY", "%02X", ppuSnapshot.windowY());
+        setState("LYC", "%02X", ppuSnapshot.lineCompare());
+    }
+
+    private void setState(String name, String format, Object... args) {
+        stateFields.get(name).setText(String.format(format, args));
     }
 
     private String cpuSnapshotText() {
@@ -265,6 +376,51 @@ public class DebugWindow {
             address = (address + decoded.length()) & 0xFFFF;
         }
         return builder.toString();
+    }
+
+    private void refreshInstructionTable() {
+        instructionModel.setRowCount(0);
+        int address = cpu.getPc();
+        for (int i = 0; i < 32; i++) {
+            Disassembler.Decoded decoded = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
+            String[] parts = splitDecodedText(decoded.text());
+            instructionModel.addRow(new Object[]{
+                    String.format("%04X", address),
+                    parts[0],
+                    parts[1]
+            });
+            address = (address + decoded.length()) & 0xFFFF;
+        }
+        if (instructionModel.getRowCount() > 0) {
+            instructionTable.setRowSelectionInterval(0, 0);
+        }
+    }
+
+    private String[] splitDecodedText(String text) {
+        String trimmed = text.trim();
+        int splitAt = findInstructionStart(trimmed);
+        if (splitAt < 0) {
+            return new String[]{trimmed, ""};
+        }
+        return new String[]{trimmed.substring(0, splitAt).trim(), trimmed.substring(splitAt).trim()};
+    }
+
+    private int findInstructionStart(String text) {
+        String[] mnemonics = {
+                "LD ", "LDH ", "INC ", "DEC ", "ADD ", "ADC ", "SUB", "SBC ", "AND ", "XOR ", "OR ", "CP ",
+                "JR ", "JP ", "CALL ", "RET", "RETI", "RST ", "PUSH ", "POP ",
+                "NOP", "STOP", "HALT", "DI", "EI", "DAA", "CPL", "SCF", "CCF",
+                "RLCA", "RRCA", "RLA", "RRA",
+                "RLC ", "RRC ", "RL ", "RR ", "SLA ", "SRA ", "SWAP ", "SRL ",
+                "BIT ", "RES ", "SET ", "ILLEGAL", "OP "
+        };
+        for (String mnemonic : mnemonics) {
+            int index = text.indexOf(mnemonic);
+            if (index >= 0) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private String memoryMapText() {
