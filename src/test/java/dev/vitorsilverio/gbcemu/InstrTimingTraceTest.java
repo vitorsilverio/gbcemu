@@ -106,6 +106,84 @@ class InstrTimingTraceTest {
 
     @Test
     @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/cgb_sound.gb", "target/cgb_sound-screen.png", 60_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundRegisterScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/01-registers.gb", "target/cgb_sound-01-registers-screen.png", 20_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundPowerScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/11-regs after power.gb", "target/cgb_sound-11-regs-after-power-screen.png", 20_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundLengthScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/02-len ctr.gb", "target/cgb_sound-02-len-ctr-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundTriggerScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/03-trigger.gb", "target/cgb_sound-03-trigger-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundSweepScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/04-sweep.gb", "target/cgb_sound-04-sweep-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundSweepDetailsScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/05-sweep details.gb", "target/cgb_sound-05-sweep-details-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundOverflowOnTriggerScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/06-overflow on trigger.gb", "target/cgb_sound-06-overflow-on-trigger-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundLengthSweepPeriodSyncScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/07-len sweep period sync.gb", "target/cgb_sound-07-len-sweep-period-sync-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundLengthDuringPowerScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/08-len ctr during power.gb", "target/cgb_sound-08-len-ctr-during-power-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundWaveReadWhileOnScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/09-wave read while on.gb", "target/cgb_sound-09-wave-read-while-on-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundWaveTriggerWhileOnScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/10-wave trigger while on.gb", "target/cgb_sound-10-wave-trigger-while-on-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderCgbSoundWaveScreen() throws IOException {
+        renderRomScreen("test-roms/cgb_sound/rom_singles/12-wave.gb", "target/cgb_sound-12-wave-screen.png", 30_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
     void traceInterruptTimeFailure() {
         Bus bus = new Bus();
         Cpu cpu = new Cpu(bus);

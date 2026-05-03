@@ -14,8 +14,24 @@ class ApuTest {
 
         assertTrue(apu.contains(0xFF10));
         assertTrue(apu.contains(0xFF26));
+        assertTrue(apu.contains(0xFF27));
+        assertTrue(apu.contains(0xFF2F));
         assertTrue(apu.contains(0xFF30));
         assertTrue(apu.contains(0xFF3F));
+        assertTrue(apu.contains(0xFF76));
+        assertTrue(apu.contains(0xFF77));
+    }
+
+    @Test
+    void unusedAudioRegistersReadAsFfAndIgnoreWrites() {
+        Apu apu = new Apu((buffer, length) -> {
+        });
+
+        apu.write(0xFF27, (byte) 0x00);
+        apu.write(0xFF2F, (byte) 0x55);
+
+        assertEquals(0xFF, apu.read(0xFF27) & 0xFF);
+        assertEquals(0xFF, apu.read(0xFF2F) & 0xFF);
     }
 
     @Test
@@ -68,6 +84,34 @@ class ApuTest {
         apu.write(0xFF23, (byte) 0x80);
 
         assertEquals(0x88, apu.read(0xFF26) & 0x88);
+    }
+
+    @Test
+    void sweepOverflowOnPulseTriggerDisablesChannel() {
+        Apu apu = new Apu((buffer, length) -> {
+        });
+
+        apu.write(0xFF10, (byte) 0x01);
+        apu.write(0xFF12, (byte) 0xF0);
+        apu.write(0xFF13, (byte) 0xFF);
+        apu.write(0xFF14, (byte) 0x87);
+
+        assertEquals(0xF0, apu.read(0xFF26) & 0xF1);
+    }
+
+    @Test
+    void cgbPcmRegistersExposeDigitalChannelOutputs() {
+        Apu apu = new Apu((buffer, length) -> {
+        });
+
+        apu.write(0xFF11, (byte) 0x80);
+        apu.write(0xFF12, (byte) 0xF0);
+        apu.write(0xFF13, (byte) 0x00);
+        apu.write(0xFF14, (byte) 0x80);
+
+        assertEquals(0x0F, apu.read(0xFF76) & 0x0F);
+        apu.write(0xFF76, (byte) 0x00);
+        assertEquals(0x0F, apu.read(0xFF76) & 0x0F);
     }
 
     private void tickUntilSamplesAreBuffered(Apu apu) {

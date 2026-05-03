@@ -23,6 +23,8 @@ public class Apu implements MemorySpace, MachineCycle {
     private static final int NR50_MASTER_VOLUME = 0xFF24;
     private static final int NR51_SOUND_PANNING = 0xFF25;
     private static final int NR52_AUDIO_MASTER_CONTROL = 0xFF26;
+    private static final int PCM12_CGB_DIGITAL_OUTPUT = 0xFF76;
+    private static final int PCM34_CGB_DIGITAL_OUTPUT = 0xFF77;
 
     private static final int NR10_CHANNEL_1_SWEEP = 0xFF10;
     private static final int NR11_CHANNEL_1_DUTY = 0xFF11;
@@ -83,6 +85,8 @@ public class Apu implements MemorySpace, MachineCycle {
     private int frameSequencerCycles;
     private int frameSequencerStep;
     private int sampleBufferPosition;
+    private int previousLeftSample;
+    private int previousRightSample;
     private boolean audioEnabled = true;
 
     private final PulseChannel channel1 = new PulseChannel(0);
@@ -127,11 +131,23 @@ public class Apu implements MemorySpace, MachineCycle {
 
     @Override
     public boolean contains(int address) {
-        return REGISTERS.contains(address) || (address >= 0xFF30 && address <= 0xFF3F);
+        return REGISTERS.contains(address)
+                || (address >= 0xFF27 && address <= 0xFF3F)
+                || address == PCM12_CGB_DIGITAL_OUTPUT
+                || address == PCM34_CGB_DIGITAL_OUTPUT;
     }
 
     @Override
     public byte read(int address) {
+        if (address == PCM12_CGB_DIGITAL_OUTPUT) {
+            return (byte) (channel1.digitalOutput() | (channel2.digitalOutput() << 4));
+        }
+        if (address == PCM34_CGB_DIGITAL_OUTPUT) {
+            return (byte) (channel3.digitalOutput() | (channel4.digitalOutput() << 4));
+        }
+        if (address >= 0xFF27 && address <= 0xFF2F) {
+            return (byte) 0xFF;
+        }
         if (address >= 0xFF30 && address <= 0xFF3F) {
             return wavePatternRam[address - 0xFF30];
         }
@@ -155,6 +171,12 @@ public class Apu implements MemorySpace, MachineCycle {
 
     @Override
     public void write(int address, byte value) {
+        if (address == PCM12_CGB_DIGITAL_OUTPUT || address == PCM34_CGB_DIGITAL_OUTPUT) {
+            return;
+        }
+        if (address >= 0xFF27 && address <= 0xFF2F) {
+            return;
+        }
         if (address >= 0xFF30 && address <= 0xFF3F) {
             wavePatternRam[address - 0xFF30] = value;
             return;
@@ -169,12 +191,15 @@ public class Apu implements MemorySpace, MachineCycle {
             return;
         }
 
+        byte oldValue = registers[index(address)];
         registers[index(address)] = value;
         switch (address) {
+            case NR10_CHANNEL_1_SWEEP -> channel1.setSweep(oldValue, value);
             case NR11_CHANNEL_1_DUTY -> channel1.setLength(64 - (value & 0x3F));
             case NR12_CHANNEL_1_VOLUME -> channel1.setEnvelope(value);
             case NR13_CHANNEL_1_FREQUENCY_LO -> channel1.updatePeriod();
             case NR14_CHANNEL_1_FREQUENCY_HI -> {
+                channel1.clockLengthOnEnable(oldValue, value);
                 channel1.updatePeriod();
                 if ((value & 0x80) != 0) {
                     channel1.trigger();
@@ -184,14 +209,21 @@ public class Apu implements MemorySpace, MachineCycle {
             case NR22_CHANNEL_2_VOLUME -> channel2.setEnvelope(value);
             case NR23_CHANNEL_2_FREQUENCY_LO -> channel2.updatePeriod();
             case NR24_CHANNEL_2_FREQUENCY_HI -> {
+                channel2.clockLengthOnEnable(oldValue, value);
                 channel2.updatePeriod();
                 if ((value & 0x80) != 0) {
                     channel2.trigger();
                 }
             }
+            case NR30_CHANNEL_3_ON_OFF -> {
+                if ((value & 0x80) == 0) {
+                    channel3.enabled = false;
+                }
+            }
             case NR31_CHANNEL_3_LENGTH -> channel3.lengthTimer = 256 - (value & 0xFF);
             case NR33_CHANNEL_3_FREQUENCY_LO -> channel3.updatePeriod();
             case NR34_CHANNEL_3_FREQUENCY_HI -> {
+                channel3.clockLengthOnEnable(oldValue, value);
                 channel3.updatePeriod();
                 if ((value & 0x80) != 0) {
                     channel3.trigger();
@@ -200,6 +232,7 @@ public class Apu implements MemorySpace, MachineCycle {
             case NR41_CHANNEL_4_LENGTH -> channel4.lengthTimer = 64 - (value & 0x3F);
             case NR42_CHANNEL_4_VOLUME -> channel4.setEnvelope(value);
             case NR44_CHANNEL_4_CONTROL -> {
+                channel4.clockLengthOnEnable(oldValue, value);
                 if ((value & 0x80) != 0) {
                     channel4.trigger();
                 }
@@ -226,6 +259,9 @@ public class Apu implements MemorySpace, MachineCycle {
             channel2.tickLength();
             channel3.tickLength();
             channel4.tickLength();
+        }
+        if (frameSequencerStep == 2 || frameSequencerStep == 6) {
+            channel1.tickSweep();
         }
         if (frameSequencerStep == 7) {
             channel1.tickEnvelope();
@@ -257,13 +293,19 @@ public class Apu implements MemorySpace, MachineCycle {
             }
         }
 
-        putPcm16(clampSample(left * leftVolume));
-        putPcm16(clampSample(right * rightVolume));
+        previousLeftSample = smoothSample(previousLeftSample, clampSample(left * leftVolume));
+        previousRightSample = smoothSample(previousRightSample, clampSample(right * rightVolume));
+        putPcm16(previousLeftSample);
+        putPcm16(previousRightSample);
     }
 
     private int clampSample(int value) {
         int scaled = value * 128;
         return Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, scaled));
+    }
+
+    private int smoothSample(int previous, int current) {
+        return previous + ((current - previous) >> 2);
     }
 
     private void putPcm16(int sample) {
@@ -288,13 +330,21 @@ public class Apu implements MemorySpace, MachineCycle {
     private void setAudioEnabled(boolean enabled) {
         audioEnabled = enabled;
         registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) (enabled ? 0x80 : 0x00);
+        if (enabled) {
+            frameSequencerCycles = 0;
+            frameSequencerStep = 0;
+        }
         if (!enabled) {
             Arrays.fill(registers, (byte) 0);
             channel1.disable();
             channel2.disable();
             channel3.disable();
             channel4.disable();
+            frameSequencerCycles = 0;
+            frameSequencerStep = 0;
             sampleBufferPosition = 0;
+            previousLeftSample = 0;
+            previousRightSample = 0;
         }
     }
 
@@ -328,7 +378,6 @@ public class Apu implements MemorySpace, MachineCycle {
         private final SourceDataLine line;
         private static final int BUFFER_SIZE = 65536;
         private static final int PREBUFFER_BYTES = 4096;
-        private static final int EMERGENCY_WATERMARK_BYTES = 60 * 1024;
         private static final int WRITE_CHUNK_SIZE = 512;
 
         private final byte[] buffer = new byte[BUFFER_SIZE];
@@ -346,20 +395,26 @@ public class Apu implements MemorySpace, MachineCycle {
 
         @Override
         public synchronized void write(byte[] source, int length) {
-            int writable = Math.min(length, BUFFER_SIZE - size);
-            int overflow = length - writable;
-            if (overflow > 0) {
-                discard(overflow);
-                writable = length;
-            }
+            int written = 0;
+            while (written < length) {
+                while (size == BUFFER_SIZE) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
 
-            for (int i = 0; i < writable; i++) {
-                buffer[writePosition] = source[i];
-                writePosition = (writePosition + 1) % BUFFER_SIZE;
+                int writable = Math.min(length - written, BUFFER_SIZE - size);
+                for (int i = 0; i < writable; i++) {
+                    buffer[writePosition] = source[written + i];
+                    writePosition = (writePosition + 1) % BUFFER_SIZE;
+                }
+                size += writable;
+                written += writable;
+                notifyAll();
             }
-            size += writable;
-            dropOnlyOnEmergencyOverflow();
-            notifyAll();
         }
 
         private synchronized int read(byte[] destination) throws InterruptedException {
@@ -381,19 +436,8 @@ public class Apu implements MemorySpace, MachineCycle {
                 readPosition = (readPosition + 1) % BUFFER_SIZE;
             }
             size -= length;
+            notifyAll();
             return length;
-        }
-
-        private void discard(int length) {
-            int clamped = Math.min(length & ~0x03, size);
-            readPosition = (readPosition + clamped) % BUFFER_SIZE;
-            size -= clamped;
-        }
-
-        private void dropOnlyOnEmergencyOverflow() {
-            if (size > EMERGENCY_WATERMARK_BYTES) {
-                discard(size - EMERGENCY_WATERMARK_BYTES);
-            }
         }
 
         private void run() {
@@ -451,12 +495,36 @@ public class Apu implements MemorySpace, MachineCycle {
         }
 
         protected void tickLength(int controlRegisterAddress) {
-            if (!enabled || (registers[index(controlRegisterAddress)] & 0x40) == 0 || lengthTimer <= 0) {
+            if ((registers[index(controlRegisterAddress)] & 0x40) == 0 || lengthTimer <= 0) {
                 return;
             }
             lengthTimer--;
             if (lengthTimer == 0) {
                 enabled = false;
+            }
+        }
+
+        protected void clockLengthOnEnable(byte oldValue, byte newValue) {
+            boolean oldEnabled = (oldValue & 0x40) != 0;
+            boolean newEnabled = (newValue & 0x40) != 0;
+            if (!oldEnabled && newEnabled && shouldClockLengthOnEnable() && lengthTimer > 0) {
+                lengthTimer--;
+                if (lengthTimer == 0) {
+                    enabled = false;
+                }
+            }
+        }
+
+        private boolean shouldClockLengthOnEnable() {
+            return (frameSequencerStep & 1) == 0;
+        }
+
+        protected void clockLengthAfterTriggerIfNeeded(int controlRegisterAddress) {
+            if ((registers[index(controlRegisterAddress)] & 0x40) != 0 && shouldClockLengthOnEnable() && lengthTimer > 0) {
+                lengthTimer--;
+                if (lengthTimer == 0) {
+                    enabled = false;
+                }
             }
         }
 
@@ -471,12 +539,18 @@ public class Apu implements MemorySpace, MachineCycle {
         abstract void tick();
 
         abstract int output();
+
+        abstract int digitalOutput();
     }
 
     private class PulseChannel extends SoundChannel {
         private final int channel;
         private int period;
         private int dutyStep;
+        private int sweepShadowPeriod;
+        private int sweepTimer;
+        private boolean sweepEnabled;
+        private boolean sweepNegateUsed;
 
         private final int[][] dutyPatterns = {
                 {0, 0, 0, 0, 0, 0, 0, 1},
@@ -499,16 +573,37 @@ public class Apu implements MemorySpace, MachineCycle {
                     : period(NR23_CHANNEL_2_FREQUENCY_LO, NR24_CHANNEL_2_FREQUENCY_HI);
         }
 
+        private void setSweep(byte oldValue, byte newValue) {
+            if (channel != 0) {
+                return;
+            }
+            boolean wasNegate = (oldValue & 0x08) != 0;
+            boolean isNegate = (newValue & 0x08) != 0;
+            if (wasNegate && !isNegate && sweepNegateUsed) {
+                enabled = false;
+            }
+        }
+
         private void trigger() {
             int envelopeAddress = channel == 0 ? NR12_CHANNEL_1_VOLUME : NR22_CHANNEL_2_VOLUME;
+            boolean lengthWasZero = lengthTimer == 0;
+            enabled = true;
+            if (lengthWasZero) {
+                lengthTimer = 64;
+            }
+            if (lengthWasZero) {
+                clockLengthAfterTriggerIfNeeded(channel == 0 ? NR14_CHANNEL_1_FREQUENCY_HI : NR24_CHANNEL_2_FREQUENCY_HI);
+            }
+            boolean sweepAllowsChannel = triggerSweep();
             if ((registers[index(envelopeAddress)] & 0xF8) == 0) {
                 enabled = false;
                 return;
             }
-            enabled = true;
-            if (lengthTimer == 0) {
-                lengthTimer = 64;
+            if (!sweepAllowsChannel) {
+                enabled = false;
+                return;
             }
+            enabled = true;
             triggerEnvelope(envelopeAddress);
             timer = pulseTimerPeriod();
         }
@@ -530,9 +625,17 @@ public class Apu implements MemorySpace, MachineCycle {
             if (!enabled) {
                 return 0;
             }
+            return digitalOutput() - 8;
+        }
+
+        @Override
+        int digitalOutput() {
+            if (!enabled) {
+                return 0;
+            }
             int dutyAddress = channel == 0 ? NR11_CHANNEL_1_DUTY : NR21_CHANNEL_2_DUTY;
             int duty = (registers[index(dutyAddress)] >> 6) & 0x03;
-            return dutyPatterns[duty][dutyStep] == 0 ? -currentVolume : currentVolume;
+            return dutyPatterns[duty][dutyStep] == 0 ? 0 : currentVolume;
         }
 
         private int pulseTimerPeriod() {
@@ -546,6 +649,83 @@ public class Apu implements MemorySpace, MachineCycle {
         private void tickEnvelope() {
             tickEnvelope(channel == 0 ? NR12_CHANNEL_1_VOLUME : NR22_CHANNEL_2_VOLUME);
         }
+
+        private boolean triggerSweep() {
+            if (channel != 0) {
+                return true;
+            }
+            sweepShadowPeriod = period;
+            sweepTimer = sweepPace();
+            if (sweepTimer == 0) {
+                sweepTimer = 8;
+            }
+            sweepEnabled = sweepPace() != 0 || sweepStep() != 0;
+            sweepNegateUsed = false;
+            if (sweepStep() == 0) {
+                return true;
+            }
+            return calculateSweepPeriod() <= 0x7FF;
+        }
+
+        private void tickSweep() {
+            if (channel != 0 || !sweepEnabled) {
+                return;
+            }
+            sweepTimer--;
+            if (sweepTimer > 0) {
+                return;
+            }
+            sweepTimer = sweepPace();
+            if (sweepTimer == 0) {
+                sweepTimer = 8;
+            }
+            if (sweepPace() == 0) {
+                return;
+            }
+
+            int calculatedPeriod = calculateSweepPeriod();
+            if (calculatedPeriod > 0x7FF) {
+                enabled = false;
+                return;
+            }
+            if (sweepStep() == 0) {
+                return;
+            }
+
+            sweepShadowPeriod = calculatedPeriod;
+            period = calculatedPeriod;
+            writeChannel1Period(calculatedPeriod);
+            if (calculateSweepPeriod() > 0x7FF) {
+                enabled = false;
+            }
+        }
+
+        private int calculateSweepPeriod() {
+            int delta = sweepShadowPeriod >> sweepStep();
+            if (sweepNegate()) {
+                sweepNegateUsed = true;
+                return (sweepShadowPeriod - delta) & 0x7FF;
+            }
+            return sweepShadowPeriod + delta;
+        }
+
+        private void writeChannel1Period(int value) {
+            registers[index(NR13_CHANNEL_1_FREQUENCY_LO)] = (byte) value;
+            int high = registers[index(NR14_CHANNEL_1_FREQUENCY_HI)] & 0xF8;
+            registers[index(NR14_CHANNEL_1_FREQUENCY_HI)] = (byte) (high | ((value >> 8) & 0x07));
+        }
+
+        private int sweepPace() {
+            return (registers[index(NR10_CHANNEL_1_SWEEP)] >> 4) & 0x07;
+        }
+
+        private boolean sweepNegate() {
+            return (registers[index(NR10_CHANNEL_1_SWEEP)] & 0x08) != 0;
+        }
+
+        private int sweepStep() {
+            return registers[index(NR10_CHANNEL_1_SWEEP)] & 0x07;
+        }
     }
 
     private class WaveChannel extends SoundChannel {
@@ -557,14 +737,19 @@ public class Apu implements MemorySpace, MachineCycle {
         }
 
         private void trigger() {
+            boolean lengthWasZero = lengthTimer == 0;
+            enabled = true;
+            if (lengthWasZero) {
+                lengthTimer = 256;
+            }
+            if (lengthWasZero) {
+                clockLengthAfterTriggerIfNeeded(NR34_CHANNEL_3_FREQUENCY_HI);
+            }
             if ((registers[index(NR30_CHANNEL_3_ON_OFF)] & 0x80) == 0) {
                 enabled = false;
                 return;
             }
             enabled = true;
-            if (lengthTimer == 0) {
-                lengthTimer = 256;
-            }
             timer = waveTimerPeriod();
             sampleIndex = 0;
         }
@@ -586,6 +771,14 @@ public class Apu implements MemorySpace, MachineCycle {
             if (!enabled) {
                 return 0;
             }
+            return digitalOutput() - 8;
+        }
+
+        @Override
+        int digitalOutput() {
+            if (!enabled) {
+                return 0;
+            }
             int packed = wavePatternRam[sampleIndex / 2] & 0xFF;
             int sample = (sampleIndex & 1) == 0 ? packed >> 4 : packed & 0x0F;
             int volumeCode = (registers[index(NR32_CHANNEL_3_VOLUME)] >> 5) & 0x03;
@@ -596,7 +789,7 @@ public class Apu implements MemorySpace, MachineCycle {
                 case 3 -> sample >> 2;
                 default -> 0;
             };
-            return shifted - 8;
+            return shifted;
         }
 
         private int waveTimerPeriod() {
@@ -612,14 +805,19 @@ public class Apu implements MemorySpace, MachineCycle {
         private int lfsr = 0x7FFF;
 
         private void trigger() {
+            boolean lengthWasZero = lengthTimer == 0;
+            enabled = true;
+            if (lengthWasZero) {
+                lengthTimer = 64;
+            }
+            if (lengthWasZero) {
+                clockLengthAfterTriggerIfNeeded(NR44_CHANNEL_4_CONTROL);
+            }
             if ((registers[index(NR42_CHANNEL_4_VOLUME)] & 0xF8) == 0) {
                 enabled = false;
                 return;
             }
             enabled = true;
-            if (lengthTimer == 0) {
-                lengthTimer = 64;
-            }
             lfsr = 0x7FFF;
             triggerEnvelope(NR42_CHANNEL_4_VOLUME);
             timer = noiseTimerPeriod();
@@ -646,7 +844,15 @@ public class Apu implements MemorySpace, MachineCycle {
             if (!enabled) {
                 return 0;
             }
-            return (lfsr & 1) == 0 ? currentVolume : -currentVolume;
+            return digitalOutput() - 8;
+        }
+
+        @Override
+        int digitalOutput() {
+            if (!enabled) {
+                return 0;
+            }
+            return (lfsr & 1) == 0 ? currentVolume : 0;
         }
 
         private int noiseTimerPeriod() {
