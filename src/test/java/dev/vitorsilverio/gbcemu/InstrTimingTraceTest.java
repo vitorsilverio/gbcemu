@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
+import dev.vitorsilverio.gbcemu.audio.Apu;
 import dev.vitorsilverio.gbcemu.controller.ButtonType;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
@@ -41,6 +42,7 @@ class InstrTimingTraceTest {
         Cpu cpu = new Cpu(bus);
         TraceTimer timer = new TraceTimer(bus, cpu::toString);
         Ppu ppu = new Ppu(bus);
+        Apu apu = Apu.muted();
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -48,6 +50,7 @@ class InstrTimingTraceTest {
 
         bus.addMemorySpace(timer);
         bus.addMemorySpace(ppu);
+        bus.addMemorySpace(apu);
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
         bus.addMemorySpace(new Joypad(bus, new IdleController()));
@@ -60,7 +63,7 @@ class InstrTimingTraceTest {
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
         bus.addMemorySpace(serial);
-        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, hdma, dma, serial));
+        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial));
 
         Queue<String> pcs = new ArrayDeque<>();
         for (int tick = 0; tick < 5_000_000 && !serial.text().contains("Failed") && !serial.text().contains("Passed"); tick++) {
@@ -76,7 +79,7 @@ class InstrTimingTraceTest {
             if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
                 cpu.tick();
             } else {
-                tickSystem(bus, cpu, timer, ppu, hdma, dma, serial);
+                tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial);
             }
         }
 
@@ -91,10 +94,23 @@ class InstrTimingTraceTest {
     @Test
     @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
     void renderHaltBugScreen() throws IOException {
+        renderRomScreen("test-roms/halt_bug.gb", "target/halt_bug-screen.png", 15_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderInterruptTimeScreen() throws IOException {
+        renderRomScreen("test-roms/interrupt_time/interrupt_time.gb", "target/interrupt_time-screen.png", 15_000_000);
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void traceInterruptTimeFailure() {
         Bus bus = new Bus();
         Cpu cpu = new Cpu(bus);
         Timer timer = new Timer(bus);
         Ppu ppu = new Ppu(bus);
+        Apu apu = Apu.muted();
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -102,13 +118,81 @@ class InstrTimingTraceTest {
 
         bus.addMemorySpace(timer);
         bus.addMemorySpace(ppu);
+        bus.addMemorySpace(apu);
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
         bus.addMemorySpace(new Joypad(bus, new IdleController()));
         bus.addMemorySpace(workRam);
         bus.addMemorySpace(new EchoRam(workRam));
         bus.addMemorySpace(new ZeroPage());
-        bus.addMemorySpace(CartFactory.fromFile(new File("test-roms/halt_bug.gb"), null));
+        TraceKey1 key1 = new TraceKey1(cpu::toString);
+        bus.addMemorySpace(CartFactory.fromFile(new File("test-roms/interrupt_time/interrupt_time.gb"), null));
+        bus.addMemorySpace(new Key0(ppu::setCgbMode));
+        bus.addMemorySpace(key1);
+        bus.addMemorySpace(new InfraredPort());
+        bus.addMemorySpace(new UnusedIoRegisters());
+        bus.addMemorySpace(serial);
+        cpu.setPc(0x0100);
+        cpu.setSp(0xFFFE);
+        cpu.setA((byte) 0x11);
+        cpu.setB((byte) 0x00);
+        cpu.setC((byte) 0x13);
+        cpu.setD((byte) 0x00);
+        cpu.setE((byte) 0xD8);
+        cpu.setH((byte) 0x01);
+        cpu.setL((byte) 0x4D);
+        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial));
+
+        Queue<String> pcs = new ArrayDeque<>();
+        for (int tick = 0; tick < 15_000_000; tick++) {
+            if (pcs.size() == 300) {
+                pcs.remove();
+            }
+            pcs.add(String.format("%07d %s IF=%02X IE=%02X DIV=%02X TIMA=%02X TMA=%02X TAC=%02X",
+                    tick,
+                    cpu,
+                    bus.read(0xFF0F) & 0xFF,
+                    bus.read(0xFFFF) & 0xFF,
+                    bus.read(0xFF04) & 0xFF,
+                    bus.read(0xFF05) & 0xFF,
+                    bus.read(0xFF06) & 0xFF,
+                    bus.read(0xFF07) & 0xFF));
+
+            if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
+                cpu.tick();
+            } else {
+                tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial);
+            }
+        }
+
+        pcs.forEach(System.out::println);
+        key1.events().forEach(System.out::println);
+        dump(bus, 0xC000, 0x500);
+        dump(bus, 0xD800, 0x100);
+        dump(bus, 0xFF80, 0x80);
+    }
+
+    private void renderRomScreen(String romPath, String outputPath, int ticks) throws IOException {
+        Bus bus = new Bus();
+        Cpu cpu = new Cpu(bus);
+        Timer timer = new Timer(bus);
+        Ppu ppu = new Ppu(bus);
+        Apu apu = Apu.muted();
+        HDMA hdma = new HDMA(bus);
+        DMA dma = new DMA(bus);
+        TraceSerial serial = new TraceSerial(bus);
+        WorkRam workRam = new WorkRam();
+
+        bus.addMemorySpace(timer);
+        bus.addMemorySpace(ppu);
+        bus.addMemorySpace(apu);
+        bus.addMemorySpace(hdma);
+        bus.addMemorySpace(dma);
+        bus.addMemorySpace(new Joypad(bus, new IdleController()));
+        bus.addMemorySpace(workRam);
+        bus.addMemorySpace(new EchoRam(workRam));
+        bus.addMemorySpace(new ZeroPage());
+        bus.addMemorySpace(CartFactory.fromFile(new File(romPath), null));
         bus.addMemorySpace(new Key0(ppu::setCgbMode));
         bus.addMemorySpace(new Key1());
         bus.addMemorySpace(new InfraredPort());
@@ -123,24 +207,24 @@ class InstrTimingTraceTest {
         cpu.setE((byte) 0xD8);
         cpu.setH((byte) 0x01);
         cpu.setL((byte) 0x4D);
-        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, hdma, dma, serial));
+        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial));
 
-        for (int tick = 0; tick < 15_000_000; tick++) {
+        for (int tick = 0; tick < ticks; tick++) {
             if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
                 cpu.tick();
             } else {
-                tickSystem(bus, cpu, timer, ppu, hdma, dma, serial);
+                tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial);
             }
         }
 
-        File output = new File("target/halt_bug-screen.png");
+        File output = new File(outputPath);
         output.getParentFile().mkdirs();
         ImageIO.write((BufferedImage) ppu.getFrameBuffer(), "png", output);
         System.out.println(output.getAbsolutePath());
         System.out.println(serial.text());
     }
 
-    private void tickSystem(Bus bus, Cpu cpu, Timer timer, Ppu ppu, HDMA hdma, DMA dma, TraceSerial serial) {
+    private void tickSystem(Bus bus, Cpu cpu, Timer timer, Ppu ppu, Apu apu, HDMA hdma, DMA dma, TraceSerial serial) {
         if (hdma.isActive()) {
             if (hdma.isHBlankMode() && ppu.isHBlank()) {
                 hdma.tick();
@@ -155,6 +239,7 @@ class InstrTimingTraceTest {
         timer.tick();
         serial.tick();
         ppu.tick();
+        apu.tick();
     }
 
     private void dump(Bus bus, int address, int length) {
@@ -261,6 +346,46 @@ class InstrTimingTraceTest {
 
         private String text() {
             return text.toString();
+        }
+    }
+
+    private static class TraceKey1 extends Key1 {
+        private final Supplier<String> cpuState;
+        private final Queue<String> events = new ArrayDeque<>();
+
+        private TraceKey1(Supplier<String> cpuState) {
+            this.cpuState = cpuState;
+        }
+
+        @Override
+        public byte read(int address) {
+            byte value = super.read(address);
+            add(String.format("%s READ KEY1 -> %02X", cpuState.get(), value & 0xFF));
+            return value;
+        }
+
+        @Override
+        public void write(int address, byte value) {
+            add(String.format("%s WRITE KEY1 <- %02X", cpuState.get(), value & 0xFF));
+            super.write(address, value);
+        }
+
+        @Override
+        public boolean switchSpeedIfPrepared() {
+            boolean switched = super.switchSpeedIfPrepared();
+            add(String.format("%s STOP KEY1 switched=%s value=%02X", cpuState.get(), switched, super.read(0xFF4D) & 0xFF));
+            return switched;
+        }
+
+        private Queue<String> events() {
+            return events;
+        }
+
+        private void add(String event) {
+            if (events.size() == 200) {
+                events.remove();
+            }
+            events.add(event);
         }
     }
 

@@ -4,6 +4,7 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.misc.Key1;
 
 import java.util.List;
 
@@ -32,6 +33,16 @@ public class Timer implements MemorySpace, MachineCycle {
 
     @Override
     public void tick() {
+        int increments = bus.findMemorySpace(Key1.class)
+                .filter(Key1::isDoubleSpeed)
+                .map(key1 -> 2)
+                .orElse(1);
+        for (int i = 0; i < increments; i++) {
+            tickSystemCounter();
+        }
+    }
+
+    private void tickSystemCounter() {
         if (overflowDelay > 0) {
             overflowDelay--;
             if (overflowDelay == 0) {

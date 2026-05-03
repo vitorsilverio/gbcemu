@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.peripherals;
 
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.misc.Key1;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,6 +61,21 @@ class TimerTest {
         assertEquals(0xAB, timer.read(0xFF05) & 0xFF);
         bus.write(0xFFFF, (byte) Interrupt.TIMER.getMask());
         assertEquals(Interrupt.TIMER, bus.getPendingInterrupt().orElseThrow());
+    }
+
+    @Test
+    void doubleSpeedAdvancesSystemCounterTwicePerTick() {
+        Bus bus = new Bus();
+        Key1 key1 = new Key1();
+        Timer timer = new Timer(bus);
+        bus.addMemorySpace(key1);
+        key1.write(0xFF4D, (byte) 0x01);
+        key1.switchSpeedIfPrepared();
+        timer.write(0xFF07, (byte) 0x05);
+
+        tick(timer, 8);
+
+        assertEquals(1, timer.read(0xFF05) & 0xFF);
     }
 
     private void tick(Timer timer, int ticks) {
