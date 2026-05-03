@@ -132,6 +132,60 @@ class PpuTest {
     }
 
     @Test
+    void nonCgbModeIgnoresCgbObjectPaletteAndVramBankAttributes() {
+        Ppu ppu = new Ppu(new Bus(), false);
+        ppu.write(0xFF48, (byte) 0xE4);
+        setObjPaletteColor(ppu, 0, 1, 0x03E0);
+        setObjPaletteColor(ppu, 0, 2, 0x001F);
+        setObjPaletteColor(ppu, 7, 2, 0x7C00);
+        setTilePixel(ppu, 2, 0, 1);
+        ppu.write(0xFF4F, (byte) 1);
+        setTilePixel(ppu, 2, 0, 2);
+        ppu.write(0xFF4F, (byte) 0);
+        ppu.write(0xFE00, (byte) 16);
+        ppu.write(0xFE01, (byte) 8);
+        ppu.write(0xFE02, (byte) 2);
+        ppu.write(0xFE03, (byte) 0x0F);
+        ppu.write(0xFF40, (byte) 0x82);
+
+        renderFirstPixel(ppu);
+
+        assertEquals(0xFF00FF00, getRenderedPixel(ppu, 0, 0));
+    }
+
+    @Test
+    void cgbModeCanSwitchToDmgCompatibilityAfterBootRom() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        ppu.write(0xFF48, (byte) 0xE4);
+        setObjPaletteColor(ppu, 0, 1, 0x03E0);
+        setObjPaletteColor(ppu, 7, 1, 0x001F);
+        ppu.write(0xFE00, (byte) 16);
+        ppu.write(0xFE01, (byte) 8);
+        ppu.write(0xFE02, (byte) 2);
+        ppu.write(0xFE03, (byte) 0x07);
+        setTilePixel(ppu, 2, 0, 1);
+        ppu.write(0xFF40, (byte) 0x82);
+
+        renderFirstPixel(ppu);
+        assertEquals(0xFFFF0000, getRenderedPixel(ppu, 0, 0));
+
+        ppu = new Ppu(new Bus(), true);
+        ppu.setCgbMode(false);
+        ppu.write(0xFF48, (byte) 0xE4);
+        setObjPaletteColor(ppu, 0, 1, 0x03E0);
+        setObjPaletteColor(ppu, 7, 1, 0x001F);
+        ppu.write(0xFE00, (byte) 16);
+        ppu.write(0xFE01, (byte) 8);
+        ppu.write(0xFE02, (byte) 2);
+        ppu.write(0xFE03, (byte) 0x07);
+        setTilePixel(ppu, 2, 0, 1);
+        ppu.write(0xFF40, (byte) 0x82);
+
+        renderFirstPixel(ppu);
+        assertEquals(0xFF00FF00, getRenderedPixel(ppu, 0, 0));
+    }
+
+    @Test
     void scanlineTakesExactly456Dots() {
         Ppu ppu = new Ppu(new Bus());
         ppu.write(0xFF40, (byte) 0x80);
@@ -183,9 +237,14 @@ class PpuTest {
     }
 
     private void setObjPaletteColor(Ppu ppu, int colorIndex, int rgb555) {
-        ppu.write(0xFF6A, (byte) (colorIndex * 2));
+        setObjPaletteColor(ppu, 0, colorIndex, rgb555);
+    }
+
+    private void setObjPaletteColor(Ppu ppu, int paletteIndex, int colorIndex, int rgb555) {
+        int address = paletteIndex * 8 + colorIndex * 2;
+        ppu.write(0xFF6A, (byte) address);
         ppu.write(0xFF6B, (byte) (rgb555 & 0xFF));
-        ppu.write(0xFF6A, (byte) (colorIndex * 2 + 1));
+        ppu.write(0xFF6A, (byte) (address + 1));
         ppu.write(0xFF6B, (byte) ((rgb555 >> 8) & 0xFF));
     }
 

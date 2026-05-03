@@ -59,6 +59,7 @@ public class Ppu implements MemorySpace, MachineCycle {
     private final int[][] frameBuffer; // 160x144 pixels
     private final int[][] bgColorIndexes; // 160x144 pixels
     private final boolean[][] bgPriorities; // 160x144 pixels
+    private boolean cgbMode;
 
     private int cycles;
     private PpuMode mode = PpuMode.OAM_READ;
@@ -79,10 +80,23 @@ public class Ppu implements MemorySpace, MachineCycle {
 
 
     public Ppu(Bus bus) {
+        this(bus, true);
+    }
+
+    public Ppu(Bus bus, boolean cgbMode) {
         this.bus = bus;
+        this.cgbMode = cgbMode;
         this.frameBuffer = new int[160][144];
         this.bgColorIndexes = new int[160][144];
         this.bgPriorities = new boolean[160][144];
+        if (!cgbMode) {
+            objectPriorityMode = ObjectPriorityMode.DMG;
+        }
+    }
+
+    public void setCgbMode(boolean cgbMode) {
+        this.cgbMode = cgbMode;
+        objectPriorityMode = cgbMode ? ObjectPriorityMode.CGB : ObjectPriorityMode.DMG;
     }
 
 
@@ -168,19 +182,22 @@ public class Ppu implements MemorySpace, MachineCycle {
         int indexX = ((pixelX / 8) % 32);
         int index = ((indexY * 32) + indexX) & 0x3ff;
         TileMap map = videoRam.getTileMap(tileMapArea, index);
-        Tile tile = videoRam.getTile(control.getTileArea(), map.getBank(), map.getIndex());
+        int bank = cgbMode ? map.getBank() : 0;
+        Tile tile = videoRam.getTile(control.getTileArea(), bank, map.getIndex());
 
         int tileX = pixelX & 0x7;
         int tileY = pixelY & 0x7;
-        if (map.isFlipX()) {
+        if (cgbMode && map.isFlipX()) {
             tileX = 7 - tileX;
         }
-        if (map.isFlipY()) {
+        if (cgbMode && map.isFlipY()) {
             tileY = 7 - tileY;
         }
 
         int colorIndex = tile.getPixel(tileX, tileY);
-        return new Pixel(colorIndex, bgPalette.getColor(map.getPaletteIndex(), colorIndex), map.isPriority());
+        int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
+        int mappedColorIndex = cgbMode ? colorIndex : bgPaletteDmg.getColor(colorIndex);
+        return new Pixel(colorIndex, bgPalette.getColor(paletteIndex, mappedColorIndex), cgbMode && map.isPriority());
     }
 
     private boolean isWindowVisibleAt(int x, int y) {
@@ -205,9 +222,10 @@ public class Ppu implements MemorySpace, MachineCycle {
             return bgPixel;
         }
 
-        return new Pixel(spritePixel.colorIndex(),
-                objPalette.getColor(spritePixel.attribute().getCgbPalette(), spritePixel.colorIndex()),
-                false);
+        int paletteIndex = cgbMode ? spritePixel.attribute().getCgbPalette() : spritePixel.attribute().getDmgPalette();
+        int colorIndex = spritePixel.colorIndex();
+        int mappedColorIndex = cgbMode ? colorIndex : getDmgObjectPalette(spritePixel.attribute()).getColor(colorIndex);
+        return new Pixel(colorIndex, objPalette.getColor(paletteIndex, mappedColorIndex), false);
     }
 
     private SpritePixel findSpritePixel(int x, int y) {
@@ -255,7 +273,8 @@ public class Ppu implements MemorySpace, MachineCycle {
                 }
             }
 
-            Tile tile = videoRam.getTile(TileArea.METHOD_8000, object.getBank(), tileIndex);
+            int bank = cgbMode ? object.getBank() : 0;
+            Tile tile = videoRam.getTile(TileArea.METHOD_8000, bank, tileIndex);
             int colorIndex = tile.getPixel(tileX, tileY);
             if (colorIndex != 0) {
                 return new SpritePixel(colorIndex, object);
@@ -272,6 +291,10 @@ public class Ppu implements MemorySpace, MachineCycle {
             return false;
         }
         return bgPixel.priority() || object.isPriority();
+    }
+
+    private DmgPalette getDmgObjectPalette(ObjectAtribute object) {
+        return object.getDmgPalette() == 0 ? obj0PaletteDmg : obj1PaletteDmg;
     }
 
     private void execOAMRead() {

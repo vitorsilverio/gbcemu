@@ -42,6 +42,10 @@ public class CartHeader {
         return cartridgeType;
     }
 
+    public boolean isCgbCompatible() {
+        return cgbFlag == (byte) 0x80 || cgbFlag == (byte) 0xC0;
+    }
+
     public int getRamSizeBytes() {
         return switch (ramSize & 0xFF) {
             case 0x00 -> 0;

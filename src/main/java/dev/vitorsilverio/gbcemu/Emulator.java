@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
+import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
@@ -34,6 +35,7 @@ public class Emulator {
     private final DMA dma;
     private final Display display;
     private final boolean throttled;
+    private final boolean cartridgeCgbCompatible;
     private int dots;
     private long frameStart = System.nanoTime();
 
@@ -51,9 +53,11 @@ public class Emulator {
             Bios bios = new Bios(biosFile);
             bus.addMemorySpace(bios);
         }
+        Cart cart = CartFactory.fromFile(romFile, saveFile);
+        this.cartridgeCgbCompatible = cart.getHeader().isCgbCompatible();
         this.cpu = new Cpu(bus);
         this.timer = new Timer(bus);
-        this.ppu = new Ppu(bus);
+        this.ppu = new Ppu(bus, biosFile != null || cartridgeCgbCompatible);
         this.apu = headless ? Apu.muted() : new Apu();
         this.hdma = new HDMA(bus);
         this.dma = new DMA(bus);
@@ -72,8 +76,8 @@ public class Emulator {
         bus.addMemorySpace(echoRam);
         var zeroPage = new ZeroPage();
         bus.addMemorySpace(zeroPage);
-        bus.addMemorySpace(CartFactory.fromFile(romFile, saveFile));
-        bus.addMemorySpace(new Key0());
+        bus.addMemorySpace(cart);
+        bus.addMemorySpace(new Key0(ppu::setCgbMode));
         bus.addMemorySpace(new Key1());
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
@@ -138,6 +142,7 @@ public class Emulator {
 
     public void skipBios() {
         cpu.getBus().write(0xFF50, (byte) 0x01);
+        ppu.setCgbMode(cartridgeCgbCompatible);
         cpu.setPc(0x100);
         cpu.setSp(0xfffe);
         cpu.setA((byte) 0x01);

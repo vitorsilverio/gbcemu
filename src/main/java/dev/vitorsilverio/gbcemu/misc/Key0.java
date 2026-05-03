@@ -2,6 +2,8 @@ package dev.vitorsilverio.gbcemu.misc;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 
+import java.util.function.Consumer;
+
 /**
  * <p>This GBC-only register (which is not officially documented) is written only by the CGB boot ROM, as it gets locked after the bootrom finish execution (by a write to the BANK register).</p>
  * <p>Once it is locked, the behavior of the system can’t be changed without a reset (this behavior can be observed using this test ROM).</p>
@@ -11,6 +13,16 @@ import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 public class Key0 implements MemorySpace {
 
     private byte key0 = 0;
+    private final Consumer<Boolean> onCgbModeChange;
+
+    public Key0() {
+        this(cgbMode -> {
+        });
+    }
+
+    public Key0(Consumer<Boolean> onCgbModeChange) {
+        this.onCgbModeChange = onCgbModeChange;
+    }
 
     @Override
     public boolean contains(int address) {
@@ -25,5 +37,6 @@ public class Key0 implements MemorySpace {
     @Override
     public void write(int address, byte value) {
         key0 = value;
+        onCgbModeChange.accept((value & 0x04) == 0);
     }
 }
