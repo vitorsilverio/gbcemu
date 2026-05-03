@@ -8,8 +8,10 @@ import dev.vitorsilverio.gbcemu.ppu.TileMapArea;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
@@ -35,6 +37,9 @@ public class DebugWindow {
     private final Cpu cpu;
     private final Bus bus;
     private final Ppu ppu;
+    private final DebugController debugController;
+    private final Runnable pauseAction;
+    private final Runnable resumeAction;
     private final JFrame window = new JFrame("GBC EMU Debugger");
     private final JTextArea cpuText = textArea();
     private final JTextArea memoryMapText = textArea();
@@ -48,6 +53,9 @@ public class DebugWindow {
         }
     };
     private final JTable memoryTable = new JTable(memoryModel);
+    private final JTextField pcBreakpoint = new JTextField("0100", 6);
+    private final DefaultListModel<String> breakpointModel = new DefaultListModel<>();
+    private final JList<String> breakpointList = new JList<>(breakpointModel);
     private boolean updatingMemoryTable;
     private final ImagePanel tilesBank0 = new ImagePanel(3);
     private final ImagePanel tilesBank1 = new ImagePanel(3);
@@ -56,17 +64,20 @@ public class DebugWindow {
     private final ImagePanel bgPalettes = new ImagePanel(4);
     private final ImagePanel objPalettes = new ImagePanel(4);
 
-    public static void open(Cpu cpu, Bus bus, Ppu ppu) {
+    public static void open(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, Runnable pauseAction, Runnable resumeAction) {
         if (current == null) {
-            current = new DebugWindow(cpu, bus, ppu);
+            current = new DebugWindow(cpu, bus, ppu, debugController, pauseAction, resumeAction);
         }
         current.show();
     }
 
-    private DebugWindow(Cpu cpu, Bus bus, Ppu ppu) {
+    private DebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, Runnable pauseAction, Runnable resumeAction) {
         this.cpu = cpu;
         this.bus = bus;
         this.ppu = ppu;
+        this.debugController = debugController;
+        this.pauseAction = pauseAction;
+        this.resumeAction = resumeAction;
         initialize();
     }
 
@@ -84,6 +95,7 @@ public class DebugWindow {
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("CPU / Instructions", new JScrollPane(cpuText));
+        tabs.addTab("Breakpoints", breakpointsPanel());
         tabs.addTab("Memory Map", new JScrollPane(memoryMapText));
         tabs.addTab("Memory", memoryPanel());
         tabs.addTab("Tiles", imageGrid(tilesBank0, tilesBank1));
@@ -98,6 +110,31 @@ public class DebugWindow {
                 refresh();
             }
         }).start();
+    }
+
+    private JPanel breakpointsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JPanel controls = new JPanel();
+
+        JButton pause = new JButton("Pause");
+        pause.addActionListener(event -> pauseAction.run());
+        JButton resume = new JButton("Resume");
+        resume.addActionListener(event -> resumeAction.run());
+        JButton add = new JButton("Add PC");
+        add.addActionListener(event -> addPcBreakpoint());
+        JButton remove = new JButton("Remove Selected");
+        remove.addActionListener(event -> removeSelectedPcBreakpoint());
+
+        controls.add(pause);
+        controls.add(resume);
+        controls.add(new JLabel("PC"));
+        controls.add(pcBreakpoint);
+        controls.add(add);
+        controls.add(remove);
+
+        panel.add(controls, BorderLayout.NORTH);
+        panel.add(new JScrollPane(breakpointList), BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel memoryPanel() {
@@ -162,6 +199,7 @@ public class DebugWindow {
     private void refresh() {
         cpuText.setText(cpuSnapshotText() + "\n\n" + instructionText());
         memoryMapText.setText(memoryMapText());
+        refreshBreakpoints();
         tilesBank0.setImage(ppu.debugTileImage(0));
         tilesBank1.setImage(ppu.debugTileImage(1));
         bgMap9800.setImage(ppu.debugTileMapImage(TileMapArea.IN_9800));
@@ -178,6 +216,7 @@ public class DebugWindow {
                         PC:%04X SP:%04X AF:%04X BC:%04X DE:%04X HL:%04X
                         A:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X
                         Flags: Z=%s N=%s H=%s C=%s IME=%s halted=%s stopped=%s haltBug=%s speed=%dx
+                        Break: %s
 
                         PPU
                         LCDC:%02X STAT:%02X mode:%s LY:%02X LX:%03d cycles:%03d SCX:%02X SCY:%02X WX:%02X WY:%02X LYC:%02X CGB:%s
@@ -186,9 +225,35 @@ public class DebugWindow {
                 cpuSnapshot.a(), cpuSnapshot.b(), cpuSnapshot.c(), cpuSnapshot.d(), cpuSnapshot.e(), cpuSnapshot.h(), cpuSnapshot.l(),
                 cpuSnapshot.zeroFlag(), cpuSnapshot.negativeFlag(), cpuSnapshot.halfCarryFlag(), cpuSnapshot.carryFlag(),
                 cpuSnapshot.ime(), cpuSnapshot.halted(), cpuSnapshot.stopped(), cpuSnapshot.haltBug(), cpuSnapshot.speedRate(),
+                debugController.breakReason(),
                 ppuSnapshot.lcdc(), ppuSnapshot.stat(), ppuSnapshot.mode(), ppuSnapshot.line(), ppuSnapshot.column(),
                 ppuSnapshot.cycles(), ppuSnapshot.scrollX(), ppuSnapshot.scrollY(), ppuSnapshot.windowX(), ppuSnapshot.windowY(),
                 ppuSnapshot.lineCompare(), ppuSnapshot.cgbMode());
+    }
+
+    private void addPcBreakpoint() {
+        int pc = parseHex(pcBreakpoint.getText(), -1);
+        if (pc < 0 || pc > 0xFFFF) {
+            return;
+        }
+        debugController.addPcBreakpoint(pc);
+        refreshBreakpoints();
+    }
+
+    private void removeSelectedPcBreakpoint() {
+        String selected = breakpointList.getSelectedValue();
+        if (selected == null) {
+            return;
+        }
+        debugController.removePcBreakpoint(parseHex(selected, -1));
+        refreshBreakpoints();
+    }
+
+    private void refreshBreakpoints() {
+        breakpointModel.clear();
+        for (int breakpoint : debugController.pcBreakpoints()) {
+            breakpointModel.addElement(String.format("%04X", breakpoint));
+        }
     }
 
     private String instructionText() {

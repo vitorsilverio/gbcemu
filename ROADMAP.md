@@ -67,7 +67,7 @@ Este documento organiza as melhorias e metas do emulador. A ideia é manter uma 
   - Dump textual para `target/debug-memory.txt`.
 
 - [ ] Breakpoints.
-  - Breakpoint por PC.
+  - [x] Breakpoint por PC.
   - Breakpoint por leitura/escrita de endereco.
   - Breakpoint por valor/condicao simples.
   - Integrar com pause/resume/step.

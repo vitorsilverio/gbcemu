@@ -7,6 +7,7 @@ import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
+import dev.vitorsilverio.gbcemu.debug.DebugController;
 import dev.vitorsilverio.gbcemu.debug.DebugWindow;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.DMA;
@@ -37,6 +38,7 @@ public class Emulator {
     private final Display display;
     private final boolean throttled;
     private final boolean cartridgeCgbCompatible;
+    private final DebugController debugController = new DebugController();
     private volatile boolean paused;
     private volatile boolean stopped;
     private int dots;
@@ -109,6 +111,10 @@ public class Emulator {
                 sleepNanos(2_000_000);
                 continue;
             }
+            if (debugController.shouldBreakAtPc(cpu.getPc())) {
+                paused = true;
+                continue;
+            }
             if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
                 cpu.tick();
             } else {
@@ -122,6 +128,7 @@ public class Emulator {
     }
 
     public void resume() {
+        debugController.ignorePcBreakpointOnce(cpu.getPc());
         paused = false;
         frameStart = System.nanoTime();
     }
@@ -132,7 +139,7 @@ public class Emulator {
     }
 
     private void openDebugger() {
-        DebugWindow.open(cpu, cpu.getBus(), ppu);
+        DebugWindow.open(cpu, cpu.getBus(), ppu, debugController, this::pause, this::resume);
     }
 
     private void tickSystemCycle() {
