@@ -356,17 +356,11 @@ public class Cpu implements MachineCycle {
         int value = readWord(sp);
         sp += 2;
         sp &= 0xFFFF; // Ensure SP wraps around
-        if (value == 0x00f9) {
-            logger.debug("Popped value: " + Integer.toHexString(value));
-        }
         return value;
     }
 
     public void pushStack(int value) {
         sp -= 2;
-        if ((value & 0xffff) == 0x00f9) {
-            logger.debug("Pushed value: " + Integer.toHexString(value));
-        }
         writeWord(sp, value);
     }
 
