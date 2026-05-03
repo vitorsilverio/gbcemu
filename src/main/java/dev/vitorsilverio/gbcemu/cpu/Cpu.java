@@ -338,10 +338,6 @@ public class Cpu implements MachineCycle {
         return value;
     }
 
-    public int peekStack() {
-        return bus.readWord(sp);
-    }
-
     public void pushStack(int value) {
         sp -= 2;
         if ((value & 0xffff) == 0x00f9) {
