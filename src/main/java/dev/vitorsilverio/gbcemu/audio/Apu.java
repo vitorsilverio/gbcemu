@@ -9,6 +9,7 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import java.util.Arrays;
 import java.util.List;
 
 public class Apu implements MemorySpace, MachineCycle {
@@ -288,9 +289,7 @@ public class Apu implements MemorySpace, MachineCycle {
         audioEnabled = enabled;
         registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) (enabled ? 0x80 : 0x00);
         if (!enabled) {
-            for (int i = 0; i < registers.length; i++) {
-                registers[i] = 0;
-            }
+            Arrays.fill(registers, (byte) 0);
             channel1.disable();
             channel2.disable();
             channel3.disable();
