@@ -17,6 +17,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.Timer;
+import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -40,8 +41,14 @@ public class DebugWindow {
     private final JTextField memoryStart = new JTextField("C000", 6);
     private final JTextField memoryLength = new JTextField("0100", 6);
     private final JComboBox<MemoryRegion> memoryRegion = new JComboBox<>(MemoryRegion.values());
-    private final DefaultTableModel memoryModel = new DefaultTableModel();
+    private final DefaultTableModel memoryModel = new DefaultTableModel() {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return column > 0;
+        }
+    };
     private final JTable memoryTable = new JTable(memoryModel);
+    private boolean updatingMemoryTable;
     private final ImagePanel tilesBank0 = new ImagePanel(3);
     private final ImagePanel tilesBank1 = new ImagePanel(3);
     private final ImagePanel bgMap9800 = new ImagePanel(2);
@@ -125,6 +132,11 @@ public class DebugWindow {
         for (int i = 1; i < memoryTable.getColumnCount(); i++) {
             memoryTable.getColumnModel().getColumn(i).setPreferredWidth(34);
         }
+        memoryModel.addTableModelListener(event -> {
+            if (!updatingMemoryTable && event.getType() == TableModelEvent.UPDATE && event.getColumn() > 0) {
+                writeMemoryCell(event.getFirstRow(), event.getColumn());
+            }
+        });
         refreshMemoryTable();
     }
 
@@ -150,7 +162,6 @@ public class DebugWindow {
     private void refresh() {
         cpuText.setText(cpuSnapshotText() + "\n\n" + instructionText());
         memoryMapText.setText(memoryMapText());
-        refreshMemoryTable();
         tilesBank0.setImage(ppu.debugTileImage(0));
         tilesBank1.setImage(ppu.debugTileImage(1));
         bgMap9800.setImage(ppu.debugTileMapImage(TileMapArea.IN_9800));
@@ -227,6 +238,7 @@ public class DebugWindow {
         int start = parseHex(memoryStart.getText(), 0xC000) & 0xFFFF;
         int length = Math.max(16, Math.min(parseHex(memoryLength.getText(), 0x0100), 0x10000));
         int rows = (length + 15) / 16;
+        updatingMemoryTable = true;
         memoryModel.setRowCount(0);
         for (int row = 0; row < rows; row++) {
             Object[] values = new Object[17];
@@ -238,6 +250,21 @@ public class DebugWindow {
             }
             memoryModel.addRow(values);
         }
+        updatingMemoryTable = false;
+    }
+
+    private void writeMemoryCell(int row, int column) {
+        int rowAddress = parseHex(String.valueOf(memoryModel.getValueAt(row, 0)), 0);
+        int address = (rowAddress + column - 1) & 0xFFFF;
+        int byteValue = parseHex(String.valueOf(memoryModel.getValueAt(row, column)), -1);
+        if (byteValue < 0 || byteValue > 0xFF) {
+            refreshMemoryTable();
+            return;
+        }
+        bus.write(address, (byte) byteValue);
+        updatingMemoryTable = true;
+        memoryModel.setValueAt(String.format("%02X", byteValue), row, column);
+        updatingMemoryTable = false;
     }
 
     private int parseHex(String text, int fallback) {
