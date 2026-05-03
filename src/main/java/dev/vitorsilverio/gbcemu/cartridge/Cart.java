@@ -74,6 +74,12 @@ public abstract class Cart implements MemorySpace {
         return readRom(bankOffset + (address - 0x4000));
     }
 
+    protected byte readRomBankAllowZero(int bank, int address) {
+        int normalized = romBanks == 0 ? 0 : bank % romBanks;
+        int bankOffset = normalized * ROM_BANK_SIZE;
+        return readRom(bankOffset + (address - 0x4000));
+    }
+
     protected byte readRom(int address) {
         if (rom.length == 0) {
             return (byte) 0xFF;

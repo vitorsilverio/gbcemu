@@ -52,6 +52,22 @@ public enum CartridgeType {
                 this == MBC3_RAM_BATTERY;
     }
 
+    public boolean isMbc5() {
+        return this == MBC5 ||
+                this == MBC5_RAM ||
+                this == MBC5_RAM_BATTERY ||
+                this == MBC5_RUMBLE ||
+                this == MBC5_RUMBLE_RAM ||
+                this == MBC5_RUMBLE_RAM_BATTERY;
+    }
+
+    public boolean hasRumble() {
+        return this == MBC5_RUMBLE ||
+                this == MBC5_RUMBLE_RAM ||
+                this == MBC5_RUMBLE_RAM_BATTERY ||
+                this == MBC7_SENSOR_RUMBLE_RAM_BATTERY;
+    }
+
     public boolean hasBattery() {
         return this == MBC1_RAM_BATTERY ||
                 this == ROM_RAM_BATTERY ||

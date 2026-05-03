@@ -163,6 +163,83 @@ class CartTest {
         assertEquals(0x77, loaded.read(0xA000) & 0xFF);
     }
 
+    @Test
+    void mbc5AllowsSelectingRomBankZeroInSwitchableArea() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC5, 0x02, 0x00));
+
+        cart.write(0x2000, (byte) 0x00);
+
+        assertEquals(0x00, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void mbc5UsesNineBitRomBankNumber() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC5, 0x101, 0x00));
+
+        cart.write(0x2000, (byte) 0x00);
+        cart.write(0x3000, (byte) 0x01);
+
+        assertEquals(0x00, cart.read(0x4000) & 0xFF);
+        assertEquals(0x01, cart.read(0x4001) & 0xFF);
+    }
+
+    @Test
+    void mbc5MapsSixteenExternalRamBanksWhenEnabled() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC5_RAM, 0x02, 0x04));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x0F);
+        cart.write(0xA000, (byte) 0x5A);
+        cart.write(0x4000, (byte) 0x00);
+
+        assertEquals(0x00, cart.read(0xA000) & 0xFF);
+
+        cart.write(0x4000, (byte) 0x0F);
+
+        assertEquals(0x5A, cart.read(0xA000) & 0xFF);
+    }
+
+    @Test
+    void mbc5RamReadsAsFfWhenDisabled() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC5_RAM, 0x02, 0x02));
+
+        cart.write(0xA000, (byte) 0x5A);
+
+        assertEquals(0xFF, cart.read(0xA000) & 0xFF);
+    }
+
+    @Test
+    void mbc5RumbleUsesBitThreeWithoutSelectingRamBankEight() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC5_RUMBLE_RAM, 0x02, 0x04));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x01);
+        cart.write(0xA000, (byte) 0x11);
+        cart.write(0x4000, (byte) 0x09);
+        cart.write(0xA000, (byte) 0x99);
+
+        assertEquals(0x99, cart.read(0xA000) & 0xFF);
+        assertEquals(true, ((Mbc5Cart) cart).isRumbleEnabled());
+    }
+
+    @Test
+    void mbc5BatteryRamPersistsToSaveFile() throws IOException {
+        File rom = writeRom(CartridgeType.MBC5_RAM_BATTERY, 0x02, 0x03);
+        File save = tempDir.resolve("mbc5.sav").toFile();
+        Cart cart = CartFactory.fromFile(rom, save);
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x01);
+        cart.write(0xA123, (byte) 0x66);
+        cart.flushSave();
+
+        Cart loaded = CartFactory.fromFile(rom, save);
+        loaded.write(0x0000, (byte) 0x0A);
+        loaded.write(0x4000, (byte) 0x01);
+
+        assertEquals(0x66, loaded.read(0xA123) & 0xFF);
+    }
+
     private File writeRom(CartridgeType cartridgeType, byte bank0Value, byte bank1Value) throws IOException {
         byte[] rom = new byte[0x8000];
         rom[0] = bank0Value;
@@ -179,6 +256,7 @@ class CartTest {
         byte[] rom = new byte[0x4000 * romBanks];
         for (int bank = 0; bank < romBanks; bank++) {
             rom[bank * 0x4000] = (byte) bank;
+            rom[bank * 0x4000 + 1] = (byte) (bank >> 8);
         }
         rom[0x0147] = (byte) cartridgeType.getCode();
         rom[0x0148] = 0;

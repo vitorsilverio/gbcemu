@@ -1,15 +1,15 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
 import java.io.File;
-import java.util.function.LongSupplier;
 
 public class Mbc5Cart extends Cart {
 
 
-    private int romBank = 1;
+    private int romBankLow;
+    private int romBankHigh;
     private int ramBank;
-    private int ramSelect;
     private boolean ramEnabled;
+    private boolean rumbleEnabled;
 
     Mbc5Cart(byte[] rom, File saveFile) {
         super(rom, saveFile);
@@ -20,16 +20,12 @@ public class Mbc5Cart extends Cart {
         int unsigned = value & 0xFF;
         if (address < 0x2000) {
             ramEnabled = (unsigned & 0x0F) == 0x0A;
+        } else if (address < 0x3000) {
+            romBankLow = unsigned;
         } else if (address < 0x4000) {
-            romBank = unsigned & 0x7F;
-            if (romBank == 0) {
-                romBank = 1;
-            }
+            romBankHigh = unsigned & 0x01;
         } else if (address < 0x6000) {
-            ramSelect = unsigned;
-            if (unsigned <= 0x07) {
-                ramBank = unsigned;
-            }
+            selectRamBank(unsigned);
         } else if (address >= 0xA000 && address < 0xC000) {
             writeExternal(address, value);
         }
@@ -37,7 +33,7 @@ public class Mbc5Cart extends Cart {
 
     @Override
     protected byte readSwitchableRom(int address) {
-        return readRomBank(romBank, address);
+        return readRomBankAllowZero(selectedRomBank(), address);
     }
 
     @Override
@@ -53,10 +49,23 @@ public class Mbc5Cart extends Cart {
         if (!ramEnabled) {
             return;
         }
-        if (ramSelect >= 0x08 && ramSelect <= 0x0C) {
-            markSaveDirty();
+        writeRam(ramBank, address, value);
+    }
+
+    boolean isRumbleEnabled() {
+        return rumbleEnabled;
+    }
+
+    private int selectedRomBank() {
+        return ((romBankHigh & 0x01) << 8) | romBankLow;
+    }
+
+    private void selectRamBank(int value) {
+        if (header.getCartridgeType().hasRumble()) {
+            rumbleEnabled = (value & 0x08) != 0;
+            ramBank = value & 0x07;
             return;
         }
-        writeRam(ramBank, address, value);
+        ramBank = value & 0x0F;
     }
 }
