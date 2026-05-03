@@ -339,7 +339,7 @@ public class Decoder {
         instructionSet.put(0xCB43, new BitInstruction(0, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB44, new BitInstruction(0, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB45, new BitInstruction(0, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB46, new BitInstruction(0, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB46, new BitInstruction(0, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB47, new BitInstruction(0, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB48, new BitInstruction(1, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB49, new BitInstruction(1, SourceC.INSTANCE, 8));
@@ -347,7 +347,7 @@ public class Decoder {
         instructionSet.put(0xCB4B, new BitInstruction(1, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB4C, new BitInstruction(1, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB4D, new BitInstruction(1, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB4E, new BitInstruction(1, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB4E, new BitInstruction(1, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB4F, new BitInstruction(1, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB50, new BitInstruction(2, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB51, new BitInstruction(2, SourceC.INSTANCE, 8));
@@ -355,7 +355,7 @@ public class Decoder {
         instructionSet.put(0xCB53, new BitInstruction(2, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB54, new BitInstruction(2, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB55, new BitInstruction(2, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB56, new BitInstruction(2, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB56, new BitInstruction(2, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB57, new BitInstruction(2, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB58, new BitInstruction(3, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB59, new BitInstruction(3, SourceC.INSTANCE, 8));
@@ -363,7 +363,7 @@ public class Decoder {
         instructionSet.put(0xCB5B, new BitInstruction(3, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB5C, new BitInstruction(3, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB5D, new BitInstruction(3, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB5E, new BitInstruction(3, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB5E, new BitInstruction(3, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB5F, new BitInstruction(3, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB60, new BitInstruction(4, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB61, new BitInstruction(4, SourceC.INSTANCE, 8));
@@ -371,7 +371,7 @@ public class Decoder {
         instructionSet.put(0xCB63, new BitInstruction(4, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB64, new BitInstruction(4, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB65, new BitInstruction(4, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB66, new BitInstruction(4, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB66, new BitInstruction(4, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB67, new BitInstruction(4, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB68, new BitInstruction(5, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB69, new BitInstruction(5, SourceC.INSTANCE, 8));
@@ -379,7 +379,7 @@ public class Decoder {
         instructionSet.put(0xCB6B, new BitInstruction(5, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB6C, new BitInstruction(5, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB6D, new BitInstruction(5, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB6E, new BitInstruction(5, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB6E, new BitInstruction(5, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB6F, new BitInstruction(5, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB70, new BitInstruction(6, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB71, new BitInstruction(6, SourceC.INSTANCE, 8));
@@ -387,7 +387,7 @@ public class Decoder {
         instructionSet.put(0xCB73, new BitInstruction(6, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB74, new BitInstruction(6, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB75, new BitInstruction(6, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB76, new BitInstruction(6, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB76, new BitInstruction(6, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB77, new BitInstruction(6, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB78, new BitInstruction(7, SourceB.INSTANCE, 8));
         instructionSet.put(0xCB79, new BitInstruction(7, SourceC.INSTANCE, 8));
@@ -395,7 +395,7 @@ public class Decoder {
         instructionSet.put(0xCB7B, new BitInstruction(7, SourceE.INSTANCE, 8));
         instructionSet.put(0xCB7C, new BitInstruction(7, SourceH.INSTANCE, 8));
         instructionSet.put(0xCB7D, new BitInstruction(7, SourceL.INSTANCE, 8));
-        instructionSet.put(0xCB7E, new BitInstruction(7, SourceReferenceHL.INSTANCE_DEFAULT, 16));
+        instructionSet.put(0xCB7E, new BitInstruction(7, SourceReferenceHL.INSTANCE_DEFAULT, 12));
         instructionSet.put(0xCB7F, new BitInstruction(7, SourceA.INSTANCE, 8));
         instructionSet.put(0xCB80, new ResInstruction(0, SourceB.INSTANCE, DestinationB.INSTANCE, 8));
         instructionSet.put(0xCB81, new ResInstruction(0, SourceC.INSTANCE, DestinationC.INSTANCE, 8));

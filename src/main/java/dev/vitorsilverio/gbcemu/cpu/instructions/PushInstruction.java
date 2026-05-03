@@ -16,7 +16,7 @@ public class PushInstruction implements Instruction {
         int value = source.getValue(cpu);
         cpu.pushStack(value);
         cpu.incrementProgramCounter(1);
-        return 12;
+        return 16;
     }
 
     @Override

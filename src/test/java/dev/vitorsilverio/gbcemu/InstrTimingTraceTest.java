@@ -56,6 +56,7 @@ class InstrTimingTraceTest {
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
         bus.addMemorySpace(serial);
+        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, hdma, dma, serial));
 
         Queue<String> pcs = new ArrayDeque<>();
         for (int tick = 0; tick < 5_000_000 && !serial.text().contains("Failed") && !serial.text().contains("Passed"); tick++) {
@@ -68,25 +69,11 @@ class InstrTimingTraceTest {
                     bus.read(0xFF0F) & 0xFF,
                     bus.read(0xFFFF) & 0xFF));
 
-            if (hdma.isActive()) {
-                if (hdma.isHBlankMode()) {
-                    if (ppu.isHBlank()) {
-                        hdma.tick();
-                    }
-                }
-                if (hdma.isGeneralPurposeMode()) {
-                    hdma.tick();
-                }
-            }
-            if (dma.isActive()) {
-                dma.tick();
-            }
             if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
                 cpu.tick();
+            } else {
+                tickSystem(bus, cpu, timer, ppu, hdma, dma, serial);
             }
-            timer.tick();
-            serial.tick();
-            ppu.tick();
         }
 
         pcs.forEach(System.out::println);
@@ -95,6 +82,23 @@ class InstrTimingTraceTest {
         dump(bus, 0xC880, 0xC0);
         dump(bus, 0xD7F0, 0x30);
         System.out.println(serial.text());
+    }
+
+    private void tickSystem(Bus bus, Cpu cpu, Timer timer, Ppu ppu, HDMA hdma, DMA dma, TraceSerial serial) {
+        if (hdma.isActive()) {
+            if (hdma.isHBlankMode() && ppu.isHBlank()) {
+                hdma.tick();
+            }
+            if (hdma.isGeneralPurposeMode()) {
+                hdma.tick();
+            }
+        }
+        if (dma.isActive()) {
+            dma.tick();
+        }
+        timer.tick();
+        serial.tick();
+        ppu.tick();
     }
 
     private void dump(Bus bus, int address, int length) {

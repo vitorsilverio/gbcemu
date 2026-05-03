@@ -89,6 +89,68 @@ class CpuTimingTest {
     }
 
     @Test
+    void pushRegisterPairConsumesSixteenCycles() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        int[] ticks = countCpuCycles(cpu);
+        cpu.setSp(0xFFFE);
+        cpu.setBc(0x1234);
+        bus.write(0x0000, (byte) 0xC5);
+
+        cpu.tick();
+
+        assertEquals(0xFFFC, cpu.getSp());
+        assertEquals(0x1234, bus.readWord(0xFFFC));
+        assertEquals(16, ticks[0]);
+    }
+
+    @Test
+    void notTakenRelativeJumpConsumesEightCyclesEvenWithNegativeOffset() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        int[] ticks = countCpuCycles(cpu);
+        cpu.setZeroFlag(true);
+        bus.write(0x0000, (byte) 0x20);
+        bus.write(0x0001, (byte) 0xFE);
+
+        cpu.tick();
+
+        assertEquals(0x0002, cpu.getPc());
+        assertEquals(8, ticks[0]);
+    }
+
+    @Test
+    void takenRelativeJumpConsumesTwelveCyclesWithSingleImmediateRead() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        int[] ticks = countCpuCycles(cpu);
+        cpu.setZeroFlag(false);
+        bus.write(0x0000, (byte) 0x20);
+        bus.write(0x0001, (byte) 0xFE);
+
+        cpu.tick();
+
+        assertEquals(0x0000, cpu.getPc());
+        assertEquals(12, ticks[0]);
+    }
+
+    @Test
+    void cbBitReferenceHlConsumesTwelveCycles() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        int[] ticks = countCpuCycles(cpu);
+        cpu.setHl(0xC000);
+        bus.write(0x0000, (byte) 0xCB);
+        bus.write(0x0001, (byte) 0x46);
+        bus.write(0xC000, (byte) 0x01);
+
+        cpu.tick();
+
+        assertEquals(0x0002, cpu.getPc());
+        assertEquals(12, ticks[0]);
+    }
+
+    @Test
     void highIoReadObservesTimerInterruptAtMemoryReadCycle() {
         Bus bus = new Bus();
         Timer timer = new Timer(bus);

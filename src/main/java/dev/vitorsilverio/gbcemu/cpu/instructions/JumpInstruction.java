@@ -29,15 +29,16 @@ public class JumpInstruction implements Instruction {
     @Override
     public int execute(Cpu cpu) {
         int address = cpu.getPc();
+        int sourceValue = source.getValue(cpu);
         if (relative) {
-            if (source.getValue(cpu) > 127) {
-                address = (address + source.getValue(cpu) - 256) & 0xFFFF;
+            if (sourceValue > 127) {
+                address = (address + sourceValue - 256) & 0xFFFF;
             } else {
-                address += source.getValue(cpu);
+                address += sourceValue;
             }
             address += bytes;
         } else {
-            address = source.getValue(cpu);
+            address = sourceValue;
         }
         if (condition != null) {
             switch (condition) {
