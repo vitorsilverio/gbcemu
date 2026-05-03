@@ -1,0 +1,373 @@
+package dev.vitorsilverio.gbcemu.debug;
+
+import dev.vitorsilverio.gbcemu.cpu.Cpu;
+import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.ppu.TileMapArea;
+
+import javax.imageio.ImageIO;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.Timer;
+import javax.swing.table.DefaultTableModel;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+public class DebugWindow {
+
+    private static DebugWindow current;
+
+    private final Cpu cpu;
+    private final Bus bus;
+    private final Ppu ppu;
+    private final JFrame window = new JFrame("GBC EMU Debugger");
+    private final JTextArea cpuText = textArea();
+    private final JTextArea memoryMapText = textArea();
+    private final JTextField memoryStart = new JTextField("C000", 6);
+    private final JTextField memoryLength = new JTextField("0100", 6);
+    private final JComboBox<MemoryRegion> memoryRegion = new JComboBox<>(MemoryRegion.values());
+    private final DefaultTableModel memoryModel = new DefaultTableModel();
+    private final JTable memoryTable = new JTable(memoryModel);
+    private final ImagePanel tilesBank0 = new ImagePanel(3);
+    private final ImagePanel tilesBank1 = new ImagePanel(3);
+    private final ImagePanel bgMap9800 = new ImagePanel(2);
+    private final ImagePanel bgMap9C00 = new ImagePanel(2);
+    private final ImagePanel bgPalettes = new ImagePanel(4);
+    private final ImagePanel objPalettes = new ImagePanel(4);
+
+    public static void open(Cpu cpu, Bus bus, Ppu ppu) {
+        if (current == null) {
+            current = new DebugWindow(cpu, bus, ppu);
+        }
+        current.show();
+    }
+
+    private DebugWindow(Cpu cpu, Bus bus, Ppu ppu) {
+        this.cpu = cpu;
+        this.bus = bus;
+        this.ppu = ppu;
+        initialize();
+    }
+
+    private void initialize() {
+        window.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+        window.setLayout(new BorderLayout());
+        JButton refresh = new JButton("Refresh");
+        refresh.addActionListener(event -> refresh());
+        JButton dump = new JButton("Dump to target/debug-*");
+        dump.addActionListener(event -> dump());
+        JPanel toolbar = new JPanel();
+        toolbar.add(refresh);
+        toolbar.add(dump);
+        window.add(toolbar, BorderLayout.NORTH);
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("CPU / Instructions", new JScrollPane(cpuText));
+        tabs.addTab("Memory Map", new JScrollPane(memoryMapText));
+        tabs.addTab("Memory", memoryPanel());
+        tabs.addTab("Tiles", imageGrid(tilesBank0, tilesBank1));
+        tabs.addTab("Tile Maps", imageGrid(bgMap9800, bgMap9C00));
+        tabs.addTab("Palettes", imageGrid(bgPalettes, objPalettes));
+        window.add(tabs, BorderLayout.CENTER);
+
+        window.setSize(900, 720);
+        window.setLocationRelativeTo(null);
+        new Timer(250, event -> {
+            if (window.isVisible()) {
+                refresh();
+            }
+        }).start();
+    }
+
+    private JPanel memoryPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JPanel controls = new JPanel();
+        memoryRegion.addActionListener(event -> applyMemoryRegion());
+        JButton refreshMemory = new JButton("Refresh Memory");
+        refreshMemory.addActionListener(event -> refreshMemoryTable());
+        controls.add(new JLabel("Region"));
+        controls.add(memoryRegion);
+        controls.add(new JLabel("Start"));
+        controls.add(memoryStart);
+        controls.add(new JLabel("Length"));
+        controls.add(memoryLength);
+        controls.add(refreshMemory);
+        panel.add(controls, BorderLayout.NORTH);
+        configureMemoryTable();
+        panel.add(new JScrollPane(memoryTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void configureMemoryTable() {
+        memoryModel.addColumn("Addr");
+        for (int i = 0; i < 16; i++) {
+            memoryModel.addColumn(String.format("%X", i));
+        }
+        memoryTable.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+        memoryTable.setRowHeight(22);
+        memoryTable.setCellSelectionEnabled(true);
+        memoryTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        memoryTable.getColumnModel().getColumn(0).setPreferredWidth(58);
+        for (int i = 1; i < memoryTable.getColumnCount(); i++) {
+            memoryTable.getColumnModel().getColumn(i).setPreferredWidth(34);
+        }
+        refreshMemoryTable();
+    }
+
+    private JPanel imageGrid(ImagePanel first, ImagePanel second) {
+        JPanel panel = new JPanel(new GridLayout(1, 2));
+        panel.add(new JScrollPane(first));
+        panel.add(new JScrollPane(second));
+        return panel;
+    }
+
+    private static JTextArea textArea() {
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
+        return area;
+    }
+
+    private void show() {
+        refresh();
+        window.setVisible(true);
+    }
+
+    private void refresh() {
+        cpuText.setText(cpuSnapshotText() + "\n\n" + instructionText());
+        memoryMapText.setText(memoryMapText());
+        refreshMemoryTable();
+        tilesBank0.setImage(ppu.debugTileImage(0));
+        tilesBank1.setImage(ppu.debugTileImage(1));
+        bgMap9800.setImage(ppu.debugTileMapImage(TileMapArea.IN_9800));
+        bgMap9C00.setImage(ppu.debugTileMapImage(TileMapArea.IN_9C00));
+        bgPalettes.setImage(ppu.debugPaletteImage(false));
+        objPalettes.setImage(ppu.debugPaletteImage(true));
+    }
+
+    private String cpuSnapshotText() {
+        Cpu.Snapshot cpuSnapshot = cpu.snapshot();
+        Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
+        return String.format("""
+                        CPU
+                        PC:%04X SP:%04X AF:%04X BC:%04X DE:%04X HL:%04X
+                        A:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X
+                        Flags: Z=%s N=%s H=%s C=%s IME=%s halted=%s stopped=%s haltBug=%s speed=%dx
+
+                        PPU
+                        LCDC:%02X STAT:%02X mode:%s LY:%02X LX:%03d cycles:%03d SCX:%02X SCY:%02X WX:%02X WY:%02X LYC:%02X CGB:%s
+                        """,
+                cpuSnapshot.pc(), cpuSnapshot.sp(), cpuSnapshot.af(), cpuSnapshot.bc(), cpuSnapshot.de(), cpuSnapshot.hl(),
+                cpuSnapshot.a(), cpuSnapshot.b(), cpuSnapshot.c(), cpuSnapshot.d(), cpuSnapshot.e(), cpuSnapshot.h(), cpuSnapshot.l(),
+                cpuSnapshot.zeroFlag(), cpuSnapshot.negativeFlag(), cpuSnapshot.halfCarryFlag(), cpuSnapshot.carryFlag(),
+                cpuSnapshot.ime(), cpuSnapshot.halted(), cpuSnapshot.stopped(), cpuSnapshot.haltBug(), cpuSnapshot.speedRate(),
+                ppuSnapshot.lcdc(), ppuSnapshot.stat(), ppuSnapshot.mode(), ppuSnapshot.line(), ppuSnapshot.column(),
+                ppuSnapshot.cycles(), ppuSnapshot.scrollX(), ppuSnapshot.scrollY(), ppuSnapshot.windowX(), ppuSnapshot.windowY(),
+                ppuSnapshot.lineCompare(), ppuSnapshot.cgbMode());
+    }
+
+    private String instructionText() {
+        StringBuilder builder = new StringBuilder("Instructions near PC\n");
+        int address = cpu.getPc();
+        for (int i = 0; i < 24; i++) {
+            int opcode = bus.read(address) & 0xFF;
+            int b1 = bus.read(address + 1) & 0xFF;
+            int b2 = bus.read(address + 2) & 0xFF;
+            int length = instructionLength(opcode, b1);
+            builder.append(String.format("%04X: %02X", address, opcode));
+            if (length > 1) {
+                builder.append(String.format(" %02X", b1));
+            } else {
+                builder.append("   ");
+            }
+            if (length > 2) {
+                builder.append(String.format(" %02X", b2));
+            } else {
+                builder.append("   ");
+            }
+            builder.append("  ").append(disassemble(opcode, b1, b2)).append('\n');
+            address = (address + length) & 0xFFFF;
+        }
+        return builder.toString();
+    }
+
+    private String memoryMapText() {
+        StringBuilder builder = new StringBuilder("Runtime memory map\n");
+        for (Bus.MemoryMapEntry entry : bus.memoryMap()) {
+            builder.append(String.format("%04X-%04X  %s%n", entry.start(), entry.end(), entry.owner()));
+        }
+        return builder.toString();
+    }
+
+    private void applyMemoryRegion() {
+        MemoryRegion selected = (MemoryRegion) memoryRegion.getSelectedItem();
+        if (selected == null) {
+            return;
+        }
+        memoryStart.setText(String.format("%04X", selected.start));
+        memoryLength.setText(String.format("%04X", selected.length));
+        refreshMemoryTable();
+    }
+
+    private void refreshMemoryTable() {
+        int start = parseHex(memoryStart.getText(), 0xC000) & 0xFFFF;
+        int length = Math.max(16, Math.min(parseHex(memoryLength.getText(), 0x0100), 0x10000));
+        int rows = (length + 15) / 16;
+        memoryModel.setRowCount(0);
+        for (int row = 0; row < rows; row++) {
+            Object[] values = new Object[17];
+            int address = (start + row * 16) & 0xFFFF;
+            values[0] = String.format("%04X", address);
+            for (int column = 0; column < 16; column++) {
+                int cellAddress = (address + column) & 0xFFFF;
+                values[column + 1] = String.format("%02X", bus.read(cellAddress) & 0xFF);
+            }
+            memoryModel.addRow(values);
+        }
+    }
+
+    private int parseHex(String text, int fallback) {
+        try {
+            String normalized = text.trim().replace("0x", "").replace("$", "");
+            return Integer.parseInt(normalized, 16);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private int instructionLength(int opcode, int nextByte) {
+        if (opcode == 0xCB) {
+            return 2;
+        }
+        return switch (opcode) {
+            case 0x01, 0x08, 0x11, 0x21, 0x31, 0xC2, 0xC3, 0xC4, 0xCA, 0xCC, 0xCD, 0xD2, 0xD4, 0xDA, 0xDC, 0xEA, 0xFA -> 3;
+            case 0x06, 0x0E, 0x10, 0x16, 0x18, 0x1E, 0x20, 0x26, 0x28, 0x2E, 0x30, 0x36, 0x38, 0x3E,
+                 0xC6, 0xCE, 0xD6, 0xDE, 0xE0, 0xE6, 0xE8, 0xEE, 0xF0, 0xF6, 0xF8, 0xFE -> 2;
+            default -> 1;
+        };
+    }
+
+    private String disassemble(int opcode, int b1, int b2) {
+        if (opcode == 0xCB) {
+            return String.format("CB %02X", b1);
+        }
+        return switch (opcode) {
+            case 0x00 -> "NOP";
+            case 0x10 -> "STOP";
+            case 0x18 -> String.format("JR %+d", (byte) b1);
+            case 0x20 -> String.format("JR NZ,%+d", (byte) b1);
+            case 0x28 -> String.format("JR Z,%+d", (byte) b1);
+            case 0x30 -> String.format("JR NC,%+d", (byte) b1);
+            case 0x38 -> String.format("JR C,%+d", (byte) b1);
+            case 0xC3 -> String.format("JP $%04X", word(b1, b2));
+            case 0xCD -> String.format("CALL $%04X", word(b1, b2));
+            case 0xC9 -> "RET";
+            case 0xD9 -> "RETI";
+            case 0xE0 -> String.format("LDH [$FF%02X],A", b1);
+            case 0xF0 -> String.format("LDH A,[$FF%02X]", b1);
+            case 0xEA -> String.format("LD [$%04X],A", word(b1, b2));
+            case 0xFA -> String.format("LD A,[$%04X]", word(b1, b2));
+            default -> String.format("OP %02X", opcode);
+        };
+    }
+
+    private int word(int low, int high) {
+        return low | (high << 8);
+    }
+
+    private void dump() {
+        File target = new File("target");
+        if (!target.exists()) {
+            target.mkdirs();
+        }
+        try {
+            java.nio.file.Files.writeString(new File(target, "debug-snapshot.txt").toPath(),
+                    cpuSnapshotText() + "\n\n" + instructionText() + "\n" + memoryMapText());
+            java.nio.file.Files.writeString(new File(target, "debug-memory.txt").toPath(), memoryTableText());
+            ImageIO.write(ppu.debugTileImage(0), "png", new File(target, "debug-tiles-bank0.png"));
+            ImageIO.write(ppu.debugTileImage(1), "png", new File(target, "debug-tiles-bank1.png"));
+            ImageIO.write(ppu.debugTileMapImage(TileMapArea.IN_9800), "png", new File(target, "debug-tilemap-9800.png"));
+            ImageIO.write(ppu.debugTileMapImage(TileMapArea.IN_9C00), "png", new File(target, "debug-tilemap-9c00.png"));
+            ImageIO.write(ppu.debugPaletteImage(false), "png", new File(target, "debug-bg-palettes.png"));
+            ImageIO.write(ppu.debugPaletteImage(true), "png", new File(target, "debug-obj-palettes.png"));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to dump debugger files", e);
+        }
+    }
+
+    private String memoryTableText() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("        00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
+        for (int row = 0; row < memoryModel.getRowCount(); row++) {
+            builder.append(memoryModel.getValueAt(row, 0)).append("   ");
+            for (int column = 1; column < memoryModel.getColumnCount(); column++) {
+                builder.append(memoryModel.getValueAt(row, column)).append(' ');
+            }
+            builder.append('\n');
+        }
+        return builder.toString();
+    }
+
+    private enum MemoryRegion {
+        ROM0(0x0000, 0x4000),
+        ROMX(0x4000, 0x4000),
+        VRAM(0x8000, 0x2000),
+        EXRAM(0xA000, 0x2000),
+        WRAM0(0xC000, 0x1000),
+        WRAMX(0xD000, 0x1000),
+        OAM(0xFE00, 0x00A0),
+        IO(0xFF00, 0x0080),
+        HRAM(0xFF80, 0x007F);
+
+        private final int start;
+        private final int length;
+
+        MemoryRegion(int start, int length) {
+            this.start = start;
+            this.length = length;
+        }
+    }
+
+    private static class ImagePanel extends JPanel {
+        private final int scale;
+        private BufferedImage image;
+
+        private ImagePanel(int scale) {
+            this.scale = scale;
+            setPreferredSize(new Dimension(512, 512));
+        }
+
+        private void setImage(BufferedImage image) {
+            this.image = image;
+            if (image != null) {
+                setPreferredSize(new Dimension(image.getWidth() * scale, image.getHeight() * scale));
+            }
+            revalidate();
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            if (image == null) {
+                return;
+            }
+            Image scaled = image.getScaledInstance(image.getWidth() * scale, image.getHeight() * scale, Image.SCALE_FAST);
+            graphics.drawImage(scaled, 0, 0, null);
+        }
+    }
+}

@@ -2,6 +2,10 @@ package dev.vitorsilverio.gbcemu;
 
 public record EmulatorMenuActions(
         Runnable openRom,
-        Runnable configureDefaultBios
+        Runnable configureDefaultBios,
+        Runnable openDebugger,
+        Runnable pause,
+        Runnable resume,
+        Runnable stop
 ) {
 }

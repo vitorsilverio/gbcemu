@@ -504,8 +504,106 @@ public class Ppu implements MemorySpace, MachineCycle {
         return mode == PpuMode.HBLANK;
     }
 
+    public DebugSnapshot debugSnapshot() {
+        return new DebugSnapshot(
+                cgbMode,
+                control.getData() & 0xFF,
+                stat.getData() & 0xFF,
+                mode,
+                currentLine,
+                currentColumn,
+                cycles,
+                scrollX,
+                scrollY,
+                windowX,
+                windowY,
+                lineCompare & 0xFF
+        );
+    }
+
+    public BufferedImage debugTileImage(int bank) {
+        BufferedImage image = new BufferedImage(16 * 8, 24 * 8, BufferedImage.TYPE_INT_RGB);
+        for (int tileIndex = 0; tileIndex < 384; tileIndex++) {
+            Tile tile = videoRam.getTile(TileArea.METHOD_8000, bank & 1, tileIndex);
+            int baseX = (tileIndex % 16) * 8;
+            int baseY = (tileIndex / 16) * 8;
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    image.setRGB(baseX + x, baseY + y, grayColor(tile.getPixel(x, y)));
+                }
+            }
+        }
+        return image;
+    }
+
+    public BufferedImage debugTileMapImage(TileMapArea area) {
+        BufferedImage image = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
+        for (int mapIndex = 0; mapIndex < 1024; mapIndex++) {
+            TileMap map = videoRam.getTileMap(area, mapIndex);
+            int bank = cgbMode ? map.getBank() : 0;
+            Tile tile = videoRam.getTile(control.getTileArea(), bank, map.getIndex());
+            int baseX = (mapIndex % 32) * 8;
+            int baseY = (mapIndex / 32) * 8;
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    int tileX = cgbMode && map.isFlipX() ? 7 - x : x;
+                    int tileY = cgbMode && map.isFlipY() ? 7 - y : y;
+                    int colorIndex = tile.getPixel(tileX, tileY);
+                    int color = cgbMode
+                            ? bgPalette.getColor(map.getPaletteIndex(), colorIndex)
+                            : grayColor(bgPaletteDmg.getColor(colorIndex));
+                    image.setRGB(baseX + x, baseY + y, color);
+                }
+            }
+        }
+        return image;
+    }
+
+    public BufferedImage debugPaletteImage(boolean objects) {
+        int[] colors = objects ? objPalette.colors() : bgPalette.colors();
+        BufferedImage image = new BufferedImage(128, 32, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            for (int palette = 0; palette < 8; palette++) {
+                for (int color = 0; color < 4; color++) {
+                    graphics.setColor(new Color(colors[palette * 4 + color], true));
+                    graphics.fillRect(color * 32, palette * 4, 32, 4);
+                }
+            }
+        } finally {
+            graphics.dispose();
+        }
+        return image;
+    }
+
+    private int grayColor(int colorIndex) {
+        return switch (colorIndex & 0x03) {
+            case 0 -> 0xFFFFFFFF;
+            case 1 -> 0xFFC0C0C0;
+            case 2 -> 0xFF808080;
+            case 3 -> 0xFF000000;
+            default -> 0xFFFFFFFF;
+        };
+    }
+
     byte readOamRaw(int address) {
         return oam.read(address);
+    }
+
+    public record DebugSnapshot(
+            boolean cgbMode,
+            int lcdc,
+            int stat,
+            PpuMode mode,
+            int line,
+            int column,
+            int cycles,
+            int scrollX,
+            int scrollY,
+            int windowX,
+            int windowY,
+            int lineCompare
+    ) {
     }
 
     private record Pixel(int colorIndex, int color, boolean priority) {

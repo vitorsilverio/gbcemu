@@ -7,6 +7,7 @@ import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
+import dev.vitorsilverio.gbcemu.debug.DebugWindow;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.DMA;
 import dev.vitorsilverio.gbcemu.misc.HDMA;
@@ -36,6 +37,8 @@ public class Emulator {
     private final Display display;
     private final boolean throttled;
     private final boolean cartridgeCgbCompatible;
+    private volatile boolean paused;
+    private volatile boolean stopped;
     private int dots;
     private long frameStart = System.nanoTime();
 
@@ -81,7 +84,15 @@ public class Emulator {
         bus.addMemorySpace(new Key1());
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
-        this.display = headless ? null : new Display(ppu, (KeyboardController) controller, menuActions);
+        EmulatorMenuActions runtimeMenuActions = headless ? null : new EmulatorMenuActions(
+                menuActions.openRom(),
+                menuActions.configureDefaultBios(),
+                this::openDebugger,
+                this::pause,
+                this::resume,
+                this::stop
+        );
+        this.display = headless ? null : new Display(ppu, (KeyboardController) controller, runtimeMenuActions);
         this.serial = new Serial(bus);
         bus.addMemorySpace(serial);
         cpu.setCycleCallback(this::tickSystemCycle);
@@ -93,13 +104,35 @@ public class Emulator {
             Thread displayThread = new Thread(display);
             displayThread.start();
         }
-        while (true) {
+        while (!stopped) {
+            if (paused) {
+                sleepNanos(2_000_000);
+                continue;
+            }
             if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
                 cpu.tick();
             } else {
                 tickSystemCycle();
             }
         }
+    }
+
+    public void pause() {
+        paused = true;
+    }
+
+    public void resume() {
+        paused = false;
+        frameStart = System.nanoTime();
+    }
+
+    public void stop() {
+        stopped = true;
+        paused = false;
+    }
+
+    private void openDebugger() {
+        DebugWindow.open(cpu, cpu.getBus(), ppu);
     }
 
     private void tickSystemCycle() {

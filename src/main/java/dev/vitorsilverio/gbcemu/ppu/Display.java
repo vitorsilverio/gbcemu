@@ -59,17 +59,38 @@ public class Display implements Runnable{
         }
 
         JMenuBar menuBar = new JMenuBar();
-        JMenu fileMenu = new JMenu("File");
+        JMenu fileMenu = new JMenu("Emulator");
 
-        JMenuItem openRom = new JMenuItem("Open ROM...");
+        JMenuItem openRom = new JMenuItem("Start ROM...");
         openRom.addActionListener(event -> menuActions.openRom().run());
         fileMenu.add(openRom);
+
+        JMenuItem pause = new JMenuItem("Pause");
+        pause.addActionListener(event -> menuActions.pause().run());
+        fileMenu.add(pause);
+
+        JMenuItem resume = new JMenuItem("Resume");
+        resume.addActionListener(event -> menuActions.resume().run());
+        fileMenu.add(resume);
+
+        JMenuItem stop = new JMenuItem("Stop");
+        stop.addActionListener(event -> menuActions.stop().run());
+        fileMenu.add(stop);
+
+        fileMenu.addSeparator();
 
         JMenuItem configureBios = new JMenuItem("Set default BIOS...");
         configureBios.addActionListener(event -> menuActions.configureDefaultBios().run());
         fileMenu.add(configureBios);
 
         menuBar.add(fileMenu);
+
+        JMenu debugMenu = new JMenu("Debug");
+        JMenuItem openDebugger = new JMenuItem("Open debugger");
+        openDebugger.addActionListener(event -> menuActions.openDebugger().run());
+        debugMenu.add(openDebugger);
+        menuBar.add(debugMenu);
+
         window.setJMenuBar(menuBar);
     }
 

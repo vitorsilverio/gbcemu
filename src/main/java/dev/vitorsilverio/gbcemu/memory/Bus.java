@@ -26,6 +26,35 @@ public class Bus {
 
     }
 
+    public List<MemoryMapEntry> memoryMap() {
+        List<MemoryMapEntry> entries = new ArrayList<>();
+        String currentOwner = null;
+        int rangeStart = 0;
+        for (int address = 0; address <= 0xFFFF; address++) {
+            String owner = ownerName(address);
+            if (address == 0) {
+                currentOwner = owner;
+                continue;
+            }
+            if (!owner.equals(currentOwner)) {
+                entries.add(new MemoryMapEntry(rangeStart, address - 1, currentOwner));
+                rangeStart = address;
+                currentOwner = owner;
+            }
+        }
+        entries.add(new MemoryMapEntry(rangeStart, 0xFFFF, currentOwner));
+        return entries;
+    }
+
+    private String ownerName(int address) {
+        for (MemorySpace memorySpace : memorySpaces) {
+            if (memorySpace.contains(address)) {
+                return memorySpace.getClass().getSimpleName();
+            }
+        }
+        return "Unmapped";
+    }
+
     public <T extends MemorySpace> Optional<T> findMemorySpace(Class<T> type) {
         return memorySpaces.stream()
                 .filter(type::isInstance)
@@ -86,5 +115,8 @@ public class Bus {
         value = value & 0xFFFF; // Ensure value is within 16-bit range
         write(address, (byte) (value & 0xFF));
         write(address + 1, (byte) ((value >> 8) & 0xFF));
+    }
+
+    public record MemoryMapEntry(int start, int end, String owner) {
     }
 }

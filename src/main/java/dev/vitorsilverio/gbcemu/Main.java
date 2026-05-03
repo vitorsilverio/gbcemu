@@ -33,11 +33,8 @@ public class Main {
                 printUsage();
                 return;
             }
-            File selectedRom = chooseRomFile();
-            if (selectedRom == null) {
-                return;
-            }
-            options = options.withRomFile(selectedRom);
+            new LauncherWindow(menuActions(options)).show();
+            return;
         }
 
         var emulator = new Emulator(
@@ -72,7 +69,15 @@ public class Main {
     private static EmulatorMenuActions menuActions(Options options) {
         return new EmulatorMenuActions(
                 () -> openRomFromMenu(options),
-                Main::configureDefaultBios
+                Main::configureDefaultBios,
+                () -> {
+                },
+                () -> {
+                },
+                () -> {
+                },
+                () -> {
+                }
         );
     }
 

@@ -25,6 +25,16 @@ public class CgbPalette {
         return toArgb(color);
     }
 
+    public int[] colors() {
+        int[] colors = new int[32];
+        for (int palette = 0; palette < 8; palette++) {
+            for (int color = 0; color < 4; color++) {
+                colors[palette * 4 + color] = getColor(palette, color);
+            }
+        }
+        return colors;
+    }
+
     private int toArgb(int color) {
         int red = color & 0x1F;
         int green = (color >> 5) & 0x1F;
