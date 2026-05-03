@@ -394,8 +394,15 @@ public class Ppu implements MemorySpace, MachineCycle {
                         (currentLine == lineCompare ? 0x04 : 0));
         }
 
+        if (oam.contains(address)) {
+            if (control.isEnabled() && (PpuMode.OAM_READ.equals(mode) || PpuMode.VRAM_READ.equals(mode))) {
+                return (byte) 0xff;
+            }
+            return oam.read(address);
+        }
+
         if (0xfea0 <= address && address <= 0xfeff) { // Prohibited area CGB rev 5+
-            if (PpuMode.OAM_READ.equals(mode)) {
+            if (control.isEnabled() && PpuMode.OAM_READ.equals(mode)) {
                 // None can be read in this mode
                 return (byte)0xff;
             }
@@ -407,10 +414,6 @@ public class Ppu implements MemorySpace, MachineCycle {
         if (PpuMode.VRAM_READ.equals(mode)){
             // None can be read in this mode
             return (byte)0xff;
-        }
-        if (!PpuMode.OAM_READ.equals(mode) && oam.contains(address)) {
-            // OAM cannot be read in this mode
-            return oam.read(address);
         }
         if(videoRam.contains(address)) {
             return videoRam.read(address);
@@ -426,7 +429,14 @@ public class Ppu implements MemorySpace, MachineCycle {
         }
 
         if (oam.contains(address)) {
+            if (control.isEnabled() && (PpuMode.OAM_READ.equals(mode) || PpuMode.VRAM_READ.equals(mode))) {
+                return;
+            }
             oam.write(address, value);
+            return;
+        }
+
+        if (0xfea0 <= address && address <= 0xfeff) {
             return;
         }
 
@@ -492,6 +502,10 @@ public class Ppu implements MemorySpace, MachineCycle {
 
     public boolean isHBlank() {
         return mode == PpuMode.HBLANK;
+    }
+
+    byte readOamRaw(int address) {
+        return oam.read(address);
     }
 
     private record Pixel(int colorIndex, int color, boolean priority) {

@@ -1,7 +1,8 @@
 package dev.vitorsilverio.gbcemu;
 
-import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.audio.Apu;
+import dev.vitorsilverio.gbcemu.cartridge.Cart;
+import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.controller.ButtonType;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
@@ -176,7 +177,8 @@ class InstrTimingTraceTest {
         Bus bus = new Bus();
         Cpu cpu = new Cpu(bus);
         Timer timer = new Timer(bus);
-        Ppu ppu = new Ppu(bus);
+        Cart cart = CartFactory.fromFile(new File(romPath), null);
+        Ppu ppu = new Ppu(bus, cart.getHeader().isCgbCompatible());
         Apu apu = Apu.muted();
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
@@ -192,7 +194,7 @@ class InstrTimingTraceTest {
         bus.addMemorySpace(workRam);
         bus.addMemorySpace(new EchoRam(workRam));
         bus.addMemorySpace(new ZeroPage());
-        bus.addMemorySpace(CartFactory.fromFile(new File(romPath), null));
+        bus.addMemorySpace(cart);
         bus.addMemorySpace(new Key0(ppu::setCgbMode));
         bus.addMemorySpace(new Key1());
         bus.addMemorySpace(new InfraredPort());

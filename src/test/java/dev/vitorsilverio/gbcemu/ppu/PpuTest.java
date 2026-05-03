@@ -229,6 +229,43 @@ class PpuTest {
         assertEquals(0, bus.read(0xFF0F) & Interrupt.VBLANK.getMask());
     }
 
+    @Test
+    void cgbOamReadDuringMode2ReturnsFfWithoutChangingOam() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        writeOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 9);
+
+        assertEquals(0xFF, ppu.read(0xFE20) & 0xFF);
+
+        assertOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+    }
+
+    @Test
+    void cgbOamWriteDuringMode2IsIgnoredWithoutChangingOam() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        writeOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 9);
+
+        ppu.write(0xFE20, (byte) 0x99);
+
+        assertOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+    }
+
+    @Test
+    void cgbOamAccessDuringMode3IsBlockedWithoutChangingOam() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        writeOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 80);
+
+        assertEquals(0xFF, ppu.read(0xFE20) & 0xFF);
+        ppu.write(0xFE20, (byte) 0x99);
+
+        assertOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+    }
+
     private void setBgPaletteColor(Ppu ppu, int colorIndex, int rgb555) {
         ppu.write(0xFF68, (byte) (colorIndex * 2));
         ppu.write(0xFF69, (byte) (rgb555 & 0xFF));
@@ -273,6 +310,31 @@ class PpuTest {
         for (int i = 0; i < ticks; i++) {
             ppu.tick();
         }
+    }
+
+    private void writeOamRow(Ppu ppu, int row, int word0, int word1, int word2, int word3) {
+        writeOamWord(ppu, row, 0, word0);
+        writeOamWord(ppu, row, 1, word1);
+        writeOamWord(ppu, row, 2, word2);
+        writeOamWord(ppu, row, 3, word3);
+    }
+
+    private void writeOamWord(Ppu ppu, int row, int word, int value) {
+        int address = 0xFE00 + row * 8 + word * 2;
+        ppu.write(address, (byte) (value & 0xFF));
+        ppu.write(address + 1, (byte) ((value >> 8) & 0xFF));
+    }
+
+    private void assertOamRow(Ppu ppu, int row, int word0, int word1, int word2, int word3) {
+        assertEquals(word0 & 0xFFFF, readOamWord(ppu, row, 0));
+        assertEquals(word1 & 0xFFFF, readOamWord(ppu, row, 1));
+        assertEquals(word2 & 0xFFFF, readOamWord(ppu, row, 2));
+        assertEquals(word3 & 0xFFFF, readOamWord(ppu, row, 3));
+    }
+
+    private int readOamWord(Ppu ppu, int row, int word) {
+        int address = 0xFE00 + row * 8 + word * 2;
+        return (ppu.readOamRaw(address) & 0xFF) | ((ppu.readOamRaw(address + 1) & 0xFF) << 8);
     }
 
     private int getRenderedPixel(Ppu ppu, int x, int y) {
