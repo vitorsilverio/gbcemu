@@ -188,7 +188,106 @@ class CpuTimingTest {
 
         cpu.tick();
 
-        assertEquals(Interrupt.TIMER.getMask(), cpu.getA() & 0xFF);
+        assertEquals(Interrupt.TIMER.getMask(), cpu.getA() & Interrupt.TIMER.getMask());
+    }
+
+    @Test
+    void eiEnablesInterruptsAfterFollowingInstruction() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        bus.write(0x0000, (byte) 0xFB);
+        bus.write(0x0001, (byte) 0x00);
+        bus.write(0x0002, (byte) 0x00);
+        bus.write(0xFFFF, (byte) Interrupt.VBLANK.getMask());
+        bus.write(0xFF0F, (byte) Interrupt.VBLANK.getMask());
+
+        cpu.tick();
+
+        assertEquals(0x0001, cpu.getPc());
+        assertEquals(false, cpu.isIme());
+
+        cpu.tick();
+
+        assertEquals(0x0002, cpu.getPc());
+        assertEquals(true, cpu.isIme());
+
+        cpu.tick();
+
+        assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
+    }
+
+    @Test
+    void haltBugOnlyTriggersWhenImeIsDisabledAndInterruptIsPending() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        bus.write(0x0000, (byte) 0x76);
+        bus.write(0x0001, (byte) 0x3C);
+        bus.write(0xFFFF, (byte) Interrupt.VBLANK.getMask());
+        bus.write(0xFF0F, (byte) Interrupt.VBLANK.getMask());
+
+        cpu.tick();
+        cpu.tick();
+
+        assertEquals(0x0001, cpu.getPc());
+        assertEquals(1, cpu.getA() & 0xFF);
+    }
+
+    @Test
+    void haltBugReadsNextOpcodeByteTwiceForImmediateInstructions() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        bus.write(0x0000, (byte) 0x76);
+        bus.write(0x0001, (byte) 0x11);
+        bus.write(0x0002, (byte) 0x04);
+        bus.write(0x0003, (byte) 0x0C);
+        bus.write(0xFFFF, (byte) Interrupt.VBLANK.getMask());
+        bus.write(0xFF0F, (byte) Interrupt.VBLANK.getMask());
+
+        cpu.tick();
+        cpu.tick();
+
+        assertEquals(0x0411, cpu.getDe());
+        assertEquals(0x0003, cpu.getPc());
+    }
+
+    @Test
+    void haltWithImeEnabledServicesInterruptBeforeNextInstruction() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        cpu.setIme(true);
+        cpu.setSp(0xFFFE);
+        bus.write(0x0000, (byte) 0x76);
+        bus.write(0x0001, (byte) 0x3C);
+        bus.write(0xFFFF, (byte) Interrupt.VBLANK.getMask());
+        bus.write(0xFF0F, (byte) Interrupt.VBLANK.getMask());
+
+        cpu.tick();
+
+        assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
+        assertEquals(0, cpu.getA() & 0xFF);
+    }
+
+    @Test
+    void eiBeforeBuggedHaltServicesInterruptWithHaltAsReturnAddress() {
+        Bus bus = busWithMemory();
+        Cpu cpu = new Cpu(bus);
+        cpu.setSp(0xFFFE);
+        bus.write(0x0000, (byte) 0xFB);
+        bus.write(0x0001, (byte) 0x76);
+        bus.write(0x0002, (byte) 0x00);
+        bus.write(0xFFFF, (byte) Interrupt.VBLANK.getMask());
+        bus.write(0xFF0F, (byte) Interrupt.VBLANK.getMask());
+
+        cpu.tick();
+        cpu.tick();
+
+        assertEquals(0x0001, cpu.getPc());
+        assertEquals(true, cpu.isIme());
+
+        cpu.tick();
+
+        assertEquals(Interrupt.VBLANK.getVectorAddress(), cpu.getPc());
+        assertEquals(0x0001, bus.readWord(0xFFFC));
     }
 
     private int[] countCpuCycles(Cpu cpu) {

@@ -13,7 +13,7 @@ public class EnableInterruptsInstruction implements Instruction {
 
     @Override
     public int execute(Cpu cpu) {
-        cpu.setIme(true);
+        cpu.enableInterruptsAfterNextInstruction();
         cpu.incrementProgramCounter(1);
         return 4;
     }

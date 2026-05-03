@@ -9,6 +9,8 @@ public class InterruptManager implements MemorySpace {
 
     private static final int IF_REG = 0xFF0F;
     private static final int IE_REG = 0xFFFF;
+    private static final int INTERRUPT_BITS = 0x1F;
+    private static final int IF_UNUSED_BITS = 0xE0;
     private static final List<Integer> REGISTERS = List.of(IE_REG, IF_REG);
 
     private byte ieReg;
@@ -22,7 +24,7 @@ public class InterruptManager implements MemorySpace {
     @Override
     public byte read(int address) {
         if (address == IF_REG) {
-            return ifReg;
+            return (byte) ((ifReg & INTERRUPT_BITS) | IF_UNUSED_BITS);
         } else if (address == IE_REG) {
             return ieReg;
         }
@@ -32,7 +34,7 @@ public class InterruptManager implements MemorySpace {
     @Override
     public void write(int address, byte value) {
         if (address == IF_REG) {
-            ifReg = value;
+            ifReg = (byte) (value & INTERRUPT_BITS);
         } else if (address == IE_REG) {
             ieReg = value;
         } else {
@@ -42,18 +44,18 @@ public class InterruptManager implements MemorySpace {
 
     public void requestInterrupt(Interrupt interrupt) {
         // Set the corresponding bit in the IF register
-        ifReg |= (byte) interrupt.getMask();
+        ifReg = (byte) ((ifReg | interrupt.getMask()) & INTERRUPT_BITS);
     }
 
     public void clearInterrupt(Interrupt interrupt) {
         // Clear the corresponding bit in the IF register
-        ifReg &= (byte) ~interrupt.getMask();
+        ifReg = (byte) (ifReg & ~interrupt.getMask() & INTERRUPT_BITS);
 
     }
 
     public Optional<Interrupt> getPendingInterrupt() {
         for (Interrupt interrupt : Interrupt.values()) {
-            if ((ifReg & interrupt.getMask()) != 0 && (ieReg & interrupt.getMask()) != 0) {
+            if ((ifReg & ieReg & interrupt.getMask() & INTERRUPT_BITS) != 0) {
                 return Optional.of(interrupt);
             }
         }

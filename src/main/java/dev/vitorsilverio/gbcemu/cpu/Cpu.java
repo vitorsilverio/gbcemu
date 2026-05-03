@@ -40,6 +40,7 @@ public class Cpu implements MachineCycle {
     private boolean halted = false;
     private boolean stopped = false;
     private boolean ime = false; // Interrupt Master Enable
+    private int imeEnableDelay = 0;
     private boolean haltBug = false; // Halt Bug
 
 
@@ -190,6 +191,7 @@ public class Cpu implements MachineCycle {
 
     public void setIme(boolean ime) {
         this.ime = ime;
+        imeEnableDelay = 0;
     }
 
     public Bus getBus() {
@@ -216,6 +218,7 @@ public class Cpu implements MachineCycle {
             return;
         }
 
+        int interruptEnableDelayAtInstructionStart = imeEnableDelay;
         instructionTicks = 0;
         int opcode = readByte(pc);
 
@@ -230,13 +233,15 @@ public class Cpu implements MachineCycle {
             throw new IllegalStateException("Invalid opcode: " + Integer.toHexString(opcode));
         }
 
+        if (haltBug) {
+            pc--;
+            pc &= 0xFFFF;
+            haltBug = false;
+        }
         int totalTicks = instruction.get().execute(this) / speedRate;
         waitTicks(Math.max(totalTicks - instructionTicks, 0));
 
-        if (haltBug && opcode != 0x76) {
-            pc--;
-            haltBug = false;
-        }
+        updateImeDelay(interruptEnableDelayAtInstructionStart);
     }
 
     private void handleInterrupt(Interrupt interrupt) {
@@ -326,6 +331,25 @@ public class Cpu implements MachineCycle {
 
     public void setHaltBug(boolean haltBug) {
         this.haltBug = haltBug;
+    }
+
+    public void enableInterruptsAfterNextInstruction() {
+        imeEnableDelay = 1;
+    }
+
+    private void updateImeDelay(int interruptEnableDelayAtInstructionStart) {
+        if (interruptEnableDelayAtInstructionStart <= 0 || imeEnableDelay <= 0) {
+            return;
+        }
+        imeEnableDelay--;
+        if (imeEnableDelay == 0) {
+            ime = true;
+            if (haltBug) {
+                pc--;
+                pc &= 0xFFFF;
+                haltBug = false;
+            }
+        }
     }
 
     public int popStack() {

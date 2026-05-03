@@ -1,7 +1,7 @@
 package dev.vitorsilverio.gbcemu.cpu.instructions;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.diffblue.cover.annotations.MethodsUnderTest;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
@@ -34,6 +34,6 @@ class EnableInterruptsInstructionDiffblueTest {
         // Assert
         assertEquals(1, cpu.getPc());
         assertEquals(4, actualExecuteResult);
-        assertTrue(cpu.isIme());
+        assertFalse(cpu.isIme());
     }
 }

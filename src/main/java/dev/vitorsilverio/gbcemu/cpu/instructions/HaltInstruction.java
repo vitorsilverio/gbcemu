@@ -15,7 +15,7 @@ public class HaltInstruction implements Instruction {
     public int execute(Cpu cpu) {
         cpu.setHalted(true);
         cpu.incrementProgramCounter(1);
-        if (cpu.getBus().getPendingInterrupt().isPresent()) {
+        if (!cpu.isIme() && cpu.getBus().getPendingInterrupt().isPresent()) {
             cpu.setHalted(false);
             cpu.setHaltBug(true);
         }

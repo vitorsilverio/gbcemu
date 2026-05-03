@@ -21,8 +21,12 @@ import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.function.Supplier;
@@ -81,6 +85,58 @@ class InstrTimingTraceTest {
         dump(bus, 0xC000, 0xC0);
         dump(bus, 0xC880, 0xC0);
         dump(bus, 0xD7F0, 0x30);
+        System.out.println(serial.text());
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "gbcemu.diagnostics", matches = "true")
+    void renderHaltBugScreen() throws IOException {
+        Bus bus = new Bus();
+        Cpu cpu = new Cpu(bus);
+        Timer timer = new Timer(bus);
+        Ppu ppu = new Ppu(bus);
+        HDMA hdma = new HDMA(bus);
+        DMA dma = new DMA(bus);
+        TraceSerial serial = new TraceSerial(bus);
+        WorkRam workRam = new WorkRam();
+
+        bus.addMemorySpace(timer);
+        bus.addMemorySpace(ppu);
+        bus.addMemorySpace(hdma);
+        bus.addMemorySpace(dma);
+        bus.addMemorySpace(new Joypad(bus, new IdleController()));
+        bus.addMemorySpace(workRam);
+        bus.addMemorySpace(new EchoRam(workRam));
+        bus.addMemorySpace(new ZeroPage());
+        bus.addMemorySpace(CartFactory.fromFile(new File("test-roms/halt_bug.gb"), null));
+        bus.addMemorySpace(new Key0(ppu::setCgbMode));
+        bus.addMemorySpace(new Key1());
+        bus.addMemorySpace(new InfraredPort());
+        bus.addMemorySpace(new UnusedIoRegisters());
+        bus.addMemorySpace(serial);
+        cpu.setPc(0x0100);
+        cpu.setSp(0xFFFE);
+        cpu.setA((byte) 0x11);
+        cpu.setB((byte) 0x00);
+        cpu.setC((byte) 0x13);
+        cpu.setD((byte) 0x00);
+        cpu.setE((byte) 0xD8);
+        cpu.setH((byte) 0x01);
+        cpu.setL((byte) 0x4D);
+        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, hdma, dma, serial));
+
+        for (int tick = 0; tick < 15_000_000; tick++) {
+            if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
+                cpu.tick();
+            } else {
+                tickSystem(bus, cpu, timer, ppu, hdma, dma, serial);
+            }
+        }
+
+        File output = new File("target/halt_bug-screen.png");
+        output.getParentFile().mkdirs();
+        ImageIO.write((BufferedImage) ppu.getFrameBuffer(), "png", output);
+        System.out.println(output.getAbsolutePath());
         System.out.println(serial.text());
     }
 
