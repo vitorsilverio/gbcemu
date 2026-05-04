@@ -1,6 +1,12 @@
 [
   {
     "name": "java.awt.Toolkit",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "methods": [
       { "name": "getDefaultToolkit", "parameterTypes": [] },
       { "name": "getFontMetrics", "parameterTypes": ["java.awt.Font"] }
@@ -8,19 +14,55 @@
   },
   {
     "name": "java.awt.Component",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
-      { "name": "appContext" }, { "name": "peer" }, { "name": "parent" }
+      { "name": "appContext" },
+      { "name": "peer" },
+      { "name": "parent" },
+      { "name": "x" },
+      { "name": "y" },
+      { "name": "height" },
+      { "name": "width" },
+      { "name": "visible" },
+      { "name": "background" },
+      { "name": "foreground" },
+      { "name": "enabled" },
+      { "name": "graphicsConfig" },
+      { "name": "focusable" },
+      { "name": "cursor" },
+      { "name": "layoutMgr" }
+
     ],
     "methods": [
-      { "name": "getToolkitImpl", "parameterTypes": [] }
+      { "name": "getToolkitImpl", "parameterTypes": [] },
+      { "name": "getFont_NoClientCode", "parameterTypes": [] },
+      { "name": "isEnabledImpl", "parameterTypes": [] },
+      { "name": "getLocationOnScreen_NoTreeLock", "parameterTypes": [] }
     ]
   },
   {
     "name": "java.awt.Color",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "methods": [{ "name": "getRGB", "parameterTypes": [] }]
   },
   {
     "name": "java.awt.Insets",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "top" },
       { "name": "left" },
@@ -33,6 +75,12 @@
   },
   {
     "name": "java.awt.Dimension",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "width" },
       { "name": "height" }
@@ -43,6 +91,12 @@
   },
   {
     "name": "java.awt.Point",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "x" },
       { "name": "y" }
@@ -53,6 +107,12 @@
   },
   {
     "name": "java.awt.Rectangle",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "x" },
       { "name": "y" },
@@ -65,6 +125,12 @@
   },
   {
     "name": "java.awt.AWTEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "bdata" },
       { "name": "id" },
@@ -73,12 +139,27 @@
   },
   {
     "name": "java.awt.event.InputEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "modifiers" }
+    ],
+    "methods": [
+      { "name": "getButtonDownMasks", "parameterTypes": [] }
     ]
   },
   {
     "name": "java.awt.event.KeyEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "keyCode" },
       { "name": "keyChar" }
@@ -86,6 +167,12 @@
   },
   {
     "name": "java.awt.event.MouseEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "x" },
       { "name": "y" },
@@ -95,6 +182,12 @@
   },
   {
     "name": "java.awt.event.MouseWheelEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
     "fields": [
       { "name": "scrollType" },
       { "name": "scrollAmount" },
@@ -103,15 +196,213 @@
     ]
   },
   {
-    "name": "java.awt.event.FocusEvent"
+    "name": "java.awt.event.FocusEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true
   },
   {
-    "name": "java.awt.event.ComponentEvent"
+    "name": "java.awt.event.ComponentEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true
   },
   {
-    "name": "java.awt.event.ContainerEvent"
+    "name": "java.awt.event.ContainerEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true
   },
   {
-    "name": "java.awt.event.WindowEvent"
+    "name": "java.awt.event.WindowEvent",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true
+  },
+  {
+    "name": "sun.awt.windows.WComponentPeer",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "winGraphicsConfig" },
+      { "name": "hwnd" }
+    ],
+    "methods": [
+      { "name": "replaceSurfaceData", "parameterTypes": [] },
+      { "name": "replaceSurfaceDataLater", "parameterTypes": [] },
+      { "name": "disposeLater", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "sun.awt.windows.WObjectPeer",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "pData" },
+      { "name": "destroyed" },
+      { "name": "target" },
+      { "name": "disposed" },
+      { "name": "createError" }
+    ],
+    "methods": [
+      { "name": "getPeerForTarget", "parameterTypes": ["java.lang.Object"] }
+    ]
+  },
+  {
+    "name": "java.awt.Font",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "pData" },
+      { "name": "name" },
+      { "name": "size" },
+      { "name": "style" }
+    ],
+    "methods": [
+      { "name": "getFontPeer", "parameterTypes": [] },
+      { "name": "getFont", "parameterTypes": ["java.lang.String"] }
+    ]
+  },
+  {
+    "name": "java.awt.Container",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "layoutMgr" }
+    ],
+    "methods": [
+    ]
+  },
+  {
+    "name": "java.awt.Window",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "locationByPlatform" },
+      { "name": "autoRequestFocus" },
+      { "name": "warningString" },
+      { "name": "securityWarningWidth" },
+      { "name": "securityWarningHeight" }
+    ],
+    "methods": [
+      { "name": "getType", "parameterTypes": [] },
+      { "name": "getWarningString", "parameterTypes": [] },
+      { "name": "calculateSecurityWarningPosition", "parameterTypes": ["double","double","double","double"] },
+      { "name": "calculateSecurityWarningPosition", "parameterTypes": ["java.awt.Window","double","double","double","double"] }
+    ]
+  },
+  {
+    "name": "java.lang.Enum",
+    "methods": [
+      { "name": "name", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "java.awt.Window$Type",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+
+    ],
+    "methods": [
+      { "name": "name", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "java.awt.Frame",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "undecorated" }
+    ],
+    "methods": [
+
+    ]
+  },
+  {
+    "name": "java.awt.Cursor",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+      { "name": "pData" },
+      { "name": "type" }
+    ],
+    "methods": [
+      { "name": "setPData", "parameterTypes": [ "long" ] }
+    ]
+  },
+  {
+    "name": "sun.awt.windows.WToolkit",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+    ],
+    "methods": [
+      { "name": "windowsSettingChange", "parameterTypes": [ ] },
+      { "name": "displayChanged", "parameterTypes": [ ] }
+    ]
+  },
+  {
+    "name": "sun.java22.SurfaceData",
+    "queryAllDeclaredConstructors" : true,
+    "queryAllPublicConstructors" : true,
+    "queryAllDeclaredMethods" : true,
+    "queryAllPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true,
+    "fields": [
+    ],
+    "methods": [
+
+    ]
   }
+
 ]
