@@ -111,11 +111,7 @@
                                 <buildArg>--no-fallback</buildArg>
                                 <buildArg>--add-modules=java.desktop</buildArg>
                                 <buildArg>-Djava.awt.headless=false</buildArg>
-                                <buildArg>--add-exports=java.desktop/sun.java2d=ALL-UNNAMED</buildArg>
-                                <buildArg>--add-exports=java.desktop/sun.awt=ALL-UNNAMED</buildArg>
-                                <buildArg>--add-exports=java.desktop/sun.awt.windows=ALL-UNNAMED</buildArg>
-                                <buildArg>--add-exports=java.desktop/sun.awt.image=ALL-UNNAMED</buildArg>
-
+                                <buildArg>-march=native</buildArg>
                                 <buildArg>--initialize-at-run-time=java.awt,javax.swing,sun.awt,sun.java2d,sun.awt.windows</buildArg>
 
                                 <buildArg>-H:+AddAllCharsets</buildArg>

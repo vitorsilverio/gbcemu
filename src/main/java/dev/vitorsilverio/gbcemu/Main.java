@@ -15,6 +15,8 @@ public class Main {
     private static EmulatorWindow window;
 
     public static void main(String[] args) {
+        var javaHome = System.getProperty("java.home", ".");
+        System.setProperty("java.home", javaHome);
         Options options;
         try {
             options = Options.parse(args);
