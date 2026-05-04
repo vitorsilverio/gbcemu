@@ -3,16 +3,16 @@ package dev.vitorsilverio.gbcemu;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.prefs.Preferences;
 
 public class Main {
 
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(Main.class);
     private static final String DEFAULT_BIOS_KEY = "defaultBios";
+    private static Emulator activeEmulator;
+    private static Options activeOptions;
+    private static EmulatorWindow window;
 
     public static void main(String[] args) {
         Options options;
@@ -33,21 +33,18 @@ public class Main {
                 printUsage();
                 return;
             }
-            new LauncherWindow(menuActions(options)).show();
+            activeOptions = options;
+            window = new EmulatorWindow(menuActions());
+            window.show();
             return;
         }
 
-        var emulator = new Emulator(
-                options.biosFile(),
-                options.romFile(),
-                options.saveFile(),
-                options.headless(),
-                options.headless() ? null : menuActions(options)
-        );
-        if (options.skipBios()) {
-            emulator.skipBios();
+        activeOptions = options;
+        if (!options.headless()) {
+            window = new EmulatorWindow(menuActions());
+            window.show();
         }
-        emulator.start();
+        startEmulator(options);
     }
 
     private static void printUsage() {
@@ -66,31 +63,48 @@ public class Main {
                 """);
     }
 
-    private static EmulatorMenuActions menuActions(Options options) {
+    private static EmulatorMenuActions menuActions() {
         return new EmulatorMenuActions(
-                () -> openRomFromMenu(options),
+                Main::openRomFromMenu,
                 Main::configureDefaultBios,
-                () -> {
-                },
-                () -> {
-                },
-                () -> {
-                },
-                () -> {
-                }
+                Main::openDebugger,
+                Main::pauseEmulator,
+                Main::resumeEmulator,
+                Main::stopEmulator
         );
     }
 
-    private static void openRomFromMenu(Options currentOptions) {
+    private static void openRomFromMenu() {
         File romFile = chooseRomFile();
         if (romFile == null) {
             return;
         }
-        try {
-            relaunch(currentOptions.withRomFile(romFile));
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Failed to relaunch emulator: " + e.getMessage(),
-                    "GBC EMU", JOptionPane.ERROR_MESSAGE);
+        Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
+        startEmulator(baseOptions.withRomFile(romFile));
+    }
+
+    private static void openDebugger() {
+        if (activeEmulator != null) {
+            activeEmulator.openDebugger();
+        }
+    }
+
+    private static void pauseEmulator() {
+        if (activeEmulator != null) {
+            activeEmulator.pause();
+        }
+    }
+
+    private static void resumeEmulator() {
+        if (activeEmulator != null) {
+            activeEmulator.resume();
+        }
+    }
+
+    private static void stopEmulator() {
+        if (activeEmulator != null) {
+            activeEmulator.stop();
+            activeEmulator = null;
         }
     }
 
@@ -117,15 +131,29 @@ public class Main {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private static void relaunch(Options options) throws IOException {
-        List<String> command = new ArrayList<>();
-        command.add(new File(System.getProperty("java.home"), "bin/java").getAbsolutePath());
-        command.add("-cp");
-        command.add(System.getProperty("java.class.path"));
-        command.add(Main.class.getName());
-        command.addAll(options.toArgs());
-        new ProcessBuilder(command).inheritIO().start();
-        System.exit(0);
+    private static synchronized void startEmulator(Options options) {
+        if (activeEmulator != null) {
+            activeEmulator.stop();
+        }
+        activeOptions = options;
+        Emulator emulator = new Emulator(
+                options.biosFile(),
+                options.romFile(),
+                options.saveFile(),
+                options.headless(),
+                options.headless() ? null : window
+        );
+        if (options.skipBios()) {
+            emulator.skipBios();
+        }
+        activeEmulator = emulator;
+        if (options.headless()) {
+            emulator.start();
+            return;
+        }
+        Thread thread = new Thread(emulator::start, "gbcemu-runtime");
+        thread.setDaemon(false);
+        thread.start();
     }
 
     private static File defaultBiosFile() {
@@ -147,6 +175,10 @@ public class Main {
             boolean noSave,
             boolean noBios
     ) {
+        static Options empty() {
+            return new Options(null, defaultBiosFile(), null, false, false, false, false, false);
+        }
+
         static Options parse(String[] args) {
             File romFile = null;
             File biosFile = defaultBiosFile();
@@ -214,33 +246,6 @@ public class Main {
         private Options withRomFile(File romFile) {
             File resolvedSaveFile = noSave ? null : defaultSaveFile(romFile);
             return new Options(romFile, biosFile, resolvedSaveFile, headless, skipBios, help, noSave, noBios);
-        }
-
-        private List<String> toArgs() {
-            List<String> args = new ArrayList<>();
-            if (romFile != null) {
-                args.add("--rom");
-                args.add(romFile.getAbsolutePath());
-            }
-            if (noBios) {
-                args.add("--no-bios");
-            } else if (biosFile != null) {
-                args.add("--bios");
-                args.add(biosFile.getAbsolutePath());
-            }
-            if (noSave) {
-                args.add("--no-save");
-            } else if (saveFile != null) {
-                args.add("--save-file");
-                args.add(saveFile.getAbsolutePath());
-            }
-            if (skipBios) {
-                args.add("--skip-bios");
-            }
-            if (headless) {
-                args.add("--headless");
-            }
-            return args;
         }
 
     }

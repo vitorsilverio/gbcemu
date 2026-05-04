@@ -29,23 +29,6 @@
             <version>2.0.17</version>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>com.badlogicgames.gdx</groupId>-->
-<!--            <artifactId>gdx</artifactId>-->
-<!--            <version>1.12.1</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>com.badlogicgames.gdx</groupId>-->
-<!--            <artifactId>gdx-backend-lwjgl3</artifactId>-->
-<!--            <version>1.12.1</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>com.badlogicgames.gdx</groupId>-->
-<!--            <artifactId>gdx-platform</artifactId>-->
-<!--            <version>1.12.1</version>-->
-<!--            <classifier>natives-desktop</classifier>-->
-<!--        </dependency>-->
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
@@ -84,12 +67,60 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.15.0</version>
+                        <configuration>
+                            <source>${java.version}</source>
+                            <target>${java.version}</target>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>1.1.0</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <id>build-native</id>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <imageName>GBCEMU</imageName>
+                            <mainClass>dev.vitorsilverio.gbcemu.Main</mainClass>
+                            <buildArgs>
+                                <buildArg>--no-fallback</buildArg>
+                                <buildArg>--add-modules=java.desktop</buildArg>
+                                <buildArg>-Djava.awt.headless=false</buildArg>
+                                <buildArg>--initialize-at-run-time=java.awt.Toolkit,sun.awt.windows.WToolkit,sun.awt.Win32Toolkit,java.awt,javax.swing,sun.awt</buildArg>
+                                <buildArg>--initialize-at-build-time=sun.awt.resources.awt</buildArg>
+                                <buildArg>-H:+AddAllCharsets</buildArg>
+                                <buildArg>--report-unsupported-elements-at-runtime</buildArg>
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

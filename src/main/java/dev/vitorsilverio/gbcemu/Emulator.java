@@ -18,7 +18,6 @@ import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
-import dev.vitorsilverio.gbcemu.ppu.Display;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 
 import java.io.File;
@@ -35,7 +34,7 @@ public class Emulator {
     private final Serial serial;
     private final HDMA hdma;
     private final DMA dma;
-    private final Display display;
+    private final EmulatorWindow window;
     private final boolean throttled;
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
@@ -45,14 +44,14 @@ public class Emulator {
     private long frameStart = System.nanoTime();
 
     public Emulator(File biosFile, File romFile, File saveFile) {
-        this(biosFile, romFile, saveFile, false);
+        this(biosFile, romFile, saveFile, false, null);
     }
 
     public Emulator(File biosFile, File romFile, File saveFile, boolean headless) {
         this(biosFile, romFile, saveFile, headless, null);
     }
 
-    public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorMenuActions menuActions) {
+    public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window) {
         Bus bus = new Bus();
         if (biosFile != null) {
             Bios bios = new Bios(biosFile);
@@ -86,15 +85,10 @@ public class Emulator {
         bus.addMemorySpace(new Key1());
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
-        EmulatorMenuActions runtimeMenuActions = headless ? null : new EmulatorMenuActions(
-                menuActions.openRom(),
-                menuActions.configureDefaultBios(),
-                this::openDebugger,
-                this::pause,
-                this::resume,
-                this::stop
-        );
-        this.display = headless ? null : new Display(ppu, (KeyboardController) controller, runtimeMenuActions);
+        this.window = headless ? null : window;
+        if (this.window != null) {
+            this.window.attach(ppu, (KeyboardController) controller);
+        }
         this.serial = new Serial(bus);
         bus.addMemorySpace(serial);
         cpu.setCycleCallback(this::tickSystemCycle);
@@ -102,10 +96,6 @@ public class Emulator {
 
 
     public void start() {
-        if (display != null) {
-            Thread displayThread = new Thread(display);
-            displayThread.start();
-        }
         while (!stopped) {
             if (paused) {
                 sleepNanos(2_000_000);
@@ -120,6 +110,9 @@ public class Emulator {
             } else {
                 tickSystemCycle();
             }
+        }
+        if (window != null) {
+            window.detach(ppu);
         }
     }
 
@@ -138,7 +131,7 @@ public class Emulator {
         paused = false;
     }
 
-    private void openDebugger() {
+    public void openDebugger() {
         DebugWindow.open(cpu, cpu.getBus(), ppu, debugController, this::pause, this::resume);
     }
 
@@ -159,6 +152,9 @@ public class Emulator {
         serial.tick();
         ppu.tick();
         apu.tick();
+        if (window != null && ppu.consumeFrameReady()) {
+            window.renderFrame(ppu);
+        }
         dots++;
         if (throttled && dots >= DOTS_PER_FRAME) {
             long elapsed = System.nanoTime() - frameStart;

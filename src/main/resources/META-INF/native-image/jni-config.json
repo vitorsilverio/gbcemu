@@ -1,0 +1,117 @@
+[
+  {
+    "name": "java.awt.Toolkit",
+    "methods": [
+      { "name": "getDefaultToolkit", "parameterTypes": [] },
+      { "name": "getFontMetrics", "parameterTypes": ["java.awt.Font"] }
+    ]
+  },
+  {
+    "name": "java.awt.Component",
+    "fields": [
+      { "name": "appContext" }, { "name": "peer" }, { "name": "parent" }
+    ],
+    "methods": [
+      { "name": "getToolkitImpl", "parameterTypes": [] }
+    ]
+  },
+  {
+    "name": "java.awt.Color",
+    "methods": [{ "name": "getRGB", "parameterTypes": [] }]
+  },
+  {
+    "name": "java.awt.Insets",
+    "fields": [
+      { "name": "top" },
+      { "name": "left" },
+      { "name": "bottom" },
+      { "name": "right" }
+    ],
+    "methods": [
+      { "name": "<init>", "parameterTypes": ["int", "int", "int", "int"] }
+    ]
+  },
+  {
+    "name": "java.awt.Dimension",
+    "fields": [
+      { "name": "width" },
+      { "name": "height" }
+    ],
+    "methods": [
+      { "name": "<init>", "parameterTypes": ["int", "int"] }
+    ]
+  },
+  {
+    "name": "java.awt.Point",
+    "fields": [
+      { "name": "x" },
+      { "name": "y" }
+    ],
+    "methods": [
+      { "name": "<init>", "parameterTypes": ["int", "int"] }
+    ]
+  },
+  {
+    "name": "java.awt.Rectangle",
+    "fields": [
+      { "name": "x" },
+      { "name": "y" },
+      { "name": "width" },
+      { "name": "height" }
+    ],
+    "methods": [
+      { "name": "<init>", "parameterTypes": ["int", "int", "int", "int"] }
+    ]
+  },
+  {
+    "name": "java.awt.AWTEvent",
+    "fields": [
+      { "name": "bdata" },
+      { "name": "id" },
+      { "name": "consumed" }
+    ]
+  },
+  {
+    "name": "java.awt.event.InputEvent",
+    "fields": [
+      { "name": "modifiers" }
+    ]
+  },
+  {
+    "name": "java.awt.event.KeyEvent",
+    "fields": [
+      { "name": "keyCode" },
+      { "name": "keyChar" }
+    ]
+  },
+  {
+    "name": "java.awt.event.MouseEvent",
+    "fields": [
+      { "name": "x" },
+      { "name": "y" },
+      { "name": "clickCount" },
+      { "name": "button" }
+    ]
+  },
+  {
+    "name": "java.awt.event.MouseWheelEvent",
+    "fields": [
+      { "name": "scrollType" },
+      { "name": "scrollAmount" },
+      { "name": "wheelRotation" },
+      { "name": "preciseWheelRotation" }
+    ]
+  },
+  {
+    "name": "java.awt.event.FocusEvent"
+  },
+  {
+    "name": "java.awt.event.ComponentEvent"
+  },
+  {
+    "name": "java.awt.event.ContainerEvent"
+  },
+  {
+    "name": "java.awt.event.WindowEvent"
+  }
+]

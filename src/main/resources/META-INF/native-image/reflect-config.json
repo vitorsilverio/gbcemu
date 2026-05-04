@@ -1,0 +1,6 @@
+[
+  { "name": "dev.vitorsilverio.gbcemu.Main", "methods": [{ "name": "main", "parameterTypes": ["java.lang.String[]"] }] },
+  { "name": "javax.swing.UIManager", "allDeclaredMethods": true, "allPublicMethods": true },
+  { "name": "sun.swing.internal.plaf.basic.resources.basic", "allDeclaredConstructors": true },
+  { "name": "org.slf4j.LoggerFactory", "allDeclaredMethods": true, "allPublicMethods": true }
+]

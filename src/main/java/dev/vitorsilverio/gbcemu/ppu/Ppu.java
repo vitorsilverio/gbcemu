@@ -75,6 +75,7 @@ public class Ppu implements MemorySpace, MachineCycle {
     private int windowY;
 
     private boolean previousStatSignal;
+    private volatile boolean frameReady;
 
 
 
@@ -197,7 +198,8 @@ public class Ppu implements MemorySpace, MachineCycle {
         int colorIndex = tile.getPixel(tileX, tileY);
         int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
         int mappedColorIndex = cgbMode ? colorIndex : bgPaletteDmg.getColor(colorIndex);
-        return new Pixel(colorIndex, bgPalette.getColor(paletteIndex, mappedColorIndex), cgbMode && map.isPriority());
+        int color = cgbMode ? bgPalette.getColor(paletteIndex, mappedColorIndex) : grayColor(mappedColorIndex);
+        return new Pixel(colorIndex, color, cgbMode && map.isPriority());
     }
 
     private boolean isWindowVisibleAt(int x, int y) {
@@ -225,7 +227,8 @@ public class Ppu implements MemorySpace, MachineCycle {
         int paletteIndex = cgbMode ? spritePixel.attribute().getCgbPalette() : spritePixel.attribute().getDmgPalette();
         int colorIndex = spritePixel.colorIndex();
         int mappedColorIndex = cgbMode ? colorIndex : getDmgObjectPalette(spritePixel.attribute()).getColor(colorIndex);
-        return new Pixel(colorIndex, objPalette.getColor(paletteIndex, mappedColorIndex), false);
+        int color = cgbMode ? objPalette.getColor(paletteIndex, mappedColorIndex) : grayColor(mappedColorIndex);
+        return new Pixel(colorIndex, color, false);
     }
 
     private SpritePixel findSpritePixel(int x, int y) {
@@ -315,6 +318,7 @@ public class Ppu implements MemorySpace, MachineCycle {
             cycles = -1;
             if (currentLine == 144) {
                 mode = PpuMode.VBLANK;
+                frameReady = true;
                 bus.requestInterrupt(Interrupt.VBLANK);
             } else {
                 mode = PpuMode.OAM_READ;
@@ -489,7 +493,7 @@ public class Ppu implements MemorySpace, MachineCycle {
         }
     }
 
-    public Image getFrameBuffer() {
+    public BufferedImage getFrameBuffer() {
         var image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < 144; y++) {
             for (int x = 0; x < 160; x++) {
@@ -498,6 +502,14 @@ public class Ppu implements MemorySpace, MachineCycle {
             }
         }
         return image;
+    }
+
+    public boolean consumeFrameReady() {
+        if (!frameReady) {
+            return false;
+        }
+        frameReady = false;
+        return true;
     }
 
     public boolean isHBlank() {
@@ -521,6 +533,63 @@ public class Ppu implements MemorySpace, MachineCycle {
         );
     }
 
+    public FrameDebugStats frameDebugStats() {
+        int blackPixels = 0;
+        int whitePixels = 0;
+        int otherPixels = 0;
+        for (int y = 0; y < 144; y++) {
+            for (int x = 0; x < 160; x++) {
+                int rgb = frameBuffer[x][y] & 0x00FFFFFF;
+                if (rgb == 0) {
+                    blackPixels++;
+                } else if (rgb == 0x00FFFFFF) {
+                    whitePixels++;
+                } else {
+                    otherPixels++;
+                }
+            }
+        }
+
+        int nonEmptyTiles = 0;
+        for (int bank = 0; bank < 2; bank++) {
+            for (int tileIndex = 0; tileIndex < 384; tileIndex++) {
+                Tile tile = videoRam.getTile(TileArea.METHOD_8000, bank, tileIndex);
+                if (!isEmptyTile(tile)) {
+                    nonEmptyTiles++;
+                }
+            }
+        }
+
+        return new FrameDebugStats(
+                cgbMode,
+                control.getData() & 0xFF,
+                stat.getData() & 0xFF,
+                mode,
+                currentLine,
+                currentColumn,
+                blackPixels,
+                whitePixels,
+                otherPixels,
+                nonEmptyTiles,
+                bgPalette.getColor(0, 0),
+                bgPalette.getColor(0, 1),
+                bgPalette.getColor(0, 2),
+                bgPalette.getColor(0, 3),
+                bgPaletteDmg.getData() & 0xFF
+        );
+    }
+
+    private boolean isEmptyTile(Tile tile) {
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                if (tile.getPixel(x, y) != 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     public BufferedImage debugTileImage(int bank) {
         BufferedImage image = new BufferedImage(16 * 8, 24 * 8, BufferedImage.TYPE_INT_RGB);
         for (int tileIndex = 0; tileIndex < 384; tileIndex++) {
@@ -534,6 +603,32 @@ public class Ppu implements MemorySpace, MachineCycle {
             }
         }
         return image;
+    }
+
+    public int[] copyFrameBufferArgb() {
+        int[] pixels = new int[160 * 144];
+        for (int y = 0; y < 144; y++) {
+            for (int x = 0; x < 160; x++) {
+                pixels[y * 160 + x] = frameBuffer[x][y];
+            }
+        }
+        return pixels;
+    }
+
+    public int[] copyBgColorIndexesArgb() {
+        int[] pixels = new int[160 * 144];
+        for (int y = 0; y < 144; y++) {
+            for (int x = 0; x < 160; x++) {
+                pixels[y * 160 + x] = switch (bgColorIndexes[x][y] & 0x03) {
+                    case 0 -> 0xFFFFFFFF;
+                    case 1 -> 0xFFFF0000;
+                    case 2 -> 0xFF00FF00;
+                    case 3 -> 0xFF0000FF;
+                    default -> 0xFFFF00FF;
+                };
+            }
+        }
+        return pixels;
     }
 
     public BufferedImage debugTileMapImage(TileMapArea area) {
@@ -603,6 +698,25 @@ public class Ppu implements MemorySpace, MachineCycle {
             int windowX,
             int windowY,
             int lineCompare
+    ) {
+    }
+
+    public record FrameDebugStats(
+            boolean cgbMode,
+            int lcdc,
+            int stat,
+            PpuMode mode,
+            int line,
+            int column,
+            int blackPixels,
+            int whitePixels,
+            int otherPixels,
+            int nonEmptyTiles,
+            int bgColor0,
+            int bgColor1,
+            int bgColor2,
+            int bgColor3,
+            int dmgBgPalette
     ) {
     }
 

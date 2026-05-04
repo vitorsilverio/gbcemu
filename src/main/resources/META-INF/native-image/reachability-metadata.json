@@ -1,0 +1,4531 @@
+{
+  "reflection": [
+    {
+      "type": "com.google.common.util.concurrent.AbstractFutureState",
+      "fields": [
+        {
+          "name": "listenersField"
+        },
+        {
+          "name": "valueField"
+        },
+        {
+          "name": "waitersField"
+        }
+      ]
+    },
+    {
+      "type": "com.google.common.util.concurrent.AbstractFutureState$Waiter",
+      "fields": [
+        {
+          "name": "next"
+        },
+        {
+          "name": "thread"
+        }
+      ]
+    },
+    {
+      "type": "com.google.inject.AbstractModule"
+    },
+    {
+      "type": "com.google.inject.Binder"
+    },
+    {
+      "type": "com.google.inject.internal.Annotations"
+    },
+    {
+      "type": "com.google.inject.internal.InjectorShell$RootModule"
+    },
+    {
+      "type": "com.google.inject.kotlin.KotlinSupportImpl"
+    },
+    {
+      "type": "com.google.inject.matcher.AbstractMatcher"
+    },
+    {
+      "type": "com.google.inject.name.Named"
+    },
+    {
+      "type": "com.google.inject.spi.ElementSource"
+    },
+    {
+      "type": "com.google.inject.spi.ProviderInstanceBinding"
+    },
+    {
+      "type": "com.google.inject.util.Modules$EmptyModule"
+    },
+    {
+      "type": "com.google.inject.util.Providers$ConstantProvider"
+    },
+    {
+      "type": "java.lang.Boolean",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "parseBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Byte"
+    },
+    {
+      "type": "java.lang.Double"
+    },
+    {
+      "type": "java.lang.Float"
+    },
+    {
+      "type": "java.lang.Integer"
+    },
+    {
+      "type": "java.lang.Long"
+    },
+    {
+      "type": "java.lang.Object"
+    },
+    {
+      "type": "java.lang.Short"
+    },
+    {
+      "type": "java.lang.String[]"
+    },
+    {
+      "type": "java.lang.invoke.VarHandle"
+    },
+    {
+      "type": "java.util.AbstractMap"
+    },
+    {
+      "type": "java.util.ArrayList",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.util.Collections$UnmodifiableMap"
+    },
+    {
+      "type": "java.util.HashMap",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.util.List"
+    },
+    {
+      "type": "java.util.Map"
+    },
+    {
+      "type": "java.util.function.BiFunction"
+    },
+    {
+      "type": "javax.inject.Named"
+    },
+    {
+      "type": "org.apache.maven.AbstractMavenLifecycleParticipant"
+    },
+    {
+      "type": "org.apache.maven.DefaultArtifactFilterManager"
+    },
+    {
+      "type": "org.apache.maven.DefaultArtifactFilterManager$$FastClassByGuice$$13088975",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.DefaultMaven",
+      "fields": [
+        {
+          "name": "container"
+        },
+        {
+          "name": "eventCatapult"
+        },
+        {
+          "name": "graphBuilder"
+        },
+        {
+          "name": "legacySupport"
+        },
+        {
+          "name": "lifecycleStarter"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "projectBuilder"
+        },
+        {
+          "name": "repositorySessionFactory"
+        },
+        {
+          "name": "sessionScope"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.DefaultMaven$$FastClassByGuice$$145454200",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.DefaultProjectDependenciesResolver"
+    },
+    {
+      "type": "org.apache.maven.Maven"
+    },
+    {
+      "type": "org.apache.maven.ProjectDependenciesResolver"
+    },
+    {
+      "type": "org.apache.maven.ReactorReader",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.execution.MavenSession"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.deployer.ArtifactDeployer"
+    },
+    {
+      "type": "org.apache.maven.artifact.deployer.DefaultArtifactDeployer"
+    },
+    {
+      "type": "org.apache.maven.artifact.factory.ArtifactFactory"
+    },
+    {
+      "type": "org.apache.maven.artifact.factory.DefaultArtifactFactory",
+      "fields": [
+        {
+          "name": "artifactHandlerManager"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.factory.DefaultArtifactFactory$$FastClassByGuice$$186043434",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.ArtifactHandler"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler",
+      "fields": [
+        {
+          "name": "classifier"
+        },
+        {
+          "name": "packaging"
+        },
+        {
+          "name": "type"
+        }
+      ],
+      "methods": [
+        {
+          "name": "setAddedToClasspath",
+          "parameterTypes": [
+            "boolean"
+          ]
+        },
+        {
+          "name": "setExtension",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setLanguage",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$$FastClassByGuice$$171764095",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu10"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu11"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu12"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu12$$FastClassByGuice$$191446074",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu13"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu13$$FastClassByGuice$$170293320",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu14"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu15"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu16"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu17"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu18"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu19"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu9"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.DefaultArtifactHandler$__sisu9$$FastClassByGuice$$169049884",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.manager.ArtifactHandlerManager"
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.manager.DefaultArtifactHandlerManager",
+      "fields": [
+        {
+          "name": "artifactHandlers"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.handler.manager.DefaultArtifactHandlerManager$$FastClassByGuice$$151055926",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.installer.ArtifactInstaller"
+    },
+    {
+      "type": "org.apache.maven.artifact.installer.DefaultArtifactInstaller"
+    },
+    {
+      "type": "org.apache.maven.artifact.manager.DefaultWagonManager"
+    },
+    {
+      "type": "org.apache.maven.artifact.manager.WagonManager"
+    },
+    {
+      "type": "org.apache.maven.artifact.metadata.ArtifactMetadataSource"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.ArtifactRepositoryFactory"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.DefaultArtifactRepositoryFactory"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.layout.ArtifactRepositoryLayout"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.layout.DefaultRepositoryLayout"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.layout.DefaultRepositoryLayout$$FastClassByGuice$$168107615",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.layout.FlatRepositoryLayout"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.metadata.DefaultRepositoryMetadataManager"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.metadata.RepositoryMetadataManager"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.metadata.io.DefaultMetadataReader"
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.metadata.io.DefaultMetadataReader$$FastClassByGuice$$159047751",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.artifact.repository.metadata.io.MetadataReader"
+    },
+    {
+      "type": "org.apache.maven.artifact.resolver.ArtifactCollector"
+    },
+    {
+      "type": "org.apache.maven.artifact.resolver.ArtifactResolver"
+    },
+    {
+      "type": "org.apache.maven.artifact.resolver.DefaultArtifactCollector"
+    },
+    {
+      "type": "org.apache.maven.artifact.resolver.DefaultArtifactResolver"
+    },
+    {
+      "type": "org.apache.maven.artifact.resolver.DefaultResolutionErrorHandler"
+    },
+    {
+      "type": "org.apache.maven.artifact.resolver.ResolutionErrorHandler"
+    },
+    {
+      "type": "org.apache.maven.bridge.MavenRepositorySystem",
+      "fields": [
+        {
+          "name": "artifactHandlerManager"
+        },
+        {
+          "name": "layouts"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.classrealm.ClassRealmManager"
+    },
+    {
+      "type": "org.apache.maven.classrealm.DefaultClassRealmManager"
+    },
+    {
+      "type": "org.apache.maven.classrealm.DefaultClassRealmManager$$FastClassByGuice$$14466842",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.cli.MavenCli",
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]",
+            "org.codehaus.plexus.classworlds.ClassWorld"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.cli.MavenCli$1"
+    },
+    {
+      "type": "org.apache.maven.cli.configuration.SettingsXmlConfigurationProcessor",
+      "fields": [
+        {
+          "name": "mavenRepositorySystem"
+        },
+        {
+          "name": "settingsBuilder"
+        },
+        {
+          "name": "settingsDecrypter"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.cli.configuration.SettingsXmlConfigurationProcessor$$FastClassByGuice$$29365258",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.cli.internal.BootstrapCoreExtensionManager"
+    },
+    {
+      "type": "org.apache.maven.cli.internal.BootstrapCoreExtensionManager$$FastClassByGuice$$31074017",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.cli.logging.Slf4jLogger"
+    },
+    {
+      "type": "org.apache.maven.cli.logging.Slf4jLoggerManager"
+    },
+    {
+      "type": "org.apache.maven.cli.logging.impl.Slf4jSimpleConfiguration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.configuration.BeanConfigurator"
+    },
+    {
+      "type": "org.apache.maven.configuration.internal.DefaultBeanConfigurator"
+    },
+    {
+      "type": "org.apache.maven.eventspy.AbstractEventSpy"
+    },
+    {
+      "type": "org.apache.maven.eventspy.EventSpy"
+    },
+    {
+      "type": "org.apache.maven.eventspy.internal.EventSpyDispatcher",
+      "fields": [
+        {
+          "name": "logger"
+        }
+      ],
+      "methods": [
+        {
+          "name": "setEventSpies",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.eventspy.internal.EventSpyDispatcher$$FastClassByGuice$$9444114",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.exception.DefaultExceptionHandler"
+    },
+    {
+      "type": "org.apache.maven.exception.ExceptionHandler"
+    },
+    {
+      "type": "org.apache.maven.execution.DefaultMavenExecutionRequestPopulator"
+    },
+    {
+      "type": "org.apache.maven.execution.DefaultMavenExecutionRequestPopulator$$FastClassByGuice$$15488122",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.execution.DefaultRuntimeInformation"
+    },
+    {
+      "type": "org.apache.maven.execution.MojoExecutionListener"
+    },
+    {
+      "type": "org.apache.maven.execution.RuntimeInformation"
+    },
+    {
+      "type": "org.apache.maven.execution.scope.internal.MojoExecutionScope"
+    },
+    {
+      "type": "org.apache.maven.execution.scope.internal.MojoExecutionScope$1"
+    },
+    {
+      "type": "org.apache.maven.execution.scope.internal.MojoExecutionScopeCoreModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.execution.scope.internal.MojoExecutionScopeModule"
+    },
+    {
+      "type": "org.apache.maven.extension.internal.CoreExports"
+    },
+    {
+      "type": "org.apache.maven.extension.internal.CoreExportsProvider"
+    },
+    {
+      "type": "org.apache.maven.extension.internal.CoreExportsProvider$$FastClassByGuice$$15913869",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.graph.DefaultGraphBuilder",
+      "fields": [
+        {
+          "name": "logger"
+        },
+        {
+          "name": "projectBuilder"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.graph.DefaultGraphBuilder$$FastClassByGuice$$166785994",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.graph.GraphBuilder"
+    },
+    {
+      "type": "org.apache.maven.internal.aether.DefaultRepositorySystemSessionFactory",
+      "fields": [
+        {
+          "name": "artifactHandlerManager"
+        },
+        {
+          "name": "eventSpyDispatcher"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "mavenRepositorySystem"
+        },
+        {
+          "name": "repoSystem"
+        },
+        {
+          "name": "runtimeInformation"
+        },
+        {
+          "name": "settingsDecrypter"
+        },
+        {
+          "name": "workspaceRepository"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.internal.aether.DefaultRepositorySystemSessionFactory$$FastClassByGuice$$17768090",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.internal.aether.ResolverLifecycle",
+      "methods": [
+        {
+          "name": "shutdown",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.internal.aether.ResolverLifecycle$$FastClassByGuice$$18144720",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.internal.secdispatcher.SecDispatcherProvider"
+    },
+    {
+      "type": "org.apache.maven.internal.secdispatcher.SecDispatcherProvider$$FastClassByGuice$$19822321",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.DefaultLifecycleExecutor"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.DefaultLifecycles",
+      "fields": [
+        {
+          "name": "lifecycles"
+        },
+        {
+          "name": "logger"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.DefaultLifecycles$$FastClassByGuice$$5125319",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.LifeCyclePluginAnalyzer"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.Lifecycle",
+      "fields": [
+        {
+          "name": "defaultPhases"
+        },
+        {
+          "name": "id"
+        },
+        {
+          "name": "phases"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.Lifecycle$$FastClassByGuice$$7825156",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.Lifecycle$__sisu7"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.Lifecycle$__sisu7$$FastClassByGuice$$181880155",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.Lifecycle$__sisu8"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.Lifecycle$__sisu8$$FastClassByGuice$$182613464",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.LifecycleExecutor"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.LifecycleMappingDelegate"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.MojoExecutionConfigurator"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.BuildListCalculator"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.BuildListCalculator$$FastClassByGuice$$10534201",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultExecutionEventCatapult"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultExecutionEventCatapult$$FastClassByGuice$$161675493",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecycleExecutionPlanCalculator",
+      "fields": [
+        {
+          "name": "defaultLifeCycles"
+        },
+        {
+          "name": "delegates"
+        },
+        {
+          "name": "lifecyclePluginResolver"
+        },
+        {
+          "name": "mojoDescriptorCreator"
+        },
+        {
+          "name": "mojoExecutionConfigurators"
+        },
+        {
+          "name": "pluginManager"
+        },
+        {
+          "name": "pluginVersionResolver"
+        },
+        {
+          "name": "standardDelegate"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecycleExecutionPlanCalculator$$FastClassByGuice$$187958485",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecycleMappingDelegate",
+      "fields": [
+        {
+          "name": "pluginManager"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecycleMappingDelegate$$FastClassByGuice$$188903088",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecyclePluginAnalyzer",
+      "fields": [
+        {
+          "name": "defaultLifeCycles"
+        },
+        {
+          "name": "lifecycleMappings"
+        },
+        {
+          "name": "logger"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecyclePluginAnalyzer$$FastClassByGuice$$147938943",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecycleTaskSegmentCalculator",
+      "fields": [
+        {
+          "name": "lifecyclePluginResolver"
+        },
+        {
+          "name": "mojoDescriptorCreator"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultLifecycleTaskSegmentCalculator$$FastClassByGuice$$163212180",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultMojoExecutionConfigurator"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultMojoExecutionConfigurator$$FastClassByGuice$$190773100",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultProjectArtifactFactory"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.DefaultProjectArtifactFactory$$FastClassByGuice$$20470540",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.ExecutionEventCatapult"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleDebugLogger",
+      "fields": [
+        {
+          "name": "logger"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleDebugLogger$$FastClassByGuice$$5275458",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleDependencyResolver",
+      "fields": [
+        {
+          "name": "artifactFactory"
+        },
+        {
+          "name": "dependenciesResolver"
+        },
+        {
+          "name": "eventSpyDispatcher"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "projectArtifactsCache"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleDependencyResolver$$FastClassByGuice$$21396538",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleExecutionPlanCalculator"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleModuleBuilder",
+      "fields": [
+        {
+          "name": "builderCommon"
+        },
+        {
+          "name": "eventCatapult"
+        },
+        {
+          "name": "mojoExecutor"
+        }
+      ],
+      "methods": [
+        {
+          "name": "setProjectExecutionListeners",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleModuleBuilder$$FastClassByGuice$$2751188",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecyclePluginResolver",
+      "fields": [
+        {
+          "name": "pluginVersionResolver"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecyclePluginResolver$$FastClassByGuice$$8533249",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleStarter",
+      "fields": [
+        {
+          "name": "buildListCalculator"
+        },
+        {
+          "name": "builders"
+        },
+        {
+          "name": "defaultLifeCycles"
+        },
+        {
+          "name": "eventCatapult"
+        },
+        {
+          "name": "lifecycleDebugLogger"
+        },
+        {
+          "name": "lifecycleTaskSegmentCalculator"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "sessionScope"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleStarter$$FastClassByGuice$$3958862",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.LifecycleTaskSegmentCalculator"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.MojoDescriptorCreator",
+      "fields": [
+        {
+          "name": "lifecyclePluginResolver"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "pluginManager"
+        },
+        {
+          "name": "pluginPrefixResolver"
+        },
+        {
+          "name": "pluginVersionResolver"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.MojoDescriptorCreator$$FastClassByGuice$$1214775",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.MojoExecutor",
+      "fields": [
+        {
+          "name": "container"
+        },
+        {
+          "name": "eventCatapult"
+        },
+        {
+          "name": "lifeCycleDependencyResolver"
+        },
+        {
+          "name": "mavenPluginManager"
+        },
+        {
+          "name": "pluginManager"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.MojoExecutor$$FastClassByGuice$$12058615",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.builder.Builder"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.builder.BuilderCommon",
+      "fields": [
+        {
+          "name": "eventCatapult"
+        },
+        {
+          "name": "lifeCycleExecutionPlanCalculator"
+        },
+        {
+          "name": "lifecycleDebugLogger"
+        },
+        {
+          "name": "logger"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.builder.BuilderCommon$$FastClassByGuice$$6625475",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.builder.multithreaded.MultiThreadedBuilder"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder",
+      "fields": [
+        {
+          "name": "lifecycleModuleBuilder"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder$$FastClassByGuice$$184728278",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping",
+      "fields": [
+        {
+          "name": "lifecycles"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu1"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu1$$FastClassByGuice$$180903905",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu2"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu3"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu4"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu5"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping$__sisu6"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.Lifecycle",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setPhases",
+          "parameterTypes": [
+            "java.util.Map"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.LifecycleMapping"
+    },
+    {
+      "type": "org.apache.maven.lifecycle.mapping.LifecyclePhase",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.Build",
+      "methods": [
+        {
+          "name": "getOutputDirectory",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTestOutputDirectory",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.BuildBase",
+      "methods": [
+        {
+          "name": "getDirectory",
+          "parameterTypes": []
+        },
+        {
+          "name": "getFinalName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.Model",
+      "methods": [
+        {
+          "name": "getArtifactId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getBuild",
+          "parameterTypes": []
+        },
+        {
+          "name": "getDescription",
+          "parameterTypes": []
+        },
+        {
+          "name": "getGroupId",
+          "parameterTypes": []
+        },
+        {
+          "name": "getInceptionYear",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOrganization",
+          "parameterTypes": []
+        },
+        {
+          "name": "getPackaging",
+          "parameterTypes": []
+        },
+        {
+          "name": "getParent",
+          "parameterTypes": []
+        },
+        {
+          "name": "getScm",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUrl",
+          "parameterTypes": []
+        },
+        {
+          "name": "getVersion",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.ModelBase",
+      "methods": [
+        {
+          "name": "getReporting",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.Organization",
+      "methods": [
+        {
+          "name": "getName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.Parent",
+      "methods": [
+        {
+          "name": "getVersion",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.Reporting",
+      "methods": [
+        {
+          "name": "getOutputDirectory",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.Scm",
+      "methods": [
+        {
+          "name": "getDeveloperConnection",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTag",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.building.DefaultModelBuilder",
+      "fields": [
+        {
+          "name": "dependencyManagementImporter"
+        },
+        {
+          "name": "dependencyManagementInjector"
+        },
+        {
+          "name": "inheritanceAssembler"
+        },
+        {
+          "name": "lifecycleBindingsInjector"
+        },
+        {
+          "name": "modelInterpolator"
+        },
+        {
+          "name": "modelNormalizer"
+        },
+        {
+          "name": "modelPathTranslator"
+        },
+        {
+          "name": "modelProcessor"
+        },
+        {
+          "name": "modelUrlNormalizer"
+        },
+        {
+          "name": "modelValidator"
+        },
+        {
+          "name": "pluginConfigurationExpander"
+        },
+        {
+          "name": "pluginManagementInjector"
+        },
+        {
+          "name": "profileActivationFilePathInterpolator"
+        },
+        {
+          "name": "profileInjector"
+        },
+        {
+          "name": "profileSelector"
+        },
+        {
+          "name": "reportConfigurationExpander"
+        },
+        {
+          "name": "reportingConverter"
+        },
+        {
+          "name": "superPomProvider"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.building.DefaultModelBuilder$$FastClassByGuice$$32103919",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.building.DefaultModelProcessor",
+      "fields": [
+        {
+          "name": "locator"
+        },
+        {
+          "name": "reader"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.building.DefaultModelProcessor$$FastClassByGuice$$32660293",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.building.ModelBuilder"
+    },
+    {
+      "type": "org.apache.maven.model.building.ModelProcessor"
+    },
+    {
+      "type": "org.apache.maven.model.composition.DefaultDependencyManagementImporter"
+    },
+    {
+      "type": "org.apache.maven.model.composition.DefaultDependencyManagementImporter$$FastClassByGuice$$34443990",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.inheritance.DefaultInheritanceAssembler"
+    },
+    {
+      "type": "org.apache.maven.model.inheritance.DefaultInheritanceAssembler$$FastClassByGuice$$35002067",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.interpolation.AbstractStringBasedModelInterpolator",
+      "fields": [
+        {
+          "name": "pathTranslator"
+        },
+        {
+          "name": "urlNormalizer"
+        },
+        {
+          "name": "versionProcessor"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.interpolation.DefaultModelVersionProcessor"
+    },
+    {
+      "type": "org.apache.maven.model.interpolation.DefaultModelVersionProcessor$$FastClassByGuice$$36282796",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.interpolation.StringVisitorModelInterpolator"
+    },
+    {
+      "type": "org.apache.maven.model.interpolation.StringVisitorModelInterpolator$$FastClassByGuice$$37288550",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.io.DefaultModelReader"
+    },
+    {
+      "type": "org.apache.maven.model.io.DefaultModelReader$$FastClassByGuice$$38448592",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.io.DefaultModelWriter"
+    },
+    {
+      "type": "org.apache.maven.model.io.DefaultModelWriter$$FastClassByGuice$$39531160",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.locator.DefaultModelLocator"
+    },
+    {
+      "type": "org.apache.maven.model.locator.DefaultModelLocator$$FastClassByGuice$$40205120",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.management.DefaultDependencyManagementInjector"
+    },
+    {
+      "type": "org.apache.maven.model.management.DefaultDependencyManagementInjector$$FastClassByGuice$$41203789",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.management.DefaultPluginManagementInjector"
+    },
+    {
+      "type": "org.apache.maven.model.management.DefaultPluginManagementInjector$$FastClassByGuice$$42579143",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.normalization.DefaultModelNormalizer"
+    },
+    {
+      "type": "org.apache.maven.model.normalization.DefaultModelNormalizer$$FastClassByGuice$$43651996",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultModelPathTranslator",
+      "fields": [
+        {
+          "name": "pathTranslator"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultModelPathTranslator$$FastClassByGuice$$44166351",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultModelUrlNormalizer",
+      "fields": [
+        {
+          "name": "urlNormalizer"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultModelUrlNormalizer$$FastClassByGuice$$45788475",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultPathTranslator"
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultPathTranslator$$FastClassByGuice$$46653444",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultUrlNormalizer"
+    },
+    {
+      "type": "org.apache.maven.model.path.DefaultUrlNormalizer$$FastClassByGuice$$47401840",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.ProfileActivationFilePathInterpolator",
+      "fields": [
+        {
+          "name": "pathTranslator"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.path.ProfileActivationFilePathInterpolator$$FastClassByGuice$$48729685",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultLifecycleBindingsInjector",
+      "fields": [
+        {
+          "name": "lifecycle"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultLifecycleBindingsInjector$$FastClassByGuice$$147685776",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultPluginConfigurationExpander"
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultPluginConfigurationExpander$$FastClassByGuice$$49800345",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultReportConfigurationExpander"
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultReportConfigurationExpander$$FastClassByGuice$$50338480",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultReportingConverter"
+    },
+    {
+      "type": "org.apache.maven.model.plugin.DefaultReportingConverter$$FastClassByGuice$$51436342",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.plugin.LifecycleBindingsInjector"
+    },
+    {
+      "type": "org.apache.maven.model.profile.DefaultProfileInjector"
+    },
+    {
+      "type": "org.apache.maven.model.profile.DefaultProfileInjector$$FastClassByGuice$$52485108",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.DefaultProfileSelector",
+      "fields": [
+        {
+          "name": "activators"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.DefaultProfileSelector$$FastClassByGuice$$53708994",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.FileProfileActivator",
+      "fields": [
+        {
+          "name": "profileActivationFilePathInterpolator"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.FileProfileActivator$$FastClassByGuice$$55431702",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.JdkVersionProfileActivator"
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.JdkVersionProfileActivator$$FastClassByGuice$$55751332",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.OperatingSystemProfileActivator"
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.OperatingSystemProfileActivator$$FastClassByGuice$$57228293",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.PropertyProfileActivator"
+    },
+    {
+      "type": "org.apache.maven.model.profile.activation.PropertyProfileActivator$$FastClassByGuice$$57859485",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.superpom.DefaultSuperPomProvider",
+      "fields": [
+        {
+          "name": "modelProcessor"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.superpom.DefaultSuperPomProvider$$FastClassByGuice$$59494528",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.model.validation.DefaultModelValidator"
+    },
+    {
+      "type": "org.apache.maven.model.validation.DefaultModelValidator$$FastClassByGuice$$60548264",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.AbstractMojo"
+    },
+    {
+      "type": "org.apache.maven.plugin.BuildPluginManager"
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultBuildPluginManager",
+      "fields": [
+        {
+          "name": "legacySupport"
+        },
+        {
+          "name": "mavenPluginManager"
+        },
+        {
+          "name": "scope"
+        }
+      ],
+      "methods": [
+        {
+          "name": "setMojoExecutionListeners",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultBuildPluginManager$$FastClassByGuice$$164294436",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultExtensionRealmCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultExtensionRealmCache$$FastClassByGuice$$156734183",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultMojosExecutionStrategy"
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultMojosExecutionStrategy$$FastClassByGuice$$23049046",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultPluginArtifactsCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultPluginArtifactsCache$$FastClassByGuice$$159609636",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultPluginDescriptorCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultPluginDescriptorCache$$FastClassByGuice$$153877983",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultPluginRealmCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.DefaultPluginRealmCache$$FastClassByGuice$$154750314",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.ExtensionRealmCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.LegacySupport"
+    },
+    {
+      "type": "org.apache.maven.plugin.MavenPluginManager"
+    },
+    {
+      "type": "org.apache.maven.plugin.Mojo"
+    },
+    {
+      "type": "org.apache.maven.plugin.PluginArtifactsCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.PluginDescriptorCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.PluginManager"
+    },
+    {
+      "type": "org.apache.maven.plugin.PluginRealmCache"
+    },
+    {
+      "type": "org.apache.maven.plugin.PluginValidationManager"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.AbstractMavenPluginDependenciesValidator"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.AbstractMavenPluginDescriptorSourcedParametersValidator"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.AbstractMavenPluginParametersValidator"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultLegacySupport"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultLegacySupport$$FastClassByGuice$$165148211",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultMavenPluginManager",
+      "fields": [
+        {
+          "name": "classRealmManager"
+        },
+        {
+          "name": "configurationValidators"
+        },
+        {
+          "name": "container"
+        },
+        {
+          "name": "extensionRealmCache"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "loggerManager"
+        },
+        {
+          "name": "pluginArtifactsCache"
+        },
+        {
+          "name": "pluginDependenciesResolver"
+        },
+        {
+          "name": "pluginDescriptorCache"
+        },
+        {
+          "name": "pluginRealmCache"
+        },
+        {
+          "name": "pluginValidationManager"
+        },
+        {
+          "name": "pluginVersionResolver"
+        },
+        {
+          "name": "prerequisitesCheckers"
+        },
+        {
+          "name": "runtimeInformation"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultMavenPluginManager$$FastClassByGuice$$152899617",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultPluginDependenciesResolver",
+      "fields": [
+        {
+          "name": "dependenciesValidators"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "repoSystem"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultPluginDependenciesResolver$$FastClassByGuice$$19434",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultPluginManager"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultPluginValidationManager"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DefaultPluginValidationManager$$FastClassByGuice$$23542587",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DeprecatedCoreExpressionValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.DeprecatedPluginValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.Maven2DependenciesValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.Maven3CompatDependenciesValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.MavenMixedDependenciesValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.MavenPluginJavaPrerequisiteChecker"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.MavenPluginJavaPrerequisiteChecker$$FastClassByGuice$$24506658",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.MavenPluginMavenPrerequisiteChecker"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.MavenPluginMavenPrerequisiteChecker$$FastClassByGuice$$25362664",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.MavenScopeDependenciesValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.PlexusContainerDefaultDependenciesValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.PluginDependenciesResolver"
+    },
+    {
+      "type": "org.apache.maven.plugin.internal.ReadOnlyPluginParametersValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.apache.maven.plugin.PluginValidationManager"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.prefix.PluginPrefixResolver"
+    },
+    {
+      "type": "org.apache.maven.plugin.prefix.internal.DefaultPluginPrefixResolver",
+      "fields": [
+        {
+          "name": "logger"
+        },
+        {
+          "name": "metadataReader"
+        },
+        {
+          "name": "pluginManager"
+        },
+        {
+          "name": "repositorySystem"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.prefix.internal.DefaultPluginPrefixResolver$$FastClassByGuice$$166545904",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.version.PluginVersionResolver"
+    },
+    {
+      "type": "org.apache.maven.plugin.version.internal.DefaultPluginVersionResolver",
+      "fields": [
+        {
+          "name": "logger"
+        },
+        {
+          "name": "metadataReader"
+        },
+        {
+          "name": "pluginManager"
+        },
+        {
+          "name": "repositorySystem"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugin.version.internal.DefaultPluginVersionResolver$$FastClassByGuice$$158127033",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugins.clean.CleanMojo",
+      "fields": [
+        {
+          "name": "directory"
+        },
+        {
+          "name": "excludeDefaultDirectories"
+        },
+        {
+          "name": "failOnError"
+        },
+        {
+          "name": "fast"
+        },
+        {
+          "name": "fastMode"
+        },
+        {
+          "name": "followSymLinks"
+        },
+        {
+          "name": "outputDirectory"
+        },
+        {
+          "name": "reportDirectory"
+        },
+        {
+          "name": "retryOnError"
+        },
+        {
+          "name": "session"
+        },
+        {
+          "name": "skip"
+        },
+        {
+          "name": "testOutputDirectory"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugins.clean.CleanMojo$$FastClassByGuice$$192413945",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.plugins.clean.HelpMojo"
+    },
+    {
+      "type": "org.apache.maven.profiles.DefaultMavenProfilesBuilder"
+    },
+    {
+      "type": "org.apache.maven.profiles.MavenProfilesBuilder"
+    },
+    {
+      "type": "org.apache.maven.project.DefaultMavenProjectBuilder"
+    },
+    {
+      "type": "org.apache.maven.project.DefaultMavenProjectHelper"
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectBuilder",
+      "fields": [
+        {
+          "name": "dependencyResolver"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "modelBuilder"
+        },
+        {
+          "name": "modelCacheFactory"
+        },
+        {
+          "name": "modelProcessor"
+        },
+        {
+          "name": "projectBuildingHelper"
+        },
+        {
+          "name": "repoSystem"
+        },
+        {
+          "name": "repositoryManager"
+        },
+        {
+          "name": "repositorySystem"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectBuilder$$FastClassByGuice$$145983432",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectBuildingHelper",
+      "fields": [
+        {
+          "name": "classRealmManager"
+        },
+        {
+          "name": "container"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "pluginManager"
+        },
+        {
+          "name": "projectRealmCache"
+        },
+        {
+          "name": "repositorySystem"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectBuildingHelper$$FastClassByGuice$$149708137",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectDependenciesResolver",
+      "fields": [
+        {
+          "name": "decorators"
+        },
+        {
+          "name": "logger"
+        },
+        {
+          "name": "repoSystem"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectDependenciesResolver$$FastClassByGuice$$161114548",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectRealmCache"
+    },
+    {
+      "type": "org.apache.maven.project.DefaultProjectRealmCache$$FastClassByGuice$$150572020",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.MavenProject",
+      "methods": [
+        {
+          "name": "getBuild",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.MavenProjectBuilder"
+    },
+    {
+      "type": "org.apache.maven.project.MavenProjectHelper"
+    },
+    {
+      "type": "org.apache.maven.project.ProjectBuilder"
+    },
+    {
+      "type": "org.apache.maven.project.ProjectBuildingHelper"
+    },
+    {
+      "type": "org.apache.maven.project.ProjectDependenciesResolver"
+    },
+    {
+      "type": "org.apache.maven.project.ProjectRealmCache"
+    },
+    {
+      "type": "org.apache.maven.project.artifact.DefaultMavenMetadataCache"
+    },
+    {
+      "type": "org.apache.maven.project.artifact.DefaultMetadataSource"
+    },
+    {
+      "type": "org.apache.maven.project.artifact.DefaultProjectArtifactsCache"
+    },
+    {
+      "type": "org.apache.maven.project.artifact.DefaultProjectArtifactsCache$$FastClassByGuice$$187310082",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.project.artifact.MavenMetadataCache"
+    },
+    {
+      "type": "org.apache.maven.project.artifact.MavenMetadataSource"
+    },
+    {
+      "type": "org.apache.maven.project.artifact.ProjectArtifactsCache"
+    },
+    {
+      "type": "org.apache.maven.project.inheritance.DefaultModelInheritanceAssembler"
+    },
+    {
+      "type": "org.apache.maven.project.inheritance.ModelInheritanceAssembler"
+    },
+    {
+      "type": "org.apache.maven.project.interpolation.AbstractStringBasedModelInterpolator"
+    },
+    {
+      "type": "org.apache.maven.project.interpolation.ModelInterpolator"
+    },
+    {
+      "type": "org.apache.maven.project.interpolation.StringSearchModelInterpolator"
+    },
+    {
+      "type": "org.apache.maven.project.path.DefaultPathTranslator"
+    },
+    {
+      "type": "org.apache.maven.project.path.PathTranslator"
+    },
+    {
+      "type": "org.apache.maven.project.validation.DefaultModelValidator"
+    },
+    {
+      "type": "org.apache.maven.project.validation.ModelValidator"
+    },
+    {
+      "type": "org.apache.maven.repository.DefaultMirrorSelector"
+    },
+    {
+      "type": "org.apache.maven.repository.MirrorSelector"
+    },
+    {
+      "type": "org.apache.maven.repository.RepositorySystem"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultArtifactDescriptorReader"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultArtifactDescriptorReader$$FastClassByGuice$$119886921",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultModelCacheFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultModelCacheFactory$$FastClassByGuice$$121544869",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultVersionRangeResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultVersionRangeResolver$$FastClassByGuice$$122231469",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultVersionResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.DefaultVersionResolver$$FastClassByGuice$$122892343",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.internal.ModelCacheFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.PluginsMetadataGeneratorFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.PluginsMetadataGeneratorFactory$$FastClassByGuice$$123790336",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.internal.SnapshotMetadataGeneratorFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.SnapshotMetadataGeneratorFactory$$FastClassByGuice$$125638773",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.internal.VersionsMetadataGeneratorFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.internal.VersionsMetadataGeneratorFactory$$FastClassByGuice$$126109592",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.DefaultUpdateCheckManager"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.DefaultWagonManager"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.LegacyRepositorySystem"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.UpdateCheckManager"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.WagonManager"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.repository.ArtifactRepositoryFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.repository.DefaultArtifactRepositoryFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.DefaultLegacyArtifactCollector"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.LegacyArtifactCollector"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.ConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.ConflictResolverFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.DefaultConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.DefaultConflictResolverFactory"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.FarthestConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.NearestConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.NewestConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.conflict.OldestConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.AbstractVersionTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.ArtifactTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.ArtifactTransformationManager"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.DefaultArtifactTransformationManager"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.LatestArtifactTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.ReleaseArtifactTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.legacy.resolver.transform.SnapshotTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.metadata.ClasspathTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.metadata.DefaultClasspathTransformation"
+    },
+    {
+      "type": "org.apache.maven.repository.metadata.DefaultGraphConflictResolutionPolicy"
+    },
+    {
+      "type": "org.apache.maven.repository.metadata.DefaultGraphConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.repository.metadata.GraphConflictResolutionPolicy"
+    },
+    {
+      "type": "org.apache.maven.repository.metadata.GraphConflictResolver"
+    },
+    {
+      "type": "org.apache.maven.rtinfo.RuntimeInformation"
+    },
+    {
+      "type": "org.apache.maven.rtinfo.internal.DefaultRuntimeInformation",
+      "fields": [
+        {
+          "name": "logger"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.rtinfo.internal.DefaultRuntimeInformation$$FastClassByGuice$$155308087",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.session.scope.internal.SessionScope"
+    },
+    {
+      "type": "org.apache.maven.session.scope.internal.SessionScopeModule",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.settings.DefaultMavenSettingsBuilder"
+    },
+    {
+      "type": "org.apache.maven.settings.MavenSettingsBuilder"
+    },
+    {
+      "type": "org.apache.maven.settings.building.DefaultSettingsBuilder"
+    },
+    {
+      "type": "org.apache.maven.settings.building.DefaultSettingsBuilder$$FastClassByGuice$$134471164",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.settings.crypto.DefaultSettingsDecrypter"
+    },
+    {
+      "type": "org.apache.maven.settings.crypto.DefaultSettingsDecrypter$$FastClassByGuice$$135520147",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.settings.io.DefaultSettingsReader"
+    },
+    {
+      "type": "org.apache.maven.settings.io.DefaultSettingsReader$$FastClassByGuice$$136464796",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.settings.io.DefaultSettingsWriter"
+    },
+    {
+      "type": "org.apache.maven.settings.io.DefaultSettingsWriter$$FastClassByGuice$$137609917",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.settings.validation.DefaultSettingsValidator"
+    },
+    {
+      "type": "org.apache.maven.settings.validation.DefaultSettingsValidator$$FastClassByGuice$$139286558",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.analyzer.DefaultClassAnalyzer"
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.analyzer.DefaultClassAnalyzer$$FastClassByGuice$$178014229",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.analyzer.DefaultProjectDependencyAnalyzer"
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.analyzer.DefaultProjectDependencyAnalyzer$$FastClassByGuice$$178630442",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.analyzer.asm.ASMDependencyAnalyzer"
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.analyzer.asm.ASMDependencyAnalyzer$$FastClassByGuice$$179688429",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.graph.internal.DefaultDependencyCollectorBuilder"
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.graph.internal.DefaultDependencyCollectorBuilder$$FastClassByGuice$$175888280",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.graph.internal.DefaultDependencyGraphBuilder"
+    },
+    {
+      "type": "org.apache.maven.shared.dependency.graph.internal.DefaultDependencyGraphBuilder$$FastClassByGuice$$176955807",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.toolchain.DefaultToolchainManager"
+    },
+    {
+      "type": "org.apache.maven.toolchain.DefaultToolchainManagerPrivate"
+    },
+    {
+      "type": "org.apache.maven.toolchain.DefaultToolchainsBuilder"
+    },
+    {
+      "type": "org.apache.maven.toolchain.ToolchainFactory"
+    },
+    {
+      "type": "org.apache.maven.toolchain.ToolchainManager"
+    },
+    {
+      "type": "org.apache.maven.toolchain.ToolchainManagerPrivate"
+    },
+    {
+      "type": "org.apache.maven.toolchain.ToolchainsBuilder"
+    },
+    {
+      "type": "org.apache.maven.toolchain.building.DefaultToolchainsBuilder",
+      "fields": [
+        {
+          "name": "toolchainsReader"
+        },
+        {
+          "name": "toolchainsWriter"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.toolchain.building.DefaultToolchainsBuilder$$FastClassByGuice$$26284150",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.toolchain.io.DefaultToolchainsReader"
+    },
+    {
+      "type": "org.apache.maven.toolchain.io.DefaultToolchainsReader$$FastClassByGuice$$27301195",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.toolchain.io.DefaultToolchainsWriter"
+    },
+    {
+      "type": "org.apache.maven.toolchain.io.DefaultToolchainsWriter$$FastClassByGuice$$28610656",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.apache.maven.toolchain.java.JavaToolchainFactory"
+    },
+    {
+      "type": "org.apache.maven.wagon.AbstractWagon"
+    },
+    {
+      "type": "org.apache.maven.wagon.StreamWagon"
+    },
+    {
+      "type": "org.apache.maven.wagon.Wagon"
+    },
+    {
+      "type": "org.apache.maven.wagon.providers.file.FileWagon"
+    },
+    {
+      "type": "org.apache.maven.wagon.providers.http.HttpWagon"
+    },
+    {
+      "type": "org.apache.maven.wagon.providers.http.HttpWagon$__sisu20"
+    },
+    {
+      "type": "org.apache.maven.wagon.shared.http.AbstractHttpClientWagon"
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer"
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer$$FastClassByGuice$$144187396",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer$BootModule"
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer$ContainerModule"
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer$DefaultsModule"
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer$LoggerManagerProvider"
+    },
+    {
+      "type": "org.codehaus.plexus.DefaultPlexusContainer$LoggerProvider"
+    },
+    {
+      "type": "org.codehaus.plexus.PlexusContainer"
+    },
+    {
+      "type": "org.codehaus.plexus.classworlds.ClassWorld"
+    },
+    {
+      "type": "org.codehaus.plexus.classworlds.launcher.Launcher",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.codehaus.plexus.classworlds.realm.ClassRealm"
+    },
+    {
+      "type": "org.codehaus.plexus.component.annotations.Requirement"
+    },
+    {
+      "type": "org.codehaus.plexus.component.configurator.AbstractComponentConfigurator"
+    },
+    {
+      "type": "org.codehaus.plexus.component.configurator.BasicComponentConfigurator"
+    },
+    {
+      "type": "org.codehaus.plexus.component.configurator.BasicComponentConfigurator$$FastClassByGuice$$139702197",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.codehaus.plexus.component.configurator.MapOrientedComponentConfigurator"
+    },
+    {
+      "type": "org.codehaus.plexus.component.configurator.MapOrientedComponentConfigurator$$FastClassByGuice$$140682056",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.codehaus.plexus.context.DefaultContext"
+    },
+    {
+      "type": "org.codehaus.plexus.logging.AbstractLogEnabled"
+    },
+    {
+      "type": "org.codehaus.plexus.logging.AbstractLogger"
+    },
+    {
+      "type": "org.codehaus.plexus.logging.AbstractLoggerManager"
+    },
+    {
+      "type": "org.codehaus.plexus.logging.LoggerManager"
+    },
+    {
+      "type": "org.codehaus.plexus.logging.console.ConsoleLogger"
+    },
+    {
+      "type": "org.codehaus.plexus.logging.console.ConsoleLoggerManager"
+    },
+    {
+      "type": "org.cyclonedx.maven.DefaultModelConverter"
+    },
+    {
+      "type": "org.cyclonedx.maven.DefaultModelConverter$$FastClassByGuice$$172531296",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.cyclonedx.maven.DefaultProjectDependenciesConverter"
+    },
+    {
+      "type": "org.cyclonedx.maven.DefaultProjectDependenciesConverter$$FastClassByGuice$$173034827",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.cyclonedx.maven.ExtendedMojoConfigurator"
+    },
+    {
+      "type": "org.cyclonedx.maven.ExtendedMojoConfigurator$$FastClassByGuice$$174457170",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.RepositorySystem"
+    },
+    {
+      "type": "org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory"
+    },
+    {
+      "type": "org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory$$FastClassByGuice$$61245302",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.impl.RemoteRepositoryManager"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultArtifactResolver"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultArtifactResolver$$FastClassByGuice$$62079623",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultChecksumPolicyProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultChecksumPolicyProvider$$FastClassByGuice$$63797744",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultDeployer"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultDeployer$$FastClassByGuice$$64471499",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultFileProcessor"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultFileProcessor$$FastClassByGuice$$65084255",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultInstaller"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultInstaller$$FastClassByGuice$$66298299",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultLocalPathComposer"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultLocalPathComposer$$FastClassByGuice$$67583258",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultLocalPathPrefixComposerFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultLocalPathPrefixComposerFactory$$FastClassByGuice$$68346891",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultLocalRepositoryProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultLocalRepositoryProvider$$FastClassByGuice$$69628701",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultMetadataResolver"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultMetadataResolver$$FastClassByGuice$$70565624",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultOfflineController"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultOfflineController$$FastClassByGuice$$71935550",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRemoteRepositoryManager"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRemoteRepositoryManager$$FastClassByGuice$$73199227",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositoryConnectorProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositoryConnectorProvider$$FastClassByGuice$$74249304",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositoryEventDispatcher"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositoryEventDispatcher$$FastClassByGuice$$75178647",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositoryLayoutProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositoryLayoutProvider$$FastClassByGuice$$75827331",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositorySystem"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositorySystem$$FastClassByGuice$$77113539",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositorySystemLifecycle"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultRepositorySystemLifecycle$$FastClassByGuice$$77708373",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultTrackingFileManager"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultTrackingFileManager$$FastClassByGuice$$79111193",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultTransporterProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultTransporterProvider$$FastClassByGuice$$79737015",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultUpdateCheckManager"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultUpdateCheckManager$$FastClassByGuice$$81756405",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultUpdatePolicyAnalyzer"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.DefaultUpdatePolicyAnalyzer$$FastClassByGuice$$82591704",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.EnhancedLocalRepositoryManagerFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.EnhancedLocalRepositoryManagerFactory$$FastClassByGuice$$83010773",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.LocalPathPrefixComposerFactorySupport"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.LoggerFactoryProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.LoggerFactoryProvider$$FastClassByGuice$$84754407",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.Maven2RepositoryLayoutFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.Maven2RepositoryLayoutFactory$$FastClassByGuice$$85478986",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.SimpleLocalRepositoryManagerFactory$$FastClassByGuice$$86466173",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.DefaultChecksumAlgorithmFactorySelector"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.DefaultChecksumAlgorithmFactorySelector$$FastClassByGuice$$87756166",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.FileTrustedChecksumsSourceSupport"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Md5ChecksumAlgorithmFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Md5ChecksumAlgorithmFactory$$FastClassByGuice$$88829801",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.MessageDigestChecksumAlgorithmFactorySupport"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Sha1ChecksumAlgorithmFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Sha1ChecksumAlgorithmFactory$$FastClassByGuice$$89223322",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Sha256ChecksumAlgorithmFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Sha256ChecksumAlgorithmFactory$$FastClassByGuice$$91000009",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Sha512ChecksumAlgorithmFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.Sha512ChecksumAlgorithmFactory$$FastClassByGuice$$91792428",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.SparseDirectoryTrustedChecksumsSource"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.SparseDirectoryTrustedChecksumsSource$$FastClassByGuice$$92678715",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.SummaryFileTrustedChecksumsSource"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.SummaryFileTrustedChecksumsSource$$FastClassByGuice$$93560374",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.TrustedToProvidedChecksumsSourceAdapter"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.checksum.TrustedToProvidedChecksumsSourceAdapter$$FastClassByGuice$$94749565",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.DefaultDependencyCollector"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.DefaultDependencyCollector$$FastClassByGuice$$96321125",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.DependencyCollectorDelegate"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.bf.BfDependencyCollector"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.bf.BfDependencyCollector$$FastClassByGuice$$96821728",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.df.DfDependencyCollector"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.collect.df.DfDependencyCollector$$FastClassByGuice$$98339427",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.DefaultRemoteRepositoryFilterManager"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.DefaultRemoteRepositoryFilterManager$$FastClassByGuice$$99581222",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.GroupIdRemoteRepositoryFilterSource"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.GroupIdRemoteRepositoryFilterSource$$FastClassByGuice$$99645000",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.PrefixesRemoteRepositoryFilterSource"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.PrefixesRemoteRepositoryFilterSource$$FastClassByGuice$$101610278",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.filter.RemoteRepositoryFilterSourceSupport"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.resolution.ArtifactResolverPostProcessorSupport"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.resolution.TrustedChecksumsArtifactResolverPostProcessor"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.resolution.TrustedChecksumsArtifactResolverPostProcessor$$FastClassByGuice$$102256481",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.slf4j.Slf4jLoggerFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.DefaultSyncContextFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.DefaultSyncContextFactory$$FastClassByGuice$$103664945",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.legacy.DefaultSyncContextFactory"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.legacy.DefaultSyncContextFactory$$FastClassByGuice$$104638612",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.NamedLockFactoryAdapterFactoryImpl"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.NamedLockFactoryAdapterFactoryImpl$$FastClassByGuice$$105248369",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.DiscriminatingNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.DiscriminatingNameMapperProvider$$FastClassByGuice$$106930099",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileGAECVNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileGAECVNameMapperProvider$$FastClassByGuice$$107604354",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileGAVNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileGAVNameMapperProvider$$FastClassByGuice$$108253746",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileHashingGAECVNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileHashingGAECVNameMapperProvider$$FastClassByGuice$$109942428",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileHashingGAVNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileHashingGAVNameMapperProvider$$FastClassByGuice$$110536897",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileStaticNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.FileStaticNameMapperProvider$$FastClassByGuice$$111866402",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.GAECVNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.GAECVNameMapperProvider$$FastClassByGuice$$112311631",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.GAVNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.GAVNameMapperProvider$$FastClassByGuice$$113510979",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.StaticNameMapperProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.impl.synccontext.named.providers.StaticNameMapperProvider$$FastClassByGuice$$114572872",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.transport.wagon.PlexusWagonConfigurator"
+    },
+    {
+      "type": "org.eclipse.aether.internal.transport.wagon.PlexusWagonConfigurator$$FastClassByGuice$$131258667",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.internal.transport.wagon.PlexusWagonProvider"
+    },
+    {
+      "type": "org.eclipse.aether.internal.transport.wagon.PlexusWagonProvider$$FastClassByGuice$$133001115",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.FileLockNamedLockFactory"
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.FileLockNamedLockFactory$$FastClassByGuice$$115998082",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.LocalReadWriteLockNamedLockFactory"
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.LocalReadWriteLockNamedLockFactory$$FastClassByGuice$$116918275",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.LocalSemaphoreNamedLockFactory"
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.LocalSemaphoreNamedLockFactory$$FastClassByGuice$$118200044",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.NoopNamedLockFactory"
+    },
+    {
+      "type": "org.eclipse.aether.named.providers.NoopNamedLockFactory$$FastClassByGuice$$119484218",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.named.support.NamedLockFactorySupport"
+    },
+    {
+      "type": "org.eclipse.aether.spi.connector.checksum.ChecksumAlgorithmFactorySupport"
+    },
+    {
+      "type": "org.eclipse.aether.transport.file.FileTransporterFactory"
+    },
+    {
+      "type": "org.eclipse.aether.transport.file.FileTransporterFactory$$FastClassByGuice$$127760593",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.ChecksumExtractor"
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.HttpTransporterFactory"
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.HttpTransporterFactory$$FastClassByGuice$$128284551",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.Nexus2ChecksumExtractor"
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.Nexus2ChecksumExtractor$$FastClassByGuice$$129752411",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.XChecksumChecksumExtractor"
+    },
+    {
+      "type": "org.eclipse.aether.transport.http.XChecksumChecksumExtractor$$FastClassByGuice$$130345607",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.aether.transport.wagon.WagonTransporterFactory"
+    },
+    {
+      "type": "org.eclipse.aether.transport.wagon.WagonTransporterFactory$$FastClassByGuice$$133971649",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.sisu.Parameters"
+    },
+    {
+      "type": "org.eclipse.sisu.bean.BeanScheduler"
+    },
+    {
+      "type": "org.eclipse.sisu.inject.BeanCache"
+    },
+    {
+      "type": "org.eclipse.sisu.inject.DefaultBeanLocator",
+      "methods": [
+        {
+          "name": "autoPublish",
+          "parameterTypes": [
+            "com.google.inject.Injector"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.sisu.inject.DefaultRankingFunction"
+    },
+    {
+      "type": "org.eclipse.sisu.inject.RankedSequence"
+    },
+    {
+      "type": "org.eclipse.sisu.inject.TypeArguments$Implicit"
+    },
+    {
+      "type": "org.eclipse.sisu.plexus.DefaultPlexusBeanLocator"
+    },
+    {
+      "type": "org.eclipse.sisu.plexus.PlexusBindingModule"
+    },
+    {
+      "type": "org.eclipse.sisu.plexus.PlexusDateTypeConverter"
+    },
+    {
+      "type": "org.eclipse.sisu.plexus.PlexusLifecycleManager"
+    },
+    {
+      "type": "org.eclipse.sisu.plexus.PlexusXmlBeanConverter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.google.inject.Injector"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.sisu.space.AbstractDeferredClass",
+      "fields": [
+        {
+          "name": "injector"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.sisu.space.LoadedClass"
+    },
+    {
+      "type": "org.eclipse.sisu.space.NamedClass"
+    },
+    {
+      "type": "org.eclipse.sisu.space.URLClassSpace"
+    },
+    {
+      "type": "org.eclipse.sisu.space.WildcardKey$Qualified"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.BeanProviders$3"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.BeanProviders$4"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.BeanProviders$6"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.BeanProviders$7"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.ElementAnalyzer$1"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.MergedProperties"
+    },
+    {
+      "type": "org.eclipse.sisu.wire.PlaceholderBeanProvider",
+      "fields": [
+        {
+          "name": "converterCache"
+        },
+        {
+          "name": "properties"
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.sisu.wire.TypeConverterCache",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.google.inject.Injector"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.sisu.wire.WireModule"
+    },
+    {
+      "type": "org.fusesource.jansi.Ansi"
+    },
+    {
+      "type": "org.fusesource.jansi.internal.Kernel32",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "BACKGROUND_BLUE"
+        },
+        {
+          "name": "BACKGROUND_GREEN"
+        },
+        {
+          "name": "BACKGROUND_INTENSITY"
+        },
+        {
+          "name": "BACKGROUND_RED"
+        },
+        {
+          "name": "COMMON_LVB_GRID_HORIZONTAL"
+        },
+        {
+          "name": "COMMON_LVB_GRID_LVERTICAL"
+        },
+        {
+          "name": "COMMON_LVB_GRID_RVERTICAL"
+        },
+        {
+          "name": "COMMON_LVB_LEADING_BYTE"
+        },
+        {
+          "name": "COMMON_LVB_REVERSE_VIDEO"
+        },
+        {
+          "name": "COMMON_LVB_TRAILING_BYTE"
+        },
+        {
+          "name": "COMMON_LVB_UNDERSCORE"
+        },
+        {
+          "name": "FOREGROUND_BLUE"
+        },
+        {
+          "name": "FOREGROUND_GREEN"
+        },
+        {
+          "name": "FOREGROUND_INTENSITY"
+        },
+        {
+          "name": "FOREGROUND_RED"
+        },
+        {
+          "name": "FORMAT_MESSAGE_FROM_SYSTEM"
+        },
+        {
+          "name": "INVALID_HANDLE_VALUE"
+        },
+        {
+          "name": "STD_ERROR_HANDLE"
+        },
+        {
+          "name": "STD_INPUT_HANDLE"
+        },
+        {
+          "name": "STD_OUTPUT_HANDLE"
+        }
+      ]
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.AbstractNativeImageMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.AbstractNativeMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.AbstractResourceConfigMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.AddReachabilityMetadataMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.DeprecatedNativeBuildMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.ListLibrariesMissingMetadataMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.MergeAgentFilesMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.MetadataCopyMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeBuildDynamicAccessMetadataMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeBuildResourceConfigMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeBuildTestResourceConfigMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeCompileMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeCompileNoForkMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeExtension"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeExtension$$FastClassByGuice$$184252294",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.NativeTestMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.WriteArgsFileMojo"
+    },
+    {
+      "type": "org.graalvm.buildtools.maven.config.AbstractMergeAgentFilesMojo"
+    },
+    {
+      "type": "org.slf4j.impl.MavenSimpleLoggerFactory"
+    },
+    {
+      "type": "org.slf4j.impl.SimpleLoggerFactory"
+    },
+    {
+      "type": "org.sonatype.guice.bean.locators.BeanLocator"
+    },
+    {
+      "type": "org.sonatype.plexus.components.cipher.DefaultPlexusCipher"
+    },
+    {
+      "type": "org.sonatype.plexus.components.cipher.DefaultPlexusCipher$$FastClassByGuice$$142129752",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher"
+    },
+    {
+      "type": "org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher$$FastClassByGuice$$143338563",
+      "fields": [
+        {
+          "name": "GUICE$INVOKERS"
+        }
+      ]
+    },
+    {
+      "type": "sun.launcher.LauncherHelper",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "isStaticMain"
+        },
+        {
+          "name": "noArgMain"
+        }
+      ],
+      "methods": [
+        {
+          "name": "getApplicationClass",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DRBG",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.security.SecureRandomParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en_US"
+    },
+    {
+      "type": "sun.util.resources.cldr.CalendarData"
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.apache.maven.plugin.MavenPluginManager"
+        ]
+      }
+    },
+    {
+      "type": {
+        "lambda": {
+          "declaringClass": "org.apache.maven.session.scope.internal.SessionScope",
+          "interfaces": [
+            "com.google.inject.Provider"
+          ]
+        }
+      }
+    }
+  ],
+  "resources": [
+    {
+      "glob": "META-INF/maven/extension.xml"
+    },
+    {
+      "glob": "META-INF/maven/org.apache.maven/maven-core/pom.properties"
+    },
+    {
+      "glob": "META-INF/maven/slf4j-configuration.properties"
+    },
+    {
+      "glob": "META-INF/plexus/components.xml"
+    },
+    {
+      "glob": "META-INF/services/java.net.spi.URLStreamHandlerProvider"
+    },
+    {
+      "glob": "META-INF/services/java.time.zone.ZoneRulesProvider"
+    },
+    {
+      "glob": "META-INF/sisu/javax.inject.Named"
+    },
+    {
+      "glob": "javax/inject/Singleton.class"
+    },
+    {
+      "glob": "org/apache/maven/DefaultArtifactFilterManager.class"
+    },
+    {
+      "glob": "org/apache/maven/ReactorReader.class"
+    },
+    {
+      "glob": "org/apache/maven/classrealm/DefaultClassRealmManager.class"
+    },
+    {
+      "glob": "org/apache/maven/cli/configuration/SettingsXmlConfigurationProcessor.class"
+    },
+    {
+      "glob": "org/apache/maven/cli/internal/BootstrapCoreExtensionManager.class"
+    },
+    {
+      "glob": "org/apache/maven/execution/DefaultMavenExecutionRequestPopulator.class"
+    },
+    {
+      "glob": "org/apache/maven/execution/scope/internal/MojoExecutionScopeCoreModule.class"
+    },
+    {
+      "glob": "org/apache/maven/extension/internal/CoreExportsProvider.class"
+    },
+    {
+      "glob": "org/apache/maven/internal/aether/DefaultRepositorySystemSessionFactory.class"
+    },
+    {
+      "glob": "org/apache/maven/internal/aether/ResolverLifecycle.class"
+    },
+    {
+      "glob": "org/apache/maven/internal/secdispatcher/SecDispatcherProvider.class"
+    },
+    {
+      "glob": "org/apache/maven/lifecycle/internal/DefaultProjectArtifactFactory.class"
+    },
+    {
+      "glob": "org/apache/maven/lifecycle/internal/LifecycleDependencyResolver.class"
+    },
+    {
+      "glob": "org/apache/maven/messages/build.properties"
+    },
+    {
+      "glob": "org/apache/maven/model/building/DefaultModelBuilder.class"
+    },
+    {
+      "glob": "org/apache/maven/model/building/DefaultModelProcessor.class"
+    },
+    {
+      "glob": "org/apache/maven/model/composition/DefaultDependencyManagementImporter.class"
+    },
+    {
+      "glob": "org/apache/maven/model/inheritance/DefaultInheritanceAssembler.class"
+    },
+    {
+      "glob": "org/apache/maven/model/interpolation/DefaultModelVersionProcessor.class"
+    },
+    {
+      "glob": "org/apache/maven/model/interpolation/StringVisitorModelInterpolator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/io/DefaultModelReader.class"
+    },
+    {
+      "glob": "org/apache/maven/model/io/DefaultModelWriter.class"
+    },
+    {
+      "glob": "org/apache/maven/model/locator/DefaultModelLocator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/management/DefaultDependencyManagementInjector.class"
+    },
+    {
+      "glob": "org/apache/maven/model/management/DefaultPluginManagementInjector.class"
+    },
+    {
+      "glob": "org/apache/maven/model/normalization/DefaultModelNormalizer.class"
+    },
+    {
+      "glob": "org/apache/maven/model/path/DefaultModelPathTranslator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/path/DefaultModelUrlNormalizer.class"
+    },
+    {
+      "glob": "org/apache/maven/model/path/DefaultPathTranslator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/path/DefaultUrlNormalizer.class"
+    },
+    {
+      "glob": "org/apache/maven/model/path/ProfileActivationFilePathInterpolator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/plugin/DefaultPluginConfigurationExpander.class"
+    },
+    {
+      "glob": "org/apache/maven/model/plugin/DefaultReportConfigurationExpander.class"
+    },
+    {
+      "glob": "org/apache/maven/model/plugin/DefaultReportingConverter.class"
+    },
+    {
+      "glob": "org/apache/maven/model/pom-4.0.0.xml"
+    },
+    {
+      "glob": "org/apache/maven/model/profile/DefaultProfileInjector.class"
+    },
+    {
+      "glob": "org/apache/maven/model/profile/DefaultProfileSelector.class"
+    },
+    {
+      "glob": "org/apache/maven/model/profile/activation/FileProfileActivator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/profile/activation/JdkVersionProfileActivator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/profile/activation/OperatingSystemProfileActivator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/profile/activation/PropertyProfileActivator.class"
+    },
+    {
+      "glob": "org/apache/maven/model/superpom/DefaultSuperPomProvider.class"
+    },
+    {
+      "glob": "org/apache/maven/model/validation/DefaultModelValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/DefaultMojosExecutionStrategy.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/DefaultPluginValidationManager.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/DeprecatedCoreExpressionValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/DeprecatedPluginValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/Maven2DependenciesValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/Maven3CompatDependenciesValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/MavenMixedDependenciesValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/MavenPluginJavaPrerequisiteChecker.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/MavenPluginMavenPrerequisiteChecker.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/MavenScopeDependenciesValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/PlexusContainerDefaultDependenciesValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/plugin/internal/ReadOnlyPluginParametersValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/DefaultArtifactDescriptorReader.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/DefaultModelCacheFactory.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/DefaultVersionRangeResolver.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/DefaultVersionResolver.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/PluginsMetadataGeneratorFactory.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/SnapshotMetadataGeneratorFactory.class"
+    },
+    {
+      "glob": "org/apache/maven/repository/internal/VersionsMetadataGeneratorFactory.class"
+    },
+    {
+      "glob": "org/apache/maven/session/scope/internal/SessionScopeModule.class"
+    },
+    {
+      "glob": "org/apache/maven/settings/building/DefaultSettingsBuilder.class"
+    },
+    {
+      "glob": "org/apache/maven/settings/crypto/DefaultSettingsDecrypter.class"
+    },
+    {
+      "glob": "org/apache/maven/settings/io/DefaultSettingsReader.class"
+    },
+    {
+      "glob": "org/apache/maven/settings/io/DefaultSettingsWriter.class"
+    },
+    {
+      "glob": "org/apache/maven/settings/validation/DefaultSettingsValidator.class"
+    },
+    {
+      "glob": "org/apache/maven/shared/dependency/analyzer/DefaultClassAnalyzer.class"
+    },
+    {
+      "glob": "org/apache/maven/shared/dependency/analyzer/DefaultProjectDependencyAnalyzer.class"
+    },
+    {
+      "glob": "org/apache/maven/shared/dependency/analyzer/asm/ASMDependencyAnalyzer.class"
+    },
+    {
+      "glob": "org/apache/maven/shared/dependency/graph/internal/DefaultDependencyCollectorBuilder.class"
+    },
+    {
+      "glob": "org/apache/maven/shared/dependency/graph/internal/DefaultDependencyGraphBuilder.class"
+    },
+    {
+      "glob": "org/apache/maven/toolchain/building/DefaultToolchainsBuilder.class"
+    },
+    {
+      "glob": "org/apache/maven/toolchain/io/DefaultToolchainsReader.class"
+    },
+    {
+      "glob": "org/apache/maven/toolchain/io/DefaultToolchainsWriter.class"
+    },
+    {
+      "glob": "org/codehaus/plexus/component/configurator/BasicComponentConfigurator.class"
+    },
+    {
+      "glob": "org/codehaus/plexus/component/configurator/MapOrientedComponentConfigurator.class"
+    },
+    {
+      "glob": "org/cyclonedx/maven/DefaultModelConverter.class"
+    },
+    {
+      "glob": "org/cyclonedx/maven/DefaultProjectDependenciesConverter.class"
+    },
+    {
+      "glob": "org/cyclonedx/maven/ExtendedMojoConfigurator.class"
+    },
+    {
+      "glob": "org/eclipse/aether/connector/basic/BasicRepositoryConnectorFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultArtifactResolver.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultChecksumPolicyProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultDeployer.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultFileProcessor.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultInstaller.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultLocalPathComposer.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultLocalPathPrefixComposerFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultLocalRepositoryProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultMetadataResolver.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultOfflineController.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultRemoteRepositoryManager.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultRepositoryConnectorProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultRepositoryEventDispatcher.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultRepositoryLayoutProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultRepositorySystem.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultRepositorySystemLifecycle.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultTrackingFileManager.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultTransporterProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultUpdateCheckManager.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/DefaultUpdatePolicyAnalyzer.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/EnhancedLocalRepositoryManagerFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/LoggerFactoryProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/Maven2RepositoryLayoutFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/SimpleLocalRepositoryManagerFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/DefaultChecksumAlgorithmFactorySelector.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/Md5ChecksumAlgorithmFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/Sha1ChecksumAlgorithmFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/Sha256ChecksumAlgorithmFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/Sha512ChecksumAlgorithmFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/SparseDirectoryTrustedChecksumsSource.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/SummaryFileTrustedChecksumsSource.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/checksum/TrustedToProvidedChecksumsSourceAdapter.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/collect/DefaultDependencyCollector.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/collect/bf/BfDependencyCollector.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/collect/df/DfDependencyCollector.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/filter/DefaultRemoteRepositoryFilterManager.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/filter/GroupIdRemoteRepositoryFilterSource.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/filter/PrefixesRemoteRepositoryFilterSource.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/resolution/TrustedChecksumsArtifactResolverPostProcessor.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/slf4j/Slf4jLoggerFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/DefaultSyncContextFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/legacy/DefaultSyncContextFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/NamedLockFactoryAdapterFactoryImpl.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/DiscriminatingNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/FileGAECVNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/FileGAVNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/FileHashingGAECVNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/FileHashingGAVNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/FileStaticNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/GAECVNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/GAVNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/impl/synccontext/named/providers/StaticNameMapperProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/transport/wagon/PlexusWagonConfigurator.class"
+    },
+    {
+      "glob": "org/eclipse/aether/internal/transport/wagon/PlexusWagonProvider.class"
+    },
+    {
+      "glob": "org/eclipse/aether/named/providers/FileLockNamedLockFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/named/providers/LocalReadWriteLockNamedLockFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/named/providers/LocalSemaphoreNamedLockFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/named/providers/NoopNamedLockFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/transport/file/FileTransporterFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/transport/http/HttpTransporterFactory.class"
+    },
+    {
+      "glob": "org/eclipse/aether/transport/http/Nexus2ChecksumExtractor.class"
+    },
+    {
+      "glob": "org/eclipse/aether/transport/http/XChecksumChecksumExtractor.class"
+    },
+    {
+      "glob": "org/eclipse/aether/transport/wagon/WagonTransporterFactory.class"
+    },
+    {
+      "glob": "org/fusesource/jansi/jansi.properties"
+    },
+    {
+      "glob": "org/slf4j/impl/StaticLoggerBinder.class"
+    },
+    {
+      "glob": "org/sonatype/plexus/components/cipher/DefaultPlexusCipher.class"
+    },
+    {
+      "glob": "org/sonatype/plexus/components/sec/dispatcher/DefaultSecDispatcher.class"
+    },
+    {
+      "glob": "simplelogger.properties"
+    }
+  ]
+}
