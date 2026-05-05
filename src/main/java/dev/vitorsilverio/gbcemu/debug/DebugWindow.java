@@ -383,11 +383,10 @@ public class DebugWindow {
         int address = cpu.getPc();
         for (int i = 0; i < 32; i++) {
             Disassembler.Decoded decoded = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
-            String[] parts = splitDecodedText(decoded.text());
             instructionModel.addRow(new Object[]{
                     String.format("%04X", address),
-                    parts[0],
-                    parts[1]
+                    decoded.bytes(),
+                    decoded.instruction()
             });
             address = (address + decoded.length()) & 0xFFFF;
         }
@@ -396,32 +395,6 @@ public class DebugWindow {
         }
     }
 
-    private String[] splitDecodedText(String text) {
-        String trimmed = text.trim();
-        int splitAt = findInstructionStart(trimmed);
-        if (splitAt < 0) {
-            return new String[]{trimmed, ""};
-        }
-        return new String[]{trimmed.substring(0, splitAt).trim(), trimmed.substring(splitAt).trim()};
-    }
-
-    private int findInstructionStart(String text) {
-        String[] mnemonics = {
-                "LD ", "LDH ", "INC ", "DEC ", "ADD ", "ADC ", "SUB", "SBC ", "AND ", "XOR ", "OR ", "CP ",
-                "JR ", "JP ", "CALL ", "RET", "RETI", "RST ", "PUSH ", "POP ",
-                "NOP", "STOP", "HALT", "DI", "EI", "DAA", "CPL", "SCF", "CCF",
-                "RLCA", "RRCA", "RLA", "RRA",
-                "RLC ", "RRC ", "RL ", "RR ", "SLA ", "SRA ", "SWAP ", "SRL ",
-                "BIT ", "RES ", "SET ", "ILLEGAL", "OP "
-        };
-        for (String mnemonic : mnemonics) {
-            int index = text.indexOf(mnemonic);
-            if (index >= 0) {
-                return index;
-            }
-        }
-        return -1;
-    }
 
     private String memoryMapText() {
         StringBuilder builder = new StringBuilder("Runtime memory map\n");

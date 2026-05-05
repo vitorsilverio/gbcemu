@@ -361,7 +361,7 @@ public class Ppu implements MemorySpace, MachineCycle {
             case SCX:
                 return (byte) (scrollX & 0xFF);
             case LY:
-                return (byte) currentLine;
+                return (byte) (currentLine & 0xFF);
             case LYC:
                 return lineCompare;
             case BGPI:

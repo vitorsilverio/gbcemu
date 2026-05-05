@@ -17,16 +17,16 @@ public class Disassembler {
         int b1 = memory.read(address + 1);
         int b2 = memory.read(address + 2);
         if (opcode == 0xCB) {
-            return new Decoded(address, 2, String.format("%02X %02X      %s", opcode, b1, decodeCb(b1)));
+            return new Decoded(address, 2, String.format("%02X %02X", opcode, b1), decodeCb(b1));
         }
         int length = length(opcode);
         String bytes = switch (length) {
-            case 1 -> String.format("%02X         ", opcode);
-            case 2 -> String.format("%02X %02X      ", opcode, b1);
-            case 3 -> String.format("%02X %02X %02X   ", opcode, b1, b2);
-            default -> String.format("%02X         ", opcode);
+            case 1 -> String.format("%02X", opcode);
+            case 2 -> String.format("%02X %02X", opcode, b1);
+            case 3 -> String.format("%02X %02X %02X", opcode, b1, b2);
+            default -> String.format("%02X", opcode);
         };
-        return new Decoded(address, length, bytes + decodeBase(opcode, b1, b2));
+        return new Decoded(address, length, bytes, decodeBase(opcode, b1, b2));
     }
 
     public static int length(int opcode) {
@@ -168,6 +168,16 @@ public class Disassembler {
         int read(int address);
     }
 
-    public record Decoded(int address, int length, String text) {
+    public record Decoded(int address, int length, String bytes, String instruction) {
+
+        public String text(){
+            return String.format("%s%s", fillRight(this.bytes, 11, ' ' ), this.instruction);
+        }
+
+        private String fillRight(String string, int size, char placeHolder) {
+            var builder = new StringBuilder(string);
+            builder.append(String.valueOf(placeHolder).repeat(Math.max(0, size - string.length() + 1)));
+            return builder.toString();
+        }
     }
 }
