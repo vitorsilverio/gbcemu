@@ -2,14 +2,9 @@ package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
+import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -101,14 +96,17 @@ public class EmulatorWindow {
 
         JMenuItem openRom = new JMenuItem("Start ROM...");
         openRom.addActionListener(event -> menuActions.openRom().run());
+        openRom.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         emulatorMenu.add(openRom);
 
         JMenuItem pause = new JMenuItem("Pause");
         pause.addActionListener(event -> menuActions.pause().run());
+        pause.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         emulatorMenu.add(pause);
 
         JMenuItem resume = new JMenuItem("Resume");
         resume.addActionListener(event -> menuActions.resume().run());
+        resume.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         emulatorMenu.add(resume);
 
         JMenuItem stop = new JMenuItem("Stop");
@@ -129,7 +127,21 @@ public class EmulatorWindow {
         debugMenu.add(openDebugger);
         menuBar.add(debugMenu);
 
+        JMenu snapshotMenu = new JMenu("Save states");
+        JMenuItem saveSnapshot = new JMenuItem("Save state");
+        saveSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F4, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        snapshotMenu.add(saveSnapshot);
+
+        JMenuItem restoreSnapshot = new JMenuItem("Load state");
+        restoreSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        snapshotMenu.add(restoreSnapshot);
+
+        menuBar.add(snapshotMenu);
+
         window.setJMenuBar(menuBar);
+
+
+
     }
 
     private void drawFrame(Graphics g) {
