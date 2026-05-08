@@ -220,7 +220,7 @@ public class Emulator {
                     break;
                 default:
                     Class<?> clazz = Class.forName(snapshot.className());
-                    if (clazz.isAssignableFrom(Snapshottable.class)) {
+                    if (clazz.isAssignableFrom(MemorySpace.class)) {
                         var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
                         snapshotable.restoreSnapshot(snapshot);
                     }
