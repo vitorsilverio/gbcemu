@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public enum TileMapArea {
+import java.io.Serializable;
+
+public enum TileMapArea implements Serializable {
     IN_9800(0, 0x9800),
     IN_9C00(0x1, 0x9C00);
 

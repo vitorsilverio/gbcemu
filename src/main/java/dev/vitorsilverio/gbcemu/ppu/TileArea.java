@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public enum TileArea {
+import java.io.Serializable;
+
+public enum TileArea implements Serializable {
     METHOD_8000(1, 0x8000, false),
     METHOD_8800(0, 0x9000, true);
 

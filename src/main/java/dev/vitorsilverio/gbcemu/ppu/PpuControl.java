@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public class PpuControl {
+import java.io.Serializable;
+
+public class PpuControl implements Serializable {
 
     private boolean enabled;
     private TileMapArea windowTileMapArea;

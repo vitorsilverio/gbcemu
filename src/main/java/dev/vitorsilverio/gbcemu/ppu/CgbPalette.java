@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public class CgbPalette {
+import java.io.Serializable;
+
+public class CgbPalette implements Serializable {
 
     private final byte[] paletteData = new byte[64];
     private boolean autoIncrement = false;

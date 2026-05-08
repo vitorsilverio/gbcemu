@@ -62,6 +62,14 @@ public class Bus {
                 .findFirst();
     }
 
+    public Optional<?> findSpace(Class<?> type) {
+        return memorySpaces.stream()
+                .filter(type::isInstance)
+                .map(type::cast)
+                .findFirst();
+    }
+
+
     public byte read(int address) {
         address = address & 0xFFFF; // Ensure address is within 16-bit range
         for (MemorySpace memorySpace : memorySpaces) {
@@ -118,5 +126,9 @@ public class Bus {
     }
 
     public record MemoryMapEntry(int start, int end, String owner) {
+    }
+
+    public List<MemorySpace> getMemorySpaces() {
+        return memorySpaces;
     }
 }

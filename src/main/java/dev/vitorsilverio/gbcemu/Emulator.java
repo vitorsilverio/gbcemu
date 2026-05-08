@@ -10,17 +10,19 @@ import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.debug.DebugController;
 import dev.vitorsilverio.gbcemu.debug.DebugWindow;
 import dev.vitorsilverio.gbcemu.memory.*;
-import dev.vitorsilverio.gbcemu.misc.DMA;
-import dev.vitorsilverio.gbcemu.misc.HDMA;
-import dev.vitorsilverio.gbcemu.misc.InfraredPort;
-import dev.vitorsilverio.gbcemu.misc.Key0;
-import dev.vitorsilverio.gbcemu.misc.Key1;
+import dev.vitorsilverio.gbcemu.misc.*;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
+import dev.vitorsilverio.gbcemu.ppu.OamRAM;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.ppu.VideoRam;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Emulator {
 
@@ -38,6 +40,7 @@ public class Emulator {
     private final boolean throttled;
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
+    private final Bus bus;
     private volatile boolean paused;
     private volatile boolean stopped;
     private int dots;
@@ -52,7 +55,7 @@ public class Emulator {
     }
 
     public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window) {
-        Bus bus = new Bus();
+        this.bus = new Bus();
         if (biosFile != null) {
             Bios bios = new Bios(biosFile);
             bus.addMemorySpace(bios);
@@ -189,5 +192,42 @@ public class Emulator {
         cpu.setH((byte) 0x01);
         cpu.setL((byte) 0x4D);
 
+    }
+
+    public List<Snapshot> createSystemSnapthot() {
+        var version = 1;
+        var systemSnapShot = new ArrayList<Snapshot>();
+        systemSnapShot.add(cpu.createSnapshot(version));
+        systemSnapShot.add(ppu.getVideoRam().createSnapshot(version));
+        systemSnapShot.add(ppu.getOam().createSnapshot(version));
+
+        systemSnapShot.addAll(bus.getMemorySpaces().stream()
+                .filter(m -> m instanceof Snapshottable)
+                .map(m -> ((Snapshottable)m).createSnapshot(version)).toList());
+        return systemSnapShot;
+    }
+
+    public void restoreSystemSnapshot(List<Snapshot> systemSnapShot) throws Exception {
+        pause();
+        for (Snapshot snapshot: systemSnapShot) {
+            switch (snapshot.className()){
+                case ("dev.vitorsilverio.gbcemu.cpu.Cpu"):
+                    cpu.restoreSnapshot(snapshot);
+                    break;
+                case ("dev.vitorsilverio.gbcemu.ppu.VideoRam"):
+                    ppu.getVideoRam().restoreSnapshot(snapshot);
+                    break;
+                case ("dev.vitorsilverio.gbcemu.ppu.OamRAM"):
+                    ppu.getOam().restoreSnapshot(snapshot);
+                    break;
+                default:
+                    Class clazz = Class.forName(snapshot.className());
+                    if (clazz.isAssignableFrom(MemorySpace.class)) {
+                    var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
+                    snapshotable.restoreSnapshot(snapshot);
+                    }
+            }
+        }
+        resume();
     }
 }

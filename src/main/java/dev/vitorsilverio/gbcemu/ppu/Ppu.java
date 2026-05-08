@@ -4,6 +4,9 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 
 import java.awt.*;
@@ -12,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class Ppu implements MemorySpace, MachineCycle {
+public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Ppu.class);
 
@@ -46,36 +49,36 @@ public class Ppu implements MemorySpace, MachineCycle {
             BGPI, BGPD, OBPI, OBPD, OPRI
     );
 
-    private final PpuControl control = new PpuControl();
+    @Savable private PpuControl control = new PpuControl();
     private final VideoRam videoRam = new VideoRam();
     private final OamRAM oam = new OamRAM();
     private final Bus bus;
-    private final CgbPalette bgPalette = new CgbPalette();
-    private final CgbPalette objPalette = new CgbPalette();
-    private final DmgPalette bgPaletteDmg = new DmgPalette();
-    private final DmgPalette obj0PaletteDmg = new DmgPalette();
-    private final DmgPalette obj1PaletteDmg = new DmgPalette();
+    @Savable private CgbPalette bgPalette = new CgbPalette();
+    @Savable private CgbPalette objPalette = new CgbPalette();
+    @Savable private DmgPalette bgPaletteDmg = new DmgPalette();
+    @Savable private DmgPalette obj0PaletteDmg = new DmgPalette();
+    @Savable private DmgPalette obj1PaletteDmg = new DmgPalette();
     private final Stat stat = new Stat();
-    private final int[][] frameBuffer; // 160x144 pixels
-    private final int[][] bgColorIndexes; // 160x144 pixels
-    private final boolean[][] bgPriorities; // 160x144 pixels
-    private boolean cgbMode;
+    @Savable private final int[][] frameBuffer; // 160x144 pixels
+    @Savable private final int[][] bgColorIndexes; // 160x144 pixels
+    @Savable private final boolean[][] bgPriorities; // 160x144 pixels
+    @Savable private boolean cgbMode;
 
-    private int cycles;
-    private PpuMode mode = PpuMode.OAM_READ;
-    private int currentLine;
-    private int currentColumn;
-    private int scrollX;
-    private int scrollY;
-    private int penaltyDelay = 0;
-    private int hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
-    private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.CGB;
-    private byte lineCompare = 0;
-    private int windowX;
-    private int windowY;
+    @Savable private int cycles;
+    @Savable private PpuMode mode = PpuMode.OAM_READ;
+    @Savable private int currentLine;
+    @Savable private int currentColumn;
+    @Savable private int scrollX;
+    @Savable private int scrollY;
+    @Savable private int penaltyDelay = 0;
+    @Savable private int hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
+    @Savable private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.CGB;
+    @Savable private byte lineCompare = 0;
+    @Savable private int windowX;
+    @Savable private int windowY;
 
-    private boolean previousStatSignal;
-    private volatile boolean frameReady;
+    @Savable private boolean previousStatSignal;
+    @Savable private volatile boolean frameReady;
 
 
 
@@ -683,6 +686,14 @@ public class Ppu implements MemorySpace, MachineCycle {
 
     byte readOamRaw(int address) {
         return oam.read(address);
+    }
+
+    public VideoRam getVideoRam() {
+        return videoRam;
+    }
+
+    public OamRAM getOam() {
+        return oam;
     }
 
     public record DebugSnapshot(

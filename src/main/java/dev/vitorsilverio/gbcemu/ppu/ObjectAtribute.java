@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public class ObjectAtribute {
+import java.io.Serializable;
+
+public class ObjectAtribute implements Serializable {
 
     private byte y;
     private byte x;

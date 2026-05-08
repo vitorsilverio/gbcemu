@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public class DmgPalette {
+import java.io.Serializable;
+
+public class DmgPalette implements Serializable {
 
     private final byte[] colors = new byte[4];
 

@@ -1,10 +1,12 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
-public class OamRAM implements MemorySpace {
+public class OamRAM implements MemorySpace, Snapshottable {
 
-    private final ObjectAtribute[] objectAtributes = new ObjectAtribute[40];
+    @Savable private final ObjectAtribute[] objectAtributes = new ObjectAtribute[40];
 
     public OamRAM() {
         for (int i = 0; i < objectAtributes.length; i++) {

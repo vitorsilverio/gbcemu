@@ -2,6 +2,8 @@ package dev.vitorsilverio.gbcemu.audio;
 
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,10 +11,11 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
-public class Apu implements MemorySpace, MachineCycle {
+public class Apu implements MemorySpace, MachineCycle, Snapshottable {
 
     private static final Logger logger = LoggerFactory.getLogger(Apu.class);
 
@@ -76,23 +79,23 @@ public class Apu implements MemorySpace, MachineCycle {
             NR44_CHANNEL_4_CONTROL
     );
 
-    private final byte[] registers = new byte[0x30];
-    private final byte[] wavePatternRam = new byte[0x10];
+    @Savable private final byte[] registers = new byte[0x30];
+    @Savable private final byte[] wavePatternRam = new byte[0x10];
     private final AudioSink sink;
-    private final byte[] sampleBuffer = new byte[1024];
+    @Savable private final byte[] sampleBuffer = new byte[1024];
 
-    private int sampleAccumulator;
-    private int frameSequencerCycles;
-    private int frameSequencerStep;
-    private int sampleBufferPosition;
-    private int previousLeftSample;
-    private int previousRightSample;
-    private boolean audioEnabled = true;
+    @Savable private int sampleAccumulator;
+    @Savable  private int frameSequencerCycles;
+    @Savable private int frameSequencerStep;
+    @Savable private int sampleBufferPosition;
+    @Savable private int previousLeftSample;
+    @Savable private int previousRightSample;
+    @Savable private boolean audioEnabled = true;
 
-    private final PulseChannel channel1 = new PulseChannel(0);
-    private final PulseChannel channel2 = new PulseChannel(1);
-    private final WaveChannel channel3 = new WaveChannel();
-    private final NoiseChannel channel4 = new NoiseChannel();
+    @Savable private PulseChannel channel1 = new PulseChannel(0);
+    @Savable private PulseChannel channel2 = new PulseChannel(1);
+    @Savable private WaveChannel channel3 = new WaveChannel();
+    @Savable private NoiseChannel channel4 = new NoiseChannel();
 
     public Apu() {
         this(createDefaultSink());
@@ -543,7 +546,7 @@ public class Apu implements MemorySpace, MachineCycle {
         abstract int digitalOutput();
     }
 
-    private class PulseChannel extends SoundChannel {
+    private class PulseChannel extends SoundChannel implements Serializable {
         private final int channel;
         private int period;
         private int dutyStep;
@@ -728,7 +731,7 @@ public class Apu implements MemorySpace, MachineCycle {
         }
     }
 
-    private class WaveChannel extends SoundChannel {
+    private class WaveChannel extends SoundChannel implements Serializable {
         private int period;
         private int sampleIndex;
 
@@ -801,7 +804,7 @@ public class Apu implements MemorySpace, MachineCycle {
         }
     }
 
-    private class NoiseChannel extends SoundChannel {
+    private class NoiseChannel extends SoundChannel implements Serializable {
         private int lfsr = 0x7FFF;
 
         private void trigger() {
