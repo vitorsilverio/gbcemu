@@ -277,7 +277,7 @@ public class DebugWindow {
     }
 
     private void refreshStateFields() {
-        Cpu.Snapshot cpuSnapshot = cpu.snapshot();
+        Cpu.CpuSnapshot cpuSnapshot = cpu.snapshot();
         Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
         setState("PC", "%04X", cpuSnapshot.pc());
         setState("SP", "%04X", cpuSnapshot.sp());
@@ -320,7 +320,7 @@ public class DebugWindow {
     }
 
     private String cpuSnapshotText() {
-        Cpu.Snapshot cpuSnapshot = cpu.snapshot();
+        Cpu.CpuSnapshot cpuSnapshot = cpu.snapshot();
         Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
         return String.format("""
                         CPU

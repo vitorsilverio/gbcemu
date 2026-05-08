@@ -369,8 +369,8 @@ public class Cpu implements MachineCycle, Snapshottable {
         writeWord(sp, value);
     }
 
-    public Snapshot snapshot() {
-        return new Snapshot(
+    public CpuSnapshot snapshot() {
+        return new CpuSnapshot(
                 pc, sp,
                 a & 0xFF, b & 0xFF, c & 0xFF, d & 0xFF, e & 0xFF, h & 0xFF, l & 0xFF,
                 getAf(), getBc(), getDe(), getHl(),
@@ -385,7 +385,7 @@ public class Cpu implements MachineCycle, Snapshottable {
                 pc, sp, getAf(), getBc(), getDe(), getHl());
     }
 
-    public record Snapshot(
+    public record CpuSnapshot(
             int pc,
             int sp,
             int a,
