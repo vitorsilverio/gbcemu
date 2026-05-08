@@ -14,9 +14,7 @@ import dev.vitorsilverio.gbcemu.misc.*;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
-import dev.vitorsilverio.gbcemu.ppu.OamRAM;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
-import dev.vitorsilverio.gbcemu.ppu.VideoRam;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
@@ -221,10 +219,10 @@ public class Emulator {
                     ppu.getOam().restoreSnapshot(snapshot);
                     break;
                 default:
-                    Class clazz = Class.forName(snapshot.className());
-                    if (clazz.isAssignableFrom(MemorySpace.class)) {
-                    var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
-                    snapshotable.restoreSnapshot(snapshot);
+                    Class<?> clazz = Class.forName(snapshot.className());
+                    if (clazz.isAssignableFrom(Snapshottable.class)) {
+                        var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
+                        snapshotable.restoreSnapshot(snapshot);
                     }
             }
         }
