@@ -5,13 +5,15 @@ import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HexFormat;
 import java.util.List;
 
-public class Serial implements MemorySpace, MachineCycle {
+public class Serial implements MemorySpace, MachineCycle, Snapshottable {
 
     private final Logger logger = LoggerFactory.getLogger(Serial.class);
 
@@ -25,10 +27,10 @@ public class Serial implements MemorySpace, MachineCycle {
     private final List<Integer> registers = List.of(SB_REGISTER, SC_REGISTER);
     private final Bus bus;
     private final StringBuilder text = new StringBuilder();
-    private int SB = 0;
-    private int SC = 0;
-    private int transferCyclesRemaining;
-    private int outgoingByte;
+    @Savable private int SB = 0;
+    @Savable private int SC = 0;
+    @Savable private int transferCyclesRemaining;
+    @Savable private int outgoingByte;
 
     public Serial(Bus bus) {
         this.bus = bus;

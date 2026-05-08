@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public abstract class Cart implements MemorySpace {
+public abstract class Cart implements MemorySpace, Snapshottable {
 
     protected static final int ROM_BANK_SIZE = 0x4000;
     protected static final int RAM_BANK_SIZE = 0x2000;
@@ -22,7 +24,7 @@ public abstract class Cart implements MemorySpace {
 
     protected final CartHeader header;
     protected final byte[] rom;
-    protected final byte[] ram;
+    @Savable protected final byte[] ram;
     protected final int romBanks;
     protected final File saveFile;
 

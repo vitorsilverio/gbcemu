@@ -1,11 +1,14 @@
 package dev.vitorsilverio.gbcemu.memory;
 
-public class WorkRam implements MemorySpace{
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+
+public class WorkRam implements MemorySpace, Snapshottable {
 
     private final int SVBK_REGISTER = 0xFF70;
-    private int bank = 0;
-    private final byte[] bank0 = new byte[0x2000];
-    private final byte[][] banks = new byte[7][0x2000];
+    @Savable private int bank = 0;
+    @Savable private final byte[] bank0 = new byte[0x2000];
+    @Savable private final byte[][] banks = new byte[7][0x2000];
 
     @Override
     public boolean contains(int address) {

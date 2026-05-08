@@ -1,12 +1,14 @@
 package dev.vitorsilverio.gbcemu.misc;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
-public class InfraredPort implements MemorySpace {
+public class InfraredPort implements MemorySpace, Snapshottable {
 
     private static final int RP_REGISTER = 0xFF56;
 
-    private byte data = 0x02;
+    @Savable private byte data = 0x02;
 
     @Override
     public boolean contains(int address) {

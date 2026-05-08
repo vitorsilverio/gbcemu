@@ -1,10 +1,13 @@
 package dev.vitorsilverio.gbcemu.memory;
 
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+
 import java.io.File;
 
-public class Bios implements MemorySpace {
+public class Bios implements MemorySpace, Snapshottable {
 
-    private boolean enabled = true;
+    @Savable private boolean enabled = true;
 
     private final byte[] bios;
 

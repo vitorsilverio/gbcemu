@@ -5,10 +5,12 @@ import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.util.List;
 
-public class Timer implements MemorySpace, MachineCycle {
+public class Timer implements MemorySpace, MachineCycle, Snapshottable {
 
     private static final int DIVIDER_REG = 0xFF04;
     private static final int TIMER_COUNTER_REG = 0xFF05;
@@ -18,12 +20,12 @@ public class Timer implements MemorySpace, MachineCycle {
     private static final int[] TIMER_BITS = {9, 3, 5, 7};
 
 
-    private int systemCounter;
-    private byte timerCounter;
-    private byte timerModulo;
-    private byte timerControl;
+    @Savable private int systemCounter;
+    @Savable private byte timerCounter;
+    @Savable private byte timerModulo;
+    @Savable private byte timerControl;
 
-    private int overflowDelay;
+    @Savable private int overflowDelay;
 
     private final Bus bus;
 

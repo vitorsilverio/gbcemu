@@ -3,11 +3,13 @@ package dev.vitorsilverio.gbcemu.cpu;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 
 import java.util.Optional;
 
-public class Cpu implements MachineCycle {
+public class Cpu implements MachineCycle, Snapshottable {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Cpu.class);
     private static final int BUS_CYCLE_TICKS = 4;
@@ -16,32 +18,35 @@ public class Cpu implements MachineCycle {
     private final Bus bus;
     private final Decoder decoder;
 
+    @Savable
     private int instructionTicks;
     private Runnable cycleCallback = () -> {
     };
 
+    @Savable
     private int speedRate = 1;
 
-    private int pc = 0x0000; // Program Counter
-    private int sp = 0xFFFE; // Stack Pointer
-    private byte a = 0; // Accumulator
-    private byte b = 0; // Register B
-    private byte c = 0; // Register C
-    private byte d = 0; // Register D
-    private byte e = 0; // Register E
-    private byte h = 0; // Register H
-    private byte l = 0; // Register L
 
-    private boolean zeroFlag = false; // Zero Flag
-    private boolean negativeFlag = false; // Subtract Flag
-    private boolean halfCarryFlag = false; // Half Carry Flag
-    private boolean carryFlag = false; // Carry Flag
+    @Savable private int pc = 0x0000; // Program Counter
+    @Savable private int sp = 0xFFFE; // Stack Pointer
+    @Savable private byte a = 0; // Accumulator
+    @Savable private byte b = 0; // Register B
+    @Savable private byte c = 0; // Register C
+    @Savable private byte d = 0; // Register D
+    @Savable private byte e = 0; // Register E
+    @Savable private byte h = 0; // Register H
+    @Savable private byte l = 0; // Register L
 
-    private boolean halted = false;
-    private boolean stopped = false;
-    private boolean ime = false; // Interrupt Master Enable
-    private int imeEnableDelay = 0;
-    private boolean haltBug = false; // Halt Bug
+    @Savable private boolean zeroFlag = false; // Zero Flag
+    @Savable private boolean negativeFlag = false; // Subtract Flag
+    @Savable private boolean halfCarryFlag = false; // Half Carry Flag
+    @Savable private boolean carryFlag = false; // Carry Flag
+
+    @Savable private boolean halted = false;
+    @Savable private boolean stopped = false;
+    @Savable private boolean ime = false; // Interrupt Master Enable
+    @Savable private int imeEnableDelay = 0;
+    @Savable private boolean haltBug = false; // Halt Bug
 
 
     public Cpu(Bus bus) {

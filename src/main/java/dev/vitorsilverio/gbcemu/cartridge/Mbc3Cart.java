@@ -1,5 +1,7 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -11,11 +13,11 @@ public class Mbc3Cart extends Cart {
 
     private final Mbc3Rtc rtc;
 
-    private int romBank = 1;
-    private int ramBank;
-    private int ramOrRtcSelect;
-    private int latchValue = 0xFF;
-    private boolean ramAndTimerEnabled;
+    @Savable private int romBank = 1;
+    @Savable private int ramBank;
+    @Savable private int ramOrRtcSelect;
+    @Savable private int latchValue = 0xFF;
+    @Savable private boolean ramAndTimerEnabled;
 
     Mbc3Cart(byte[] rom, File saveFile, LongSupplier currentEpochSeconds) {
         super(rom, saveFile);

@@ -3,14 +3,16 @@ package dev.vitorsilverio.gbcemu.misc;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
-public class DMA implements MemorySpace, MachineCycle {
+public class DMA implements MemorySpace, MachineCycle, Snapshottable {
 
     private static final int DMA_REQUEST_REGISTER = 0xff46;
 
-    private int cycles = 0;
-    private int baseAddress = 0;
-    private boolean active;
+    @Savable private int cycles = 0;
+    @Savable private int baseAddress = 0;
+    @Savable private boolean active;
     private final Bus bus;
 
     public DMA(Bus bus) {

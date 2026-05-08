@@ -3,10 +3,12 @@ package dev.vitorsilverio.gbcemu.misc;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.util.List;
 
-public class HDMA implements MachineCycle, MemorySpace {
+public class HDMA implements MachineCycle, MemorySpace, Snapshottable {
 
     private final int HDMA1 = 0xFF51;
     private final int HDMA2 = 0xFF52;
@@ -19,14 +21,14 @@ public class HDMA implements MachineCycle, MemorySpace {
 
 
     private final Bus bus;
-    private boolean active;
-    private int total;
-    private int sourceAddress;
-    private int destinationAddress;
-    private int mode;
-    private int cycles;
-    private int counter;
-    private boolean completed = true;
+    @Savable private boolean active;
+    @Savable private int total;
+    @Savable private int sourceAddress;
+    @Savable private int destinationAddress;
+    @Savable private int mode;
+    @Savable private int cycles;
+    @Savable private int counter;
+    @Savable private boolean completed = true;
 
     public HDMA(Bus bus) {
         this.bus = bus;

@@ -1,15 +1,17 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+
 import java.io.File;
 
 public class Mbc5Cart extends Cart {
 
 
-    private int romBankLow;
-    private int romBankHigh;
-    private int ramBank;
-    private boolean ramEnabled;
-    private boolean rumbleEnabled;
+    @Savable private int romBankLow;
+    @Savable private int romBankHigh;
+    @Savable private int ramBank;
+    @Savable private boolean ramEnabled;
+    @Savable private boolean rumbleEnabled;
 
     Mbc5Cart(byte[] rom, File saveFile) {
         super(rom, saveFile);

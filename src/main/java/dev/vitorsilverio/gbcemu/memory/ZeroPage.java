@@ -1,8 +1,11 @@
 package dev.vitorsilverio.gbcemu.memory;
 
-public class ZeroPage implements MemorySpace{
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
-    private final byte[] memory = new byte[0x7F];
+public class ZeroPage implements MemorySpace, Snapshottable {
+
+    @Savable private final byte[] memory = new byte[0x7F];
 
     @Override
     public boolean contains(int address) {

@@ -1,11 +1,13 @@
 package dev.vitorsilverio.gbcemu.interrupt;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.util.List;
 import java.util.Optional;
 
-public class InterruptManager implements MemorySpace {
+public class InterruptManager implements MemorySpace, Snapshottable {
 
     private static final int IF_REG = 0xFF0F;
     private static final int IE_REG = 0xFFFF;
@@ -13,8 +15,8 @@ public class InterruptManager implements MemorySpace {
     private static final int IF_UNUSED_BITS = 0xE0;
     private static final List<Integer> REGISTERS = List.of(IE_REG, IF_REG);
 
-    private byte ieReg;
-    private byte ifReg;
+    @Savable private byte ieReg;
+    @Savable private byte ifReg;
 
     @Override
     public boolean contains(int address) {

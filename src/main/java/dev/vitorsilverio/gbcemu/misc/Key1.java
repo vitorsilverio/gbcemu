@@ -1,13 +1,15 @@
 package dev.vitorsilverio.gbcemu.misc;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
-public class Key1 implements MemorySpace {
+public class Key1 implements MemorySpace, Snapshottable {
 
     private static final int KEY1_REGISTER = 0xFF4D;
 
-    private boolean prepareSpeedSwitch;
-    private boolean doubleSpeed;
+    @Savable private boolean prepareSpeedSwitch;
+    @Savable private boolean doubleSpeed;
 
     @Override
     public boolean contains(int address) {

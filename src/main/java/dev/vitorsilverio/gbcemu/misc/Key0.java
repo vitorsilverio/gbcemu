@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.misc;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.util.function.Consumer;
 
@@ -10,9 +12,9 @@ import java.util.function.Consumer;
  * <p>As a result of the above most of the behavior is not directly testable without hardware manipulation. Even though we can’t test its behavior directly we can inspect the disassembly of the CGB bootrom and infer the following:</p>
  */
 
-public class Key0 implements MemorySpace {
+public class Key0 implements MemorySpace, Snapshottable {
 
-    private byte key0 = 0;
+    @Savable private byte key0 = 0;
     private final Consumer<Boolean> onCgbModeChange;
 
     public Key0() {

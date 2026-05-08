@@ -1,12 +1,14 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
+import dev.vitorsilverio.gbcemu.snapshot.Savable;
+
 import java.io.File;
 
 public class Mbc1Cart extends Cart {
 
-    private int romBank = 1;
-    private int ramBank;
-    private boolean ramEnabled;
+    @Savable private int romBank = 1;
+    @Savable private int ramBank;
+    @Savable private boolean ramEnabled;
 
     Mbc1Cart(byte[] rom, File saveFile) {
         super(rom, saveFile);
