@@ -4,17 +4,14 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-import java.util.Arrays;
-import java.util.List;
-
 public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuContext {
 
     private static final int CPU_CLOCK_HZ = 4_194_304;
     private static final int SAMPLE_RATE = 44_100;
 
-    private static final int NR50_MASTER_VOLUME = 0xFF24;
-    private static final int NR51_SOUND_PANNING = 0xFF25;
-    private static final int NR52_AUDIO_MASTER_CONTROL = 0xFF26;
+    static final int NR50_MASTER_VOLUME = 0xFF24;
+    static final int NR51_SOUND_PANNING = 0xFF25;
+    static final int NR52_AUDIO_MASTER_CONTROL = 0xFF26;
     private static final int PCM12_CGB_DIGITAL_OUTPUT = 0xFF76;
     private static final int PCM34_CGB_DIGITAL_OUTPUT = 0xFF77;
 
@@ -42,35 +39,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     static final int NR43_CHANNEL_4_FREQUENCY = 0xFF22;
     static final int NR44_CHANNEL_4_CONTROL = 0xFF23;
 
-    private static final List<Integer> REGISTERS = List.of(
-            NR50_MASTER_VOLUME,
-            NR51_SOUND_PANNING,
-            NR52_AUDIO_MASTER_CONTROL,
-            NR10_CHANNEL_1_SWEEP,
-            NR11_CHANNEL_1_DUTY,
-            NR12_CHANNEL_1_VOLUME,
-            NR13_CHANNEL_1_FREQUENCY_LO,
-            NR14_CHANNEL_1_FREQUENCY_HI,
-            NR20_UNUSED,
-            NR21_CHANNEL_2_DUTY,
-            NR22_CHANNEL_2_VOLUME,
-            NR23_CHANNEL_2_FREQUENCY_LO,
-            NR24_CHANNEL_2_FREQUENCY_HI,
-            NR30_CHANNEL_3_ON_OFF,
-            NR31_CHANNEL_3_LENGTH,
-            NR32_CHANNEL_3_VOLUME,
-            NR33_CHANNEL_3_FREQUENCY_LO,
-            NR34_CHANNEL_3_FREQUENCY_HI,
-            NR40_UNUSED,
-            NR41_CHANNEL_4_LENGTH,
-            NR42_CHANNEL_4_VOLUME,
-            NR43_CHANNEL_4_FREQUENCY,
-            NR44_CHANNEL_4_CONTROL
-    );
-
-    private final byte[] registers = new byte[0x30];
-    private final byte[] wavePatternRam = new byte[0x10];
+    private final ApuRegisters registers = new ApuRegisters();
     private final AudioOutput output;
+    private final ApuMixer mixer;
     private final ApuFrameSequencer frameSequencer = new ApuFrameSequencer();
 
     private int sampleAccumulator;
@@ -92,16 +63,14 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     Apu(AudioSink sink) {
         this.output = new AudioOutput(sink);
-        registers[index(NR50_MASTER_VOLUME)] = 0x77;
-        registers[index(NR51_SOUND_PANNING)] = (byte) 0xFF;
-        registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) 0x80;
+        this.mixer = new ApuMixer(output);
     }
 
     @Override
     public ApuState saveState() {
         return new ApuState(
-                registers.clone(),
-                wavePatternRam.clone(),
+                registers.copyRegisters(),
+                registers.copyWavePatternRam(),
                 sampleAccumulator,
                 frameSequencer.cycles(),
                 frameSequencer.step(),
@@ -117,8 +86,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     @Override
     public void loadState(ApuState state) {
-        System.arraycopy(state.registers(), 0, registers, 0, Math.min(registers.length, state.registers().length));
-        System.arraycopy(state.wavePatternRam(), 0, wavePatternRam, 0, Math.min(wavePatternRam.length, state.wavePatternRam().length));
+        registers.loadRegisters(state.registers());
+        registers.loadWavePatternRam(state.wavePatternRam());
         sampleAccumulator = state.sampleAccumulator();
         frameSequencer.load(state.frameSequencerCycles(), state.frameSequencerStep());
         output.restoreSmoothing(state.previousLeftSample(), state.previousRightSample());
@@ -150,8 +119,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     @Override
     public boolean contains(int address) {
-        return REGISTERS.contains(address)
-                || (address >= 0xFF27 && address <= 0xFF3F)
+        return registers.contains(address)
                 || address == PCM12_CGB_DIGITAL_OUTPUT
                 || address == PCM34_CGB_DIGITAL_OUTPUT;
     }
@@ -164,27 +132,27 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         if (address == PCM34_CGB_DIGITAL_OUTPUT) {
             return (byte) (channel3.digitalOutput() | (channel4.digitalOutput() << 4));
         }
-        if (address >= 0xFF27 && address <= 0xFF2F) {
+        if (registers.isUnusedRegister(address)) {
             return (byte) 0xFF;
         }
-        if (address >= 0xFF30 && address <= 0xFF3F) {
-            return wavePatternRam[address - 0xFF30];
+        if (registers.isWaveRam(address)) {
+            return registers.readWaveRamAddress(address);
         }
 
         return switch (address) {
-            case NR10_CHANNEL_1_SWEEP -> (byte) ((registers[index(address)] & 0x7F) | 0x80);
-            case NR11_CHANNEL_1_DUTY, NR21_CHANNEL_2_DUTY -> (byte) ((registers[index(address)] & 0xC0) | 0x3F);
+            case NR10_CHANNEL_1_SWEEP -> (byte) ((registers.read(address) & 0x7F) | 0x80);
+            case NR11_CHANNEL_1_DUTY, NR21_CHANNEL_2_DUTY -> (byte) ((registers.read(address) & 0xC0) | 0x3F);
             case NR13_CHANNEL_1_FREQUENCY_LO, NR23_CHANNEL_2_FREQUENCY_LO,
                  NR33_CHANNEL_3_FREQUENCY_LO -> (byte) 0xFF;
             case NR14_CHANNEL_1_FREQUENCY_HI, NR24_CHANNEL_2_FREQUENCY_HI,
-                 NR34_CHANNEL_3_FREQUENCY_HI, NR44_CHANNEL_4_CONTROL -> (byte) ((registers[index(address)] & 0x40) | 0xBF);
-            case NR30_CHANNEL_3_ON_OFF -> (byte) ((registers[index(address)] & 0x80) | 0x7F);
+                 NR34_CHANNEL_3_FREQUENCY_HI, NR44_CHANNEL_4_CONTROL -> (byte) ((registers.read(address) & 0x40) | 0xBF);
+            case NR30_CHANNEL_3_ON_OFF -> (byte) ((registers.read(address) & 0x80) | 0x7F);
             case NR31_CHANNEL_3_LENGTH, NR41_CHANNEL_4_LENGTH -> (byte) 0xFF;
-            case NR32_CHANNEL_3_VOLUME -> (byte) ((registers[index(address)] & 0x60) | 0x9F);
-            case NR43_CHANNEL_4_FREQUENCY -> registers[index(address)];
+            case NR32_CHANNEL_3_VOLUME -> (byte) ((registers.read(address) & 0x60) | 0x9F);
+            case NR43_CHANNEL_4_FREQUENCY -> registers.read(address);
             case NR52_AUDIO_MASTER_CONTROL -> readNr52();
             case NR20_UNUSED, NR40_UNUSED -> (byte) 0xFF;
-            default -> registers[index(address)];
+            default -> registers.read(address);
         };
     }
 
@@ -193,11 +161,11 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         if (address == PCM12_CGB_DIGITAL_OUTPUT || address == PCM34_CGB_DIGITAL_OUTPUT) {
             return;
         }
-        if (address >= 0xFF27 && address <= 0xFF2F) {
+        if (registers.isUnusedRegister(address)) {
             return;
         }
-        if (address >= 0xFF30 && address <= 0xFF3F) {
-            wavePatternRam[address - 0xFF30] = value;
+        if (registers.isWaveRam(address)) {
+            registers.writeWaveRamAddress(address, value);
             return;
         }
 
@@ -210,8 +178,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             return;
         }
 
-        byte oldValue = registers[index(address)];
-        registers[index(address)] = value;
+        byte oldValue = registers.read(address);
+        registers.write(address, value);
         switch (address) {
             case NR10_CHANNEL_1_SWEEP -> channel1.setSweep(oldValue, value);
             case NR11_CHANNEL_1_DUTY -> channel1.setLength(64 - (value & 0x3F));
@@ -266,29 +234,16 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     private void writeSample() {
-        int nr50 = registers[index(NR50_MASTER_VOLUME)] & 0xFF;
-        int nr51 = registers[index(NR51_SOUND_PANNING)] & 0xFF;
-        int leftVolume = ((nr50 >> 4) & 0x07) + 1;
-        int rightVolume = (nr50 & 0x07) + 1;
-        int[] outputs = {
+        int nr50 = registers.read(NR50_MASTER_VOLUME) & 0xFF;
+        int nr51 = registers.read(NR51_SOUND_PANNING) & 0xFF;
+        mixer.writeSample(
+                nr50,
+                nr51,
                 channel1.output(),
                 channel2.output(),
                 channel3.output(),
                 channel4.output()
-        };
-
-        int left = 0;
-        int right = 0;
-        for (int i = 0; i < outputs.length; i++) {
-            if ((nr51 & (1 << (i + 4))) != 0) {
-                left += outputs[i];
-            }
-            if ((nr51 & (1 << i)) != 0) {
-                right += outputs[i];
-            }
-        }
-
-        output.writeStereoSample(left * leftVolume, right * rightVolume);
+        );
     }
 
     private byte readNr52() {
@@ -303,12 +258,12 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     private void setAudioEnabled(boolean enabled) {
         audioEnabled = enabled;
-        registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) (enabled ? 0x80 : 0x00);
+        registers.write(NR52_AUDIO_MASTER_CONTROL, (byte) (enabled ? 0x80 : 0x00));
         if (enabled) {
             frameSequencer.reset();
         }
         if (!enabled) {
-            Arrays.fill(registers, (byte) 0);
+            registers.clearRegisters();
             channel1.disable();
             channel2.disable();
             channel3.disable();
@@ -320,17 +275,17 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     @Override
     public byte register(int address) {
-        return registers[index(address)];
+        return registers.read(address);
     }
 
     @Override
     public void setRegister(int address, byte value) {
-        registers[index(address)] = value;
+        registers.write(address, value);
     }
 
     @Override
     public byte wavePatternRam(int offset) {
-        return wavePatternRam[offset & 0x0F];
+        return registers.readWaveRamOffset(offset);
     }
 
     @Override
@@ -340,11 +295,11 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     @Override
     public int period(int lowAddress, int highAddress) {
-        return (registers[index(lowAddress)] & 0xFF) | ((registers[index(highAddress)] & 0x07) << 8);
+        return registers.period(lowAddress, highAddress);
     }
 
     static int index(int address) {
-        return address - 0xFF10;
+        return ApuRegisters.index(address);
     }
 
 }
