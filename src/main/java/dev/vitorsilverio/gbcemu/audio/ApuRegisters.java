@@ -1,11 +1,6 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 final class ApuRegisters {
-    private static final int REGISTER_START = 0xFF10;
-    private static final int REGISTER_END = 0xFF3F;
-    private static final int WAVE_RAM_START = 0xFF30;
-    private static final int WAVE_RAM_END = 0xFF3F;
-
     private final byte[] registers = new byte[0x30];
     private final byte[] wavePatternRam = new byte[0x10];
 
@@ -14,7 +9,7 @@ final class ApuRegisters {
     }
 
     boolean contains(int address) {
-        return address >= REGISTER_START && address <= REGISTER_END;
+        return address >= ApuAddress.REGISTER_START && address <= ApuAddress.REGISTER_END;
     }
 
     boolean isUnusedRegister(int address) {
@@ -22,7 +17,7 @@ final class ApuRegisters {
     }
 
     boolean isWaveRam(int address) {
-        return address >= WAVE_RAM_START && address <= WAVE_RAM_END;
+        return address >= ApuAddress.WAVE_RAM_START && address <= ApuAddress.WAVE_RAM_END;
     }
 
     byte read(int address) {
@@ -34,11 +29,11 @@ final class ApuRegisters {
     }
 
     byte readWaveRamAddress(int address) {
-        return wavePatternRam[address - WAVE_RAM_START];
+        return wavePatternRam[address - ApuAddress.WAVE_RAM_START];
     }
 
     void writeWaveRamAddress(int address, byte value) {
-        wavePatternRam[address - WAVE_RAM_START] = value;
+        wavePatternRam[address - ApuAddress.WAVE_RAM_START] = value;
     }
 
     byte readWaveRamOffset(int offset) {
@@ -76,6 +71,6 @@ final class ApuRegisters {
     }
 
     static int index(int address) {
-        return address - REGISTER_START;
+        return address - ApuAddress.REGISTER_START;
     }
 }

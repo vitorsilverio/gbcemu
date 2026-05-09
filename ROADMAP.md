@@ -95,6 +95,11 @@ Este documento organiza as melhorias e metas do emulador. A ideia é manter uma 
   - Exportar estado em JSON alem de TXT/PNG.
   - Incluir registradores, memoria selecionada, PPU, cart/MBC, timer e interrupcoes.
 
+- [ ] Debug de audio.
+  - Mostrar estado dos canais 1, 2, 3 e 4.
+  - Permitir alterar volume/mute individual dos canais em tempo de execucao para testes.
+  - Essas alteracoes sao ferramentas de debug e nao devem entrar no save state.
+
 ## Funcionalidades De Compatibilidade
 
 - [ ] Implementar o resto dos memory mappers.
