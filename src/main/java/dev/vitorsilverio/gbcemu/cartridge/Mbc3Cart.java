@@ -1,23 +1,22 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.function.LongSupplier;
 
 public class Mbc3Cart extends Cart {
 
     private final Mbc3Rtc rtc;
 
-    @Savable private int romBank = 1;
-    @Savable private int ramBank;
-    @Savable private int ramOrRtcSelect;
-    @Savable private int latchValue = 0xFF;
-    @Savable private boolean ramAndTimerEnabled;
+    private int romBank = 1;
+    private int ramBank;
+    private int ramOrRtcSelect;
+    private int latchValue = 0xFF;
+    private boolean ramAndTimerEnabled;
 
     Mbc3Cart(byte[] rom, File saveFile, LongSupplier currentEpochSeconds) {
         super(rom, saveFile);
@@ -90,6 +89,26 @@ public class Mbc3Cart extends Cart {
             rtc.latch();
         }
         latchValue = value;
+    }
+
+    @Override
+    protected void putMapperState(Map<String, Object> state) {
+        state.put("romBank", romBank);
+        state.put("ramBank", ramBank);
+        state.put("ramOrRtcSelect", ramOrRtcSelect);
+        state.put("latchValue", latchValue);
+        state.put("ramAndTimerEnabled", ramAndTimerEnabled);
+        rtc.putState(state);
+    }
+
+    @Override
+    protected void restoreMapperState(Map<String, Object> state) {
+        romBank = (int) state.getOrDefault("romBank", 1);
+        ramBank = (int) state.getOrDefault("ramBank", 0);
+        ramOrRtcSelect = (int) state.getOrDefault("ramOrRtcSelect", 0);
+        latchValue = (int) state.getOrDefault("latchValue", 0xFF);
+        ramAndTimerEnabled = (boolean) state.getOrDefault("ramAndTimerEnabled", false);
+        rtc.restoreState(state);
     }
 
     private static class Mbc3Rtc {
@@ -195,6 +214,32 @@ public class Mbc3Cart extends Cart {
                     throw new RuntimeException(e);
                 }
             });
+        }
+
+        private void putState(Map<String, Object> state) {
+            updateLiveRegisters();
+            state.put("rtcLatched", latched.clone());
+            state.put("rtcBaseEpochSeconds", baseEpochSeconds);
+            state.put("rtcSeconds", seconds);
+            state.put("rtcMinutes", minutes);
+            state.put("rtcHours", hours);
+            state.put("rtcDays", days);
+            state.put("rtcHalted", halted);
+            state.put("rtcCarry", carry);
+        }
+
+        private void restoreState(Map<String, Object> state) {
+            Object latchedState = state.get("rtcLatched");
+            if (latchedState instanceof int[] savedLatched) {
+                System.arraycopy(savedLatched, 0, latched, 0, Math.min(savedLatched.length, latched.length));
+            }
+            baseEpochSeconds = (long) state.getOrDefault("rtcBaseEpochSeconds", currentEpochSeconds.getAsLong());
+            seconds = (int) state.getOrDefault("rtcSeconds", 0);
+            minutes = (int) state.getOrDefault("rtcMinutes", 0);
+            hours = (int) state.getOrDefault("rtcHours", 0);
+            days = (int) state.getOrDefault("rtcDays", 0);
+            halted = (boolean) state.getOrDefault("rtcHalted", false);
+            carry = (boolean) state.getOrDefault("rtcCarry", false);
         }
     }
 }

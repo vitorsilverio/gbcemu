@@ -1,7 +1,7 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +12,8 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class Cart implements MemorySpace, Snapshottable {
 
@@ -24,7 +26,7 @@ public abstract class Cart implements MemorySpace, Snapshottable {
 
     protected final CartHeader header;
     protected final byte[] rom;
-    @Savable protected final byte[] ram;
+    protected final byte[] ram;
     protected final int romBanks;
     protected final File saveFile;
 
@@ -176,6 +178,29 @@ public abstract class Cart implements MemorySpace, Snapshottable {
     }
 
     protected void writeExtraSaveData(DataOutputStream output) throws IOException {
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("ram", ram.clone());
+        putMapperState(state);
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object ramState = snapshot.state().get("ram");
+        if (ramState instanceof byte[] savedRam) {
+            System.arraycopy(savedRam, 0, ram, 0, Math.min(savedRam.length, ram.length));
+        }
+        restoreMapperState(snapshot.state());
+    }
+
+    protected void putMapperState(Map<String, Object> state) {
+    }
+
+    protected void restoreMapperState(Map<String, Object> state) {
     }
 
     private int ramAddress(int bank, int address) {

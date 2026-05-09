@@ -1,14 +1,13 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-
 import java.io.File;
+import java.util.Map;
 
 public class Mbc1Cart extends Cart {
 
-    @Savable private int romBank = 1;
-    @Savable private int ramBank;
-    @Savable private boolean ramEnabled;
+    private int romBank = 1;
+    private int ramBank;
+    private boolean ramEnabled;
 
     Mbc1Cart(byte[] rom, File saveFile) {
         super(rom, saveFile);
@@ -49,5 +48,19 @@ public class Mbc1Cart extends Cart {
             return;
         }
         writeRam(ramBank, address, value);
+    }
+
+    @Override
+    protected void putMapperState(Map<String, Object> state) {
+        state.put("romBank", romBank);
+        state.put("ramBank", ramBank);
+        state.put("ramEnabled", ramEnabled);
+    }
+
+    @Override
+    protected void restoreMapperState(Map<String, Object> state) {
+        romBank = (int) state.getOrDefault("romBank", 1);
+        ramBank = (int) state.getOrDefault("ramBank", 0);
+        ramEnabled = (boolean) state.getOrDefault("ramEnabled", false);
     }
 }

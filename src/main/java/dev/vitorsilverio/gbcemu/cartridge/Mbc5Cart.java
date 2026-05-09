@@ -1,17 +1,16 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-
 import java.io.File;
+import java.util.Map;
 
 public class Mbc5Cart extends Cart {
 
 
-    @Savable private int romBankLow;
-    @Savable private int romBankHigh;
-    @Savable private int ramBank;
-    @Savable private boolean ramEnabled;
-    @Savable private boolean rumbleEnabled;
+    private int romBankLow;
+    private int romBankHigh;
+    private int ramBank;
+    private boolean ramEnabled;
+    private boolean rumbleEnabled;
 
     Mbc5Cart(byte[] rom, File saveFile) {
         super(rom, saveFile);
@@ -69,5 +68,23 @@ public class Mbc5Cart extends Cart {
             return;
         }
         ramBank = value & 0x0F;
+    }
+
+    @Override
+    protected void putMapperState(Map<String, Object> state) {
+        state.put("romBankLow", romBankLow);
+        state.put("romBankHigh", romBankHigh);
+        state.put("ramBank", ramBank);
+        state.put("ramEnabled", ramEnabled);
+        state.put("rumbleEnabled", rumbleEnabled);
+    }
+
+    @Override
+    protected void restoreMapperState(Map<String, Object> state) {
+        romBankLow = (int) state.getOrDefault("romBankLow", 0);
+        romBankHigh = (int) state.getOrDefault("romBankHigh", 0);
+        ramBank = (int) state.getOrDefault("ramBank", 0);
+        ramEnabled = (boolean) state.getOrDefault("ramEnabled", false);
+        rumbleEnabled = (boolean) state.getOrDefault("rumbleEnabled", false);
     }
 }
