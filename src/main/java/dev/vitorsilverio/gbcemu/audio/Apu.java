@@ -2,8 +2,6 @@ package dev.vitorsilverio.gbcemu.audio;
 
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,23 +77,23 @@ public class Apu implements MemorySpace, MachineCycle {
             NR44_CHANNEL_4_CONTROL
     );
 
-    @Savable private final byte[] registers = new byte[0x30];
-    @Savable private final byte[] wavePatternRam = new byte[0x10];
+    private final byte[] registers = new byte[0x30];
+    private final byte[] wavePatternRam = new byte[0x10];
     private final AudioSink sink;
-    @Savable private final byte[] sampleBuffer = new byte[1024];
+    private final byte[] sampleBuffer = new byte[1024];
 
-    @Savable private int sampleAccumulator;
-    @Savable  private int frameSequencerCycles;
-    @Savable private int frameSequencerStep;
-    @Savable private int sampleBufferPosition;
-    @Savable private int previousLeftSample;
-    @Savable private int previousRightSample;
-    @Savable private boolean audioEnabled = true;
+    private int sampleAccumulator;
+    private int frameSequencerCycles;
+    private int frameSequencerStep;
+    private int sampleBufferPosition;
+    private int previousLeftSample;
+    private int previousRightSample;
+    private boolean audioEnabled = true;
 
-    @Savable private PulseChannel channel1 = new PulseChannel(0);
-    @Savable private PulseChannel channel2 = new PulseChannel(1);
-    @Savable private WaveChannel channel3 = new WaveChannel();
-    @Savable private NoiseChannel channel4 = new NoiseChannel();
+    private PulseChannel channel1 = new PulseChannel(0);
+    private PulseChannel channel2 = new PulseChannel(1);
+    private WaveChannel channel3 = new WaveChannel();
+    private NoiseChannel channel4 = new NoiseChannel();
 
     public Apu() {
         this(createDefaultSink());

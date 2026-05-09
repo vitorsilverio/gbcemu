@@ -3,8 +3,7 @@ package dev.vitorsilverio.gbcemu.cartridge;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.memory.MemoryBankProvider;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class Cart implements MemorySpace, MemoryBankProvider, Snapshottable {
+public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<CartState> {
 
     protected static final int ROM_BANK_SIZE = 0x4000;
     protected static final int RAM_BANK_SIZE = 0x2000;
@@ -185,22 +184,16 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Snapshott
     }
 
     @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("externalRam", ram.saveState());
-        putMapperState(state);
-        return new Snapshot(getClass().getName(), version, state);
+    public CartState saveState() {
+        Map<String, Object> mapperState = new HashMap<>();
+        putMapperState(mapperState);
+        return new CartState(ram.saveState(), mapperState);
     }
 
     @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object externalRamState = snapshot.state().get("externalRam");
-        if (externalRamState instanceof CartridgeRamState cartridgeRamState) {
-            ram.loadState(cartridgeRamState);
-        } else if (snapshot.state().get("ram") instanceof byte[] savedRam) {
-            ram.restoreData(savedRam);
-        }
-        restoreMapperState(snapshot.state());
+    public void loadState(CartState state) {
+        ram.loadState(state.externalRam());
+        restoreMapperState(state.mapperState());
     }
 
     protected void putMapperState(Map<String, Object> state) {

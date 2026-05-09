@@ -1,19 +1,13 @@
 package dev.vitorsilverio.gbcemu.memory;
 
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-import java.util.HashMap;
-import java.util.Map;
-
-public class WorkRam implements MemorySpace, MemoryBank, Snapshottable, Stateful<WorkRamState> {
+public class WorkRam implements MemorySpace, MemoryBank, Stateful<WorkRamState> {
 
     private final int SVBK_REGISTER = 0xFF70;
-    @Savable private int bank = 0;
-    @Savable private final byte[] bank0 = new byte[0x2000];
-    @Savable private final byte[][] banks = new byte[7][0x2000];
+    private int bank = 0;
+    private final byte[] bank0 = new byte[0x2000];
+    private final byte[][] banks = new byte[7][0x2000];
 
     @Override
     public WorkRamState saveState() {
@@ -31,23 +25,6 @@ public class WorkRam implements MemorySpace, MemoryBank, Snapshottable, Stateful
         for (int i = 0; i < banks.length && i < stateBanks.length; i++) {
             System.arraycopy(stateBanks[i], 0, banks[i], 0, Math.min(banks[i].length, stateBanks[i].length));
         }
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof WorkRamState workRamState) {
-            loadState(workRamState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     private byte[][] cloneBanks() {

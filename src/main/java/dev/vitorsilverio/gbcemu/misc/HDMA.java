@@ -3,16 +3,11 @@ package dev.vitorsilverio.gbcemu.misc;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-public class HDMA implements MachineCycle, MemorySpace, Snapshottable, Stateful<HdmaState> {
+public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
 
     private final int HDMA1 = 0xFF51;
     private final int HDMA2 = 0xFF52;
@@ -25,14 +20,14 @@ public class HDMA implements MachineCycle, MemorySpace, Snapshottable, Stateful<
 
 
     private final Bus bus;
-    @Savable private boolean active;
-    @Savable private int total;
-    @Savable private int sourceAddress;
-    @Savable private int destinationAddress;
-    @Savable private int mode;
-    @Savable private int cycles;
-    @Savable private int counter;
-    @Savable private boolean completed = true;
+    private boolean active;
+    private int total;
+    private int sourceAddress;
+    private int destinationAddress;
+    private int mode;
+    private int cycles;
+    private int counter;
+    private boolean completed = true;
 
     public HDMA(Bus bus) {
         this.bus = bus;
@@ -62,23 +57,6 @@ public class HDMA implements MachineCycle, MemorySpace, Snapshottable, Stateful<
         cycles = Math.max(0, state.cycles());
         counter = Math.max(0, state.counter());
         completed = state.completed();
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof HdmaState hdmaState) {
-            loadState(hdmaState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override

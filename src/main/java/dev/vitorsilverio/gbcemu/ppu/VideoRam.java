@@ -2,15 +2,13 @@ package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class VideoRam implements MemorySpace, MemoryBank, Snapshottable {
+public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState> {
 
     private static final int VBK = 0xFF4F;
 
@@ -142,29 +140,15 @@ public class VideoRam implements MemorySpace, MemoryBank, Snapshottable {
     }
 
     @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("bank", bank);
-        state.put("tileData", copyTileData());
-        state.put("tileMapIndexes", copyTileMapIndexes());
-        state.put("tileMapAttributes", copyTileMapAttributes());
-        return new Snapshot(getClass().getName(), version, state);
+    public VideoRamState saveState() {
+        return new VideoRamState(bank, copyTileData(), copyTileMapIndexes(), copyTileMapAttributes());
     }
 
     @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        bank = (int) snapshot.state().getOrDefault("bank", 0);
-
-        Object tileData = snapshot.state().get("tileData");
-        if (tileData instanceof byte[][][] data) {
-            restoreTileData(data);
-        }
-
-        Object indexes = snapshot.state().get("tileMapIndexes");
-        Object attributes = snapshot.state().get("tileMapAttributes");
-        if (indexes instanceof byte[] tileMapIndexes && attributes instanceof byte[] tileMapAttributes) {
-            restoreTileMaps(tileMapIndexes, tileMapAttributes);
-        }
+    public void loadState(VideoRamState state) {
+        bank = state.bank() & 0x01;
+        restoreTileData(state.tileData());
+        restoreTileMaps(state.tileMapIndexes(), state.tileMapAttributes());
     }
 
     private byte[][][] copyTileData() {

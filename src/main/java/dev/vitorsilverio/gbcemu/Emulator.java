@@ -19,8 +19,6 @@ import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.io.File;
 import java.time.Instant;
@@ -248,22 +246,22 @@ public class Emulator {
             var version = EmulatorState.CURRENT_VERSION;
             return new EmulatorState(
                     version,
-                    bus.findMemorySpace(InterruptManager.class).map(interrupts -> interrupts.createSnapshot(version)).orElse(null),
-                    bios == null ? null : bios.createSnapshot(version),
-                    cpu.createSnapshot(version),
-                    timer.createSnapshot(version),
-                    ppu.createSnapshot(version),
-                    ppu.getVideoRam().createSnapshot(version),
-                    ppu.getOam().createSnapshot(version),
-                    serial.createSnapshot(version),
-                    hdma.createSnapshot(version),
-                    dma.createSnapshot(version),
-                    workRam.createSnapshot(version),
-                    zeroPage.createSnapshot(version),
-                    cart.createSnapshot(version),
-                    key0.createSnapshot(version),
-                    key1.createSnapshot(version),
-                    infraredPort.createSnapshot(version)
+                    interruptManager().saveState(),
+                    bios == null ? null : bios.saveState(),
+                    cpu.saveState(),
+                    timer.saveState(),
+                    ppu.saveState(),
+                    ppu.getVideoRam().saveState(),
+                    ppu.getOam().saveState(),
+                    serial.saveState(),
+                    hdma.saveState(),
+                    dma.saveState(),
+                    workRam.saveState(),
+                    zeroPage.saveState(),
+                    cart.saveState(),
+                    key0.saveState(),
+                    key1.saveState(),
+                    infraredPort.saveState()
             );
         }
     }
@@ -275,35 +273,30 @@ public class Emulator {
     public void restoreEmulatorState(EmulatorState emulatorState) {
         pause();
         synchronized (stateLock) {
-            restore(interruptManager(), emulatorState.interruptManager());
-            restore(bios, emulatorState.bios());
-            restore(cpu, emulatorState.cpu());
-            restore(timer, emulatorState.timer());
-            restore(ppu, emulatorState.ppu());
-            restore(ppu.getVideoRam(), emulatorState.videoRam());
-            restore(ppu.getOam(), emulatorState.oam());
-            restore(serial, emulatorState.serial());
-            restore(hdma, emulatorState.hdma());
-            restore(dma, emulatorState.dma());
-            restore(workRam, emulatorState.workRam());
-            restore(zeroPage, emulatorState.zeroPage());
-            restore(cart, emulatorState.cart());
-            restore(key0, emulatorState.key0());
-            restore(key1, emulatorState.key1());
-            restore(infraredPort, emulatorState.infrared());
+            interruptManager().loadState(emulatorState.interruptManager());
+            if (bios != null && emulatorState.bios() != null) {
+                bios.loadState(emulatorState.bios());
+            }
+            cpu.loadState(emulatorState.cpu());
+            timer.loadState(emulatorState.timer());
+            ppu.loadState(emulatorState.ppu());
+            ppu.getVideoRam().loadState(emulatorState.videoRam());
+            ppu.getOam().loadState(emulatorState.oam());
+            serial.loadState(emulatorState.serial());
+            hdma.loadState(emulatorState.hdma());
+            dma.loadState(emulatorState.dma());
+            workRam.loadState(emulatorState.workRam());
+            zeroPage.loadState(emulatorState.zeroPage());
+            cart.loadState(emulatorState.cart());
+            key0.loadState(emulatorState.key0());
+            key1.loadState(emulatorState.key1());
+            infraredPort.loadState(emulatorState.infrared());
         }
         resume();
     }
 
     private InterruptManager interruptManager() {
         return bus.findMemorySpace(InterruptManager.class).orElseThrow();
-    }
-
-    private void restore(Snapshottable snapshottable, Snapshot snapshot) {
-        if (snapshottable == null || snapshot == null) {
-            return;
-        }
-        snapshottable.restoreSnapshot(snapshot);
     }
 
 }

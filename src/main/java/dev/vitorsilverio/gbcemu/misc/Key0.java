@@ -1,13 +1,8 @@
 package dev.vitorsilverio.gbcemu.misc;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -16,9 +11,9 @@ import java.util.function.Consumer;
  * <p>As a result of the above most of the behavior is not directly testable without hardware manipulation. Even though we can’t test its behavior directly we can inspect the disassembly of the CGB bootrom and infer the following:</p>
  */
 
-public class Key0 implements MemorySpace, Snapshottable, Stateful<Key0State> {
+public class Key0 implements MemorySpace, Stateful<Key0State> {
 
-    @Savable private byte key0 = 0;
+    private byte key0 = 0;
     private final Consumer<Boolean> onCgbModeChange;
 
     public Key0() {
@@ -38,24 +33,6 @@ public class Key0 implements MemorySpace, Snapshottable, Stateful<Key0State> {
     @Override
     public void loadState(Key0State state) {
         key0 = state.key0();
-        onCgbModeChange.accept((key0 & 0x04) == 0);
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof Key0State key0State) {
-            loadState(key0State);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
         onCgbModeChange.accept((key0 & 0x04) == 0);
     }
 

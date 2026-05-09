@@ -5,16 +5,11 @@ import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-public class Timer implements MemorySpace, MachineCycle, Snapshottable, Stateful<TimerState> {
+public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
 
     private static final int DIVIDER_REG = 0xFF04;
     private static final int TIMER_COUNTER_REG = 0xFF05;
@@ -24,12 +19,12 @@ public class Timer implements MemorySpace, MachineCycle, Snapshottable, Stateful
     private static final int[] TIMER_BITS = {9, 3, 5, 7};
 
 
-    @Savable private int systemCounter;
-    @Savable private byte timerCounter;
-    @Savable private byte timerModulo;
-    @Savable private byte timerControl;
+    private int systemCounter;
+    private byte timerCounter;
+    private byte timerModulo;
+    private byte timerControl;
 
-    @Savable private int overflowDelay;
+    private int overflowDelay;
 
     private final Bus bus;
 
@@ -49,23 +44,6 @@ public class Timer implements MemorySpace, MachineCycle, Snapshottable, Stateful
         timerModulo = state.timerModulo();
         timerControl = (byte) (state.timerControl() & 0x07);
         overflowDelay = state.overflowDelay();
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof TimerState timerState) {
-            loadState(timerState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override

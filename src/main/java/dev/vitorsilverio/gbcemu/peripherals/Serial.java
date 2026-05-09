@@ -5,19 +5,14 @@ import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 
-public class Serial implements MemorySpace, MachineCycle, Snapshottable, Stateful<SerialState> {
+public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> {
 
     private final Logger logger = LoggerFactory.getLogger(Serial.class);
 
@@ -31,10 +26,10 @@ public class Serial implements MemorySpace, MachineCycle, Snapshottable, Statefu
     private final List<Integer> registers = List.of(SB_REGISTER, SC_REGISTER);
     private final Bus bus;
     private final StringBuilder text = new StringBuilder();
-    @Savable private int SB = 0;
-    @Savable private int SC = 0;
-    @Savable private int transferCyclesRemaining;
-    @Savable private int outgoingByte;
+    private int SB = 0;
+    private int SC = 0;
+    private int transferCyclesRemaining;
+    private int outgoingByte;
 
     public Serial(Bus bus) {
         this.bus = bus;
@@ -54,24 +49,6 @@ public class Serial implements MemorySpace, MachineCycle, Snapshottable, Statefu
         text.setLength(0);
         text.append(state.pendingText() == null ? "" : state.pendingText());
     }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof SerialState serialState) {
-            loadState(serialState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
-    }
-
 
     @Override
     public boolean contains(int address) {

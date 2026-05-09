@@ -3,17 +3,12 @@ package dev.vitorsilverio.gbcemu.cpu;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
-public class Cpu implements MachineCycle, Snapshottable, Stateful<CpuState> {
+public class Cpu implements MachineCycle, Stateful<CpuState> {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Cpu.class);
     private static final int BUS_CYCLE_TICKS = 4;
@@ -22,35 +17,33 @@ public class Cpu implements MachineCycle, Snapshottable, Stateful<CpuState> {
     private final Bus bus;
     private final Decoder decoder;
 
-    @Savable
     private int instructionTicks;
     private Runnable cycleCallback = () -> {
     };
 
-    @Savable
     private int speedRate = 1;
 
 
-    @Savable private int pc = 0x0000; // Program Counter
-    @Savable private int sp = 0xFFFE; // Stack Pointer
-    @Savable private byte a = 0; // Accumulator
-    @Savable private byte b = 0; // Register B
-    @Savable private byte c = 0; // Register C
-    @Savable private byte d = 0; // Register D
-    @Savable private byte e = 0; // Register E
-    @Savable private byte h = 0; // Register H
-    @Savable private byte l = 0; // Register L
+    private int pc = 0x0000; // Program Counter
+    private int sp = 0xFFFE; // Stack Pointer
+    private byte a = 0; // Accumulator
+    private byte b = 0; // Register B
+    private byte c = 0; // Register C
+    private byte d = 0; // Register D
+    private byte e = 0; // Register E
+    private byte h = 0; // Register H
+    private byte l = 0; // Register L
 
-    @Savable private boolean zeroFlag = false; // Zero Flag
-    @Savable private boolean negativeFlag = false; // Subtract Flag
-    @Savable private boolean halfCarryFlag = false; // Half Carry Flag
-    @Savable private boolean carryFlag = false; // Carry Flag
+    private boolean zeroFlag = false; // Zero Flag
+    private boolean negativeFlag = false; // Subtract Flag
+    private boolean halfCarryFlag = false; // Half Carry Flag
+    private boolean carryFlag = false; // Carry Flag
 
-    @Savable private boolean halted = false;
-    @Savable private boolean stopped = false;
-    @Savable private boolean ime = false; // Interrupt Master Enable
-    @Savable private int imeEnableDelay = 0;
-    @Savable private boolean haltBug = false; // Halt Bug
+    private boolean halted = false;
+    private boolean stopped = false;
+    private boolean ime = false; // Interrupt Master Enable
+    private int imeEnableDelay = 0;
+    private boolean haltBug = false; // Halt Bug
 
 
     public Cpu(Bus bus) {
@@ -106,23 +99,6 @@ public class Cpu implements MachineCycle, Snapshottable, Stateful<CpuState> {
         ime = state.ime();
         imeEnableDelay = state.imeEnableDelay();
         haltBug = state.haltBug();
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof CpuState cpuState) {
-            loadState(cpuState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     public void setCycleCallback(Runnable cycleCallback) {

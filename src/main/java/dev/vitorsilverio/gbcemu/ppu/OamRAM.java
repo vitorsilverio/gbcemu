@@ -1,17 +1,11 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-import java.util.HashMap;
-import java.util.Map;
+public class OamRAM implements MemorySpace, Stateful<OamState> {
 
-public class OamRAM implements MemorySpace, Snapshottable, Stateful<OamState> {
-
-    @Savable private final ObjectAtribute[] objectAtributes = new ObjectAtribute[40];
+    private final ObjectAtribute[] objectAtributes = new ObjectAtribute[40];
 
     public OamRAM() {
         for (int i = 0; i < objectAtributes.length; i++) {
@@ -44,23 +38,6 @@ public class OamRAM implements MemorySpace, Snapshottable, Stateful<OamState> {
             attribute.setTileIndex(data[offset + 2]);
             attribute.setAttributes(data[offset + 3]);
         }
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof OamState oamState) {
-            loadState(oamState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override

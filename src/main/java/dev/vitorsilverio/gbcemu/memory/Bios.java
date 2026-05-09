@@ -1,17 +1,12 @@
 package dev.vitorsilverio.gbcemu.memory;
 
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
-public class Bios implements MemorySpace, Snapshottable, Stateful<BiosState> {
+public class Bios implements MemorySpace, Stateful<BiosState> {
 
-    @Savable private boolean enabled = true;
+    private boolean enabled = true;
 
     private final byte[] bios;
 
@@ -31,23 +26,6 @@ public class Bios implements MemorySpace, Snapshottable, Stateful<BiosState> {
     @Override
     public void loadState(BiosState state) {
         enabled = state.enabled();
-    }
-
-    @Override
-    public Snapshot createSnapshot(int version) {
-        Map<String, Object> state = new HashMap<>();
-        state.put("state", saveState());
-        return new Snapshot(getClass().getName(), version, state);
-    }
-
-    @Override
-    public void restoreSnapshot(Snapshot snapshot) {
-        Object state = snapshot.state().get("state");
-        if (state instanceof BiosState biosState) {
-            loadState(biosState);
-            return;
-        }
-        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override
