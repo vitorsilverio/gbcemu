@@ -21,6 +21,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private final PulseChannel channel2 = new PulseChannel(this, 1);
     private final WaveChannel channel3 = new WaveChannel(this);
     private final NoiseChannel channel4 = new NoiseChannel(this);
+    private final int[] debugChannelVolumes = {100, 100, 100, 100};
 
     public Apu() {
         this(AudioSinkFactory.createDefault(SAMPLE_RATE));
@@ -130,11 +131,38 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         mixer.writeSample(
                 nr50,
                 nr51,
-                channel1.output(),
-                channel2.output(),
-                channel3.output(),
-                channel4.output()
+                debugOutput(0, channel1.output()),
+                debugOutput(1, channel2.output()),
+                debugOutput(2, channel3.output()),
+                debugOutput(3, channel4.output())
         );
+    }
+
+    private int debugOutput(int channel, int output) {
+        return output * debugChannelVolumes[channel] / 100;
+    }
+
+    public int debugChannelVolume(int channel) {
+        return debugChannelVolumes[channelIndex(channel)];
+    }
+
+    public void setDebugChannelVolume(int channel, int volume) {
+        debugChannelVolumes[channelIndex(channel)] = Math.max(0, Math.min(100, volume));
+    }
+
+    public boolean debugChannelMuted(int channel) {
+        return debugChannelVolume(channel) == 0;
+    }
+
+    public void setDebugChannelMuted(int channel, boolean muted) {
+        setDebugChannelVolume(channel, muted ? 0 : 100);
+    }
+
+    private int channelIndex(int channel) {
+        if (channel < 1 || channel > 4) {
+            throw new IllegalArgumentException("channel must be between 1 and 4");
+        }
+        return channel - 1;
     }
 
     private byte readNr52() {

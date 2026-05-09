@@ -79,13 +79,20 @@ public class Main {
                 Main::restoreSnapshot,
                 Main::rewindSnapshot,
                 Main::openSaveStateDialog,
-                Main::configureCheats
+                Main::configureCheats,
+                Main::openAudioDebugger
         );
     }
 
     private static void configureCheats() {
         if (activeEmulator != null) {
             activeEmulator.openCheats();
+        }
+    }
+
+    private static void openAudioDebugger() {
+        if (activeEmulator != null) {
+            activeEmulator.openAudioDebugger();
         }
     }
 

@@ -140,6 +140,10 @@ public class EmulatorWindow {
         JMenuItem openDebugger = new JMenuItem("Open debugger");
         openDebugger.addActionListener(event -> menuActions.openDebugger().run());
         debugMenu.add(openDebugger);
+
+        JMenuItem openAudioDebugger = new JMenuItem("Audio channels...");
+        openAudioDebugger.addActionListener(event -> menuActions.audioDebugger().run());
+        debugMenu.add(openAudioDebugger);
         menuBar.add(debugMenu);
 
         JMenu snapshotMenu = new JMenu("Save states");

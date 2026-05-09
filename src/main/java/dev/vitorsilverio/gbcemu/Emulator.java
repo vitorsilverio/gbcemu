@@ -168,6 +168,10 @@ public class Emulator {
         new CheatsWindow(gameSharkDevice);
     }
 
+    public void openAudioDebugger() {
+        new AudioDebugWindow(apu);
+    }
+
     private void tickSystemCycle() {
         if (hdma.isActive()) {
             if (hdma.isHBlankMode() && ppu.isHBlank()) {

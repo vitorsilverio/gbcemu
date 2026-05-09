@@ -11,6 +11,7 @@ public record EmulatorMenuActions(
         Runnable restoreSnapshot,
         Runnable rewindSnapshot,
         Runnable manageSnapshots,
-        Runnable cheats
+        Runnable cheats,
+        Runnable audioDebugger
 ) {
 }
