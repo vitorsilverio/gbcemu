@@ -3,6 +3,8 @@ package dev.vitorsilverio.gbcemu.ppu;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.memory.MemoryBankProvider;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
@@ -16,7 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
+public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, Snapshottable {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Ppu.class);
 
@@ -827,6 +829,11 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
 
     public OamRAM getOam() {
         return oam;
+    }
+
+    @Override
+    public List<MemoryBank> memoryBanks() {
+        return List.of(videoRam);
     }
 
     public record DebugSnapshot(

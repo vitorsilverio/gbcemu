@@ -401,6 +401,16 @@ public class DebugWindow {
         for (Bus.MemoryMapEntry entry : bus.memoryMap()) {
             builder.append(String.format("%04X-%04X  %s%n", entry.start(), entry.end(), entry.owner()));
         }
+        builder.append("\nMemory banks\n");
+        for (var bank : bus.memoryBanks()) {
+            builder.append(String.format(
+                    "%s  current=%d  banks=%d  size=%04X%n",
+                    bank.bankName(),
+                    bank.currentBank(),
+                    bank.bankCount(),
+                    bank.bankSize()
+            ));
+        }
         return builder.toString();
     }
 

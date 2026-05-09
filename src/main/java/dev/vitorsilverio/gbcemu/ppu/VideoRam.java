@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
@@ -9,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class VideoRam implements MemorySpace, Snapshottable {
+public class VideoRam implements MemorySpace, MemoryBank, Snapshottable {
 
     private static final int VBK = 0xFF4F;
 
@@ -88,6 +89,56 @@ public class VideoRam implements MemorySpace, Snapshottable {
     public TileMap getTileMap(TileMapArea TileMapArea, int tileIndex) {
         int index = (TileMapArea.getAddress() - 0x9800) & 0xFFFF;
         return tileMaps[index + tileIndex];
+    }
+
+    @Override
+    public String bankName() {
+        return "VRAM";
+    }
+
+    @Override
+    public int bankCount() {
+        return 2;
+    }
+
+    @Override
+    public int bankSize() {
+        return 0x2000;
+    }
+
+    @Override
+    public int currentBank() {
+        return bank;
+    }
+
+    @Override
+    public byte readBank(int bank, int offset) {
+        int selectedBank = bank & 0x01;
+        int selectedOffset = Math.floorMod(offset, bankSize());
+        if (selectedOffset <= 0x17FF) {
+            return tiles[selectedBank][selectedOffset / 16].getData(selectedOffset % 16);
+        }
+        int tileMapOffset = selectedOffset - 0x1800;
+        if (selectedBank == 0) {
+            return (byte) tileMaps[tileMapOffset].getIndex();
+        }
+        return tileMaps[tileMapOffset].getAttributes();
+    }
+
+    @Override
+    public void writeBank(int bank, int offset, byte value) {
+        int selectedBank = bank & 0x01;
+        int selectedOffset = Math.floorMod(offset, bankSize());
+        if (selectedOffset <= 0x17FF) {
+            tiles[selectedBank][selectedOffset / 16].setData(selectedOffset % 16, value);
+            return;
+        }
+        int tileMapOffset = selectedOffset - 0x1800;
+        if (selectedBank == 0) {
+            tileMaps[tileMapOffset].setIndex(value);
+        } else {
+            tileMaps[tileMapOffset].setAttributes(value);
+        }
     }
 
     @Override

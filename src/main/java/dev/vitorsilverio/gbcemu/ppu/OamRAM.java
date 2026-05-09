@@ -2,9 +2,14 @@ package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-public class OamRAM implements MemorySpace, Snapshottable {
+import java.util.HashMap;
+import java.util.Map;
+
+public class OamRAM implements MemorySpace, Snapshottable, Stateful<OamState> {
 
     @Savable private final ObjectAtribute[] objectAtributes = new ObjectAtribute[40];
 
@@ -12,6 +17,50 @@ public class OamRAM implements MemorySpace, Snapshottable {
         for (int i = 0; i < objectAtributes.length; i++) {
             objectAtributes[i] = new ObjectAtribute();
         }
+    }
+
+    @Override
+    public OamState saveState() {
+        byte[] data = new byte[objectAtributes.length * 4];
+        for (int i = 0; i < objectAtributes.length; i++) {
+            ObjectAtribute attribute = objectAtributes[i];
+            int offset = i * 4;
+            data[offset] = attribute.getY();
+            data[offset + 1] = attribute.getX();
+            data[offset + 2] = attribute.getTileIndex();
+            data[offset + 3] = attribute.getAttributes();
+        }
+        return new OamState(data);
+    }
+
+    @Override
+    public void loadState(OamState state) {
+        byte[] data = state.data();
+        for (int i = 0; i < objectAtributes.length && i * 4 + 3 < data.length; i++) {
+            ObjectAtribute attribute = objectAtributes[i];
+            int offset = i * 4;
+            attribute.setY(data[offset]);
+            attribute.setX(data[offset + 1]);
+            attribute.setTileIndex(data[offset + 2]);
+            attribute.setAttributes(data[offset + 3]);
+        }
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof OamState oamState) {
+            loadState(oamState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override

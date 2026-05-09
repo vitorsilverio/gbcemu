@@ -4,11 +4,15 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class HDMA implements MachineCycle, MemorySpace, Snapshottable {
+public class HDMA implements MachineCycle, MemorySpace, Snapshottable, Stateful<HdmaState> {
 
     private final int HDMA1 = 0xFF51;
     private final int HDMA2 = 0xFF52;
@@ -32,6 +36,49 @@ public class HDMA implements MachineCycle, MemorySpace, Snapshottable {
 
     public HDMA(Bus bus) {
         this.bus = bus;
+    }
+
+    @Override
+    public HdmaState saveState() {
+        return new HdmaState(
+                active,
+                total,
+                sourceAddress,
+                destinationAddress,
+                mode,
+                cycles,
+                counter,
+                completed
+        );
+    }
+
+    @Override
+    public void loadState(HdmaState state) {
+        active = state.active();
+        total = Math.max(0, state.total());
+        sourceAddress = state.sourceAddress() & 0xFFFF;
+        destinationAddress = 0x8000 | (state.destinationAddress() & 0x1FFF);
+        mode = state.mode() & 0x01;
+        cycles = Math.max(0, state.cycles());
+        counter = Math.max(0, state.counter());
+        completed = state.completed();
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof HdmaState hdmaState) {
+            loadState(hdmaState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override

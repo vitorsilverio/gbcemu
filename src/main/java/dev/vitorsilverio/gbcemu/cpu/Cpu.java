@@ -4,12 +4,16 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
-public class Cpu implements MachineCycle, Snapshottable {
+public class Cpu implements MachineCycle, Snapshottable, Stateful<CpuState> {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Cpu.class);
     private static final int BUS_CYCLE_TICKS = 4;
@@ -52,6 +56,73 @@ public class Cpu implements MachineCycle, Snapshottable {
     public Cpu(Bus bus) {
         this.bus = bus;
         this.decoder = new Decoder();
+    }
+
+    @Override
+    public CpuState saveState() {
+        return new CpuState(
+                instructionTicks,
+                speedRate,
+                pc,
+                sp,
+                a,
+                b,
+                c,
+                d,
+                e,
+                h,
+                l,
+                zeroFlag,
+                negativeFlag,
+                halfCarryFlag,
+                carryFlag,
+                halted,
+                stopped,
+                ime,
+                imeEnableDelay,
+                haltBug
+        );
+    }
+
+    @Override
+    public void loadState(CpuState state) {
+        instructionTicks = state.instructionTicks();
+        speedRate = state.speedRate();
+        pc = state.pc() & 0xFFFF;
+        sp = state.sp() & 0xFFFF;
+        a = state.a();
+        b = state.b();
+        c = state.c();
+        d = state.d();
+        e = state.e();
+        h = state.h();
+        l = state.l();
+        zeroFlag = state.zeroFlag();
+        negativeFlag = state.negativeFlag();
+        halfCarryFlag = state.halfCarryFlag();
+        carryFlag = state.carryFlag();
+        halted = state.halted();
+        stopped = state.stopped();
+        ime = state.ime();
+        imeEnableDelay = state.imeEnableDelay();
+        haltBug = state.haltBug();
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof CpuState cpuState) {
+            loadState(cpuState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     public void setCycleCallback(Runnable cycleCallback) {

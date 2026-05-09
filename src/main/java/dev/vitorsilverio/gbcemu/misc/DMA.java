@@ -4,9 +4,14 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-public class DMA implements MemorySpace, MachineCycle, Snapshottable {
+import java.util.HashMap;
+import java.util.Map;
+
+public class DMA implements MemorySpace, MachineCycle, Snapshottable, Stateful<DmaState> {
 
     private static final int DMA_REQUEST_REGISTER = 0xff46;
 
@@ -17,6 +22,35 @@ public class DMA implements MemorySpace, MachineCycle, Snapshottable {
 
     public DMA(Bus bus) {
         this.bus = bus;
+    }
+
+    @Override
+    public DmaState saveState() {
+        return new DmaState(cycles, baseAddress, active);
+    }
+
+    @Override
+    public void loadState(DmaState state) {
+        cycles = Math.max(0, state.cycles());
+        baseAddress = state.baseAddress() & 0xFF;
+        active = state.active();
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof DmaState dmaState) {
+            loadState(dmaState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override

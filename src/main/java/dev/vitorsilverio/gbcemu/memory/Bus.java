@@ -46,6 +46,19 @@ public class Bus {
         return entries;
     }
 
+    public List<MemoryBank> memoryBanks() {
+        List<MemoryBank> banks = new ArrayList<>();
+        for (MemorySpace memorySpace : memorySpaces) {
+            if (memorySpace instanceof MemoryBank bank) {
+                banks.add(bank);
+            }
+            if (memorySpace instanceof MemoryBankProvider provider) {
+                banks.addAll(provider.memoryBanks());
+            }
+        }
+        return banks;
+    }
+
     private String ownerName(int address) {
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {

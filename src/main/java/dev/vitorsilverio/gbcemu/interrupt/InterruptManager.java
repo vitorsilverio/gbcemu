@@ -2,12 +2,16 @@ package dev.vitorsilverio.gbcemu.interrupt;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
-public class InterruptManager implements MemorySpace, Snapshottable {
+public class InterruptManager implements MemorySpace, Snapshottable, Stateful<InterruptState> {
 
     private static final int IF_REG = 0xFF0F;
     private static final int IE_REG = 0xFFFF;
@@ -17,6 +21,34 @@ public class InterruptManager implements MemorySpace, Snapshottable {
 
     @Savable private byte ieReg;
     @Savable private byte ifReg;
+
+    @Override
+    public InterruptState saveState() {
+        return new InterruptState(ieReg, ifReg);
+    }
+
+    @Override
+    public void loadState(InterruptState state) {
+        ieReg = state.ieReg();
+        ifReg = (byte) (state.ifReg() & INTERRUPT_BITS);
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof InterruptState interruptState) {
+            loadState(interruptState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
+    }
 
     @Override
     public boolean contains(int address) {

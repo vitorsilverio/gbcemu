@@ -1,5 +1,7 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
+import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.memory.MemoryBankProvider;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
@@ -13,9 +15,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-public abstract class Cart implements MemorySpace, Snapshottable {
+public abstract class Cart implements MemorySpace, MemoryBankProvider, Snapshottable {
 
     protected static final int ROM_BANK_SIZE = 0x4000;
     protected static final int RAM_BANK_SIZE = 0x2000;
@@ -26,7 +29,7 @@ public abstract class Cart implements MemorySpace, Snapshottable {
 
     protected final CartHeader header;
     protected final byte[] rom;
-    protected final byte[] ram;
+    protected final CartridgeRam ram;
     protected final int romBanks;
     protected final File saveFile;
 
@@ -36,7 +39,7 @@ public abstract class Cart implements MemorySpace, Snapshottable {
         this.header = new CartHeader(rom);
         this.rom = rom;
         this.romBanks = Math.max(1, rom.length / ROM_BANK_SIZE);
-        this.ram = new byte[Math.max(header.getRamSizeBytes(), defaultRamSize(header.getCartridgeType()))];
+        this.ram = new CartridgeRam(Math.max(header.getRamSizeBytes(), defaultRamSize(header.getCartridgeType())));
         this.saveFile = saveFile;
     }
 
@@ -92,18 +95,20 @@ public abstract class Cart implements MemorySpace, Snapshottable {
     }
 
     protected byte readRam(int bank, int address) {
-        if (ram.length == 0) {
-            return (byte) 0xFF;
-        }
-        return ram[ramAddress(bank, address)];
+        return ram.read(bank, address);
     }
 
     protected void writeRam(int bank, int address, byte value) {
-        if (ram.length == 0) {
+        if (ram.size() == 0) {
             return;
         }
-        ram[ramAddress(bank, address)] = value;
+        ram.write(bank, address, value);
         markSaveDirty();
+    }
+
+    @Override
+    public List<MemoryBank> memoryBanks() {
+        return List.of(ram);
     }
 
     protected int normalizeRomBank(int bank) {
@@ -137,10 +142,9 @@ public abstract class Cart implements MemorySpace, Snapshottable {
             }
             int ramLength = input.readInt();
             if (ramLength > 0) {
-                input.readFully(ram, 0, Math.min(ram.length, ramLength));
-                if (ramLength > ram.length) {
-                    input.skipBytes(ramLength - ram.length);
-                }
+                byte[] savedRam = new byte[ramLength];
+                input.readFully(savedRam);
+                ram.restoreData(savedRam);
             }
             loadExtraSaveData(input);
         } catch (IOException e) {
@@ -183,16 +187,18 @@ public abstract class Cart implements MemorySpace, Snapshottable {
     @Override
     public Snapshot createSnapshot(int version) {
         Map<String, Object> state = new HashMap<>();
-        state.put("ram", ram.clone());
+        state.put("externalRam", ram.saveState());
         putMapperState(state);
         return new Snapshot(getClass().getName(), version, state);
     }
 
     @Override
     public void restoreSnapshot(Snapshot snapshot) {
-        Object ramState = snapshot.state().get("ram");
-        if (ramState instanceof byte[] savedRam) {
-            System.arraycopy(savedRam, 0, ram, 0, Math.min(savedRam.length, ram.length));
+        Object externalRamState = snapshot.state().get("externalRam");
+        if (externalRamState instanceof CartridgeRamState cartridgeRamState) {
+            ram.loadState(cartridgeRamState);
+        } else if (snapshot.state().get("ram") instanceof byte[] savedRam) {
+            ram.restoreData(savedRam);
         }
         restoreMapperState(snapshot.state());
     }
@@ -201,10 +207,6 @@ public abstract class Cart implements MemorySpace, Snapshottable {
     }
 
     protected void restoreMapperState(Map<String, Object> state) {
-    }
-
-    private int ramAddress(int bank, int address) {
-        return ((address - 0xA000) + (bank * RAM_BANK_SIZE)) % ram.length;
     }
 
     private int defaultRamSize(CartridgeType type) {
@@ -218,7 +220,7 @@ public abstract class Cart implements MemorySpace, Snapshottable {
 
     private void loadRawRamSave() throws IOException {
         byte[] bytes = Files.readAllBytes(saveFile.toPath());
-        System.arraycopy(bytes, 0, ram, 0, Math.min(bytes.length, ram.length));
+        ram.restoreData(bytes);
     }
 
     private byte[] saveBytes() throws IOException {
@@ -226,8 +228,9 @@ public abstract class Cart implements MemorySpace, Snapshottable {
         try (DataOutputStream output = new DataOutputStream(bytes)) {
             output.writeInt(SAVE_MAGIC);
             output.writeInt(SAVE_VERSION);
-            output.writeInt(ram.length);
-            output.write(ram);
+            byte[] ramData = ram.copyData();
+            output.writeInt(ramData.length);
+            output.write(ramData);
             writeExtraSaveData(output);
         }
         return bytes.toByteArray();

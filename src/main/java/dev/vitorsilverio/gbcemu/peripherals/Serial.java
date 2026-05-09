@@ -6,14 +6,18 @@ import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 
-public class Serial implements MemorySpace, MachineCycle, Snapshottable {
+public class Serial implements MemorySpace, MachineCycle, Snapshottable, Stateful<SerialState> {
 
     private final Logger logger = LoggerFactory.getLogger(Serial.class);
 
@@ -34,6 +38,38 @@ public class Serial implements MemorySpace, MachineCycle, Snapshottable {
 
     public Serial(Bus bus) {
         this.bus = bus;
+    }
+
+    @Override
+    public SerialState saveState() {
+        return new SerialState(SB, SC, transferCyclesRemaining, outgoingByte, text.toString());
+    }
+
+    @Override
+    public void loadState(SerialState state) {
+        SB = state.sb() & 0xFF;
+        SC = state.sc() & (TRANSFER_START | CLOCK_SPEED | CLOCK_SELECT);
+        transferCyclesRemaining = state.transferCyclesRemaining();
+        outgoingByte = state.outgoingByte() & 0xFF;
+        text.setLength(0);
+        text.append(state.pendingText() == null ? "" : state.pendingText());
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof SerialState serialState) {
+            loadState(serialState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
 

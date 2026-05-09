@@ -6,11 +6,15 @@ import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class Timer implements MemorySpace, MachineCycle, Snapshottable {
+public class Timer implements MemorySpace, MachineCycle, Snapshottable, Stateful<TimerState> {
 
     private static final int DIVIDER_REG = 0xFF04;
     private static final int TIMER_COUNTER_REG = 0xFF05;
@@ -31,6 +35,37 @@ public class Timer implements MemorySpace, MachineCycle, Snapshottable {
 
     public Timer(Bus bus) {
         this.bus = bus;
+    }
+
+    @Override
+    public TimerState saveState() {
+        return new TimerState(systemCounter, timerCounter, timerModulo, timerControl, overflowDelay);
+    }
+
+    @Override
+    public void loadState(TimerState state) {
+        systemCounter = state.systemCounter() & 0xFFFF;
+        timerCounter = state.timerCounter();
+        timerModulo = state.timerModulo();
+        timerControl = (byte) (state.timerControl() & 0x07);
+        overflowDelay = state.overflowDelay();
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("state", saveState());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Object state = snapshot.state().get("state");
+        if (state instanceof TimerState timerState) {
+            loadState(timerState);
+            return;
+        }
+        Snapshottable.super.restoreSnapshot(snapshot);
     }
 
     @Override
