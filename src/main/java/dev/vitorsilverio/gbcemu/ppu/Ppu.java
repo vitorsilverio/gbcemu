@@ -201,7 +201,7 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
         int colorIndex = tile.getPixel(tileX, tileY);
         int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
         int mappedColorIndex = cgbMode ? colorIndex : bgPaletteDmg.getColor(colorIndex);
-        int color = cgbMode ? bgPalette.getColor(paletteIndex, mappedColorIndex) : grayColor(mappedColorIndex);
+        int color = bgPalette.getColor(paletteIndex, mappedColorIndex);
         return new Pixel(colorIndex, color, cgbMode && map.isPriority());
     }
 
@@ -230,7 +230,7 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
         int paletteIndex = cgbMode ? spritePixel.attribute().getCgbPalette() : spritePixel.attribute().getDmgPalette();
         int colorIndex = spritePixel.colorIndex();
         int mappedColorIndex = cgbMode ? colorIndex : getDmgObjectPalette(spritePixel.attribute()).getColor(colorIndex);
-        int color = cgbMode ? objPalette.getColor(paletteIndex, mappedColorIndex) : grayColor(mappedColorIndex);
+        int color = objPalette.getColor(paletteIndex, mappedColorIndex);
         return new Pixel(colorIndex, color, false);
     }
 
