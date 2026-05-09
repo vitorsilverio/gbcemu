@@ -22,6 +22,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private final WaveChannel channel3 = new WaveChannel(this);
     private final NoiseChannel channel4 = new NoiseChannel(this);
     private final int[] debugChannelVolumes = {100, 100, 100, 100};
+    private int debugMasterVolume = 100;
+    private int debugLeftVolume = 100;
+    private int debugRightVolume = 100;
 
     public Apu() {
         this(AudioSinkFactory.createDefault(SAMPLE_RATE));
@@ -134,7 +137,10 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 debugOutput(0, channel1.output()),
                 debugOutput(1, channel2.output()),
                 debugOutput(2, channel3.output()),
-                debugOutput(3, channel4.output())
+                debugOutput(3, channel4.output()),
+                debugMasterVolume,
+                debugLeftVolume,
+                debugRightVolume
         );
     }
 
@@ -147,7 +153,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     public void setDebugChannelVolume(int channel, int volume) {
-        debugChannelVolumes[channelIndex(channel)] = Math.max(0, Math.min(100, volume));
+        debugChannelVolumes[channelIndex(channel)] = clampPercent(volume);
     }
 
     public boolean debugChannelMuted(int channel) {
@@ -158,11 +164,39 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         setDebugChannelVolume(channel, muted ? 0 : 100);
     }
 
+    public int debugMasterVolume() {
+        return debugMasterVolume;
+    }
+
+    public void setDebugMasterVolume(int volume) {
+        debugMasterVolume = clampPercent(volume);
+    }
+
+    public int debugLeftVolume() {
+        return debugLeftVolume;
+    }
+
+    public void setDebugLeftVolume(int volume) {
+        debugLeftVolume = clampPercent(volume);
+    }
+
+    public int debugRightVolume() {
+        return debugRightVolume;
+    }
+
+    public void setDebugRightVolume(int volume) {
+        debugRightVolume = clampPercent(volume);
+    }
+
     private int channelIndex(int channel) {
         if (channel < 1 || channel > 4) {
             throw new IllegalArgumentException("channel must be between 1 and 4");
         }
         return channel - 1;
+    }
+
+    private int clampPercent(int volume) {
+        return Math.max(0, Math.min(100, volume));
     }
 
     private byte readNr52() {
