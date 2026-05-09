@@ -3,23 +3,14 @@ package dev.vitorsilverio.gbcemu.audio;
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.SourceDataLine;
 import java.util.Arrays;
 import java.util.List;
 
 public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuContext {
 
-    private static final Logger logger = LoggerFactory.getLogger(Apu.class);
-
     private static final int CPU_CLOCK_HZ = 4_194_304;
     private static final int SAMPLE_RATE = 44_100;
-    private static final int FRAME_SEQUENCER_CYCLES = CPU_CLOCK_HZ / 512;
 
     private static final int NR50_MASTER_VOLUME = 0xFF24;
     private static final int NR51_SOUND_PANNING = 0xFF25;
@@ -79,15 +70,10 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     private final byte[] registers = new byte[0x30];
     private final byte[] wavePatternRam = new byte[0x10];
-    private final AudioSink sink;
-    private final byte[] sampleBuffer = new byte[1024];
+    private final AudioOutput output;
+    private final ApuFrameSequencer frameSequencer = new ApuFrameSequencer();
 
     private int sampleAccumulator;
-    private int frameSequencerCycles;
-    private int frameSequencerStep;
-    private int sampleBufferPosition;
-    private int previousLeftSample;
-    private int previousRightSample;
     private boolean audioEnabled = true;
 
     private final PulseChannel channel1 = new PulseChannel(this, 0);
@@ -96,7 +82,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private final NoiseChannel channel4 = new NoiseChannel(this);
 
     public Apu() {
-        this(createDefaultSink());
+        this(AudioSinkFactory.createDefault(SAMPLE_RATE));
     }
 
     public static Apu muted() {
@@ -105,7 +91,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     Apu(AudioSink sink) {
-        this.sink = sink;
+        this.output = new AudioOutput(sink);
         registers[index(NR50_MASTER_VOLUME)] = 0x77;
         registers[index(NR51_SOUND_PANNING)] = (byte) 0xFF;
         registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) 0x80;
@@ -117,10 +103,10 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 registers.clone(),
                 wavePatternRam.clone(),
                 sampleAccumulator,
-                frameSequencerCycles,
-                frameSequencerStep,
-                previousLeftSample,
-                previousRightSample,
+                frameSequencer.cycles(),
+                frameSequencer.step(),
+                output.previousLeftSample(),
+                output.previousRightSample(),
                 audioEnabled,
                 channel1.saveState(),
                 channel2.saveState(),
@@ -134,12 +120,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         System.arraycopy(state.registers(), 0, registers, 0, Math.min(registers.length, state.registers().length));
         System.arraycopy(state.wavePatternRam(), 0, wavePatternRam, 0, Math.min(wavePatternRam.length, state.wavePatternRam().length));
         sampleAccumulator = state.sampleAccumulator();
-        frameSequencerCycles = state.frameSequencerCycles();
-        frameSequencerStep = state.frameSequencerStep() & 0x07;
-        previousLeftSample = state.previousLeftSample();
-        previousRightSample = state.previousRightSample();
+        frameSequencer.load(state.frameSequencerCycles(), state.frameSequencerStep());
+        output.restoreSmoothing(state.previousLeftSample(), state.previousRightSample());
         audioEnabled = state.audioEnabled();
-        sampleBufferPosition = 0;
         channel1.loadState(state.channel1());
         channel2.loadState(state.channel2());
         channel3.loadState(state.channel3());
@@ -156,7 +139,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         channel2.tick();
         channel3.tick();
         channel4.tick();
-        tickFrameSequencer();
+        frameSequencer.tick(channel1, channel2, channel3, channel4);
 
         sampleAccumulator += SAMPLE_RATE;
         if (sampleAccumulator >= CPU_CLOCK_HZ) {
@@ -279,31 +262,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     int bufferedSampleBytes() {
-        return sampleBufferPosition;
-    }
-
-    private void tickFrameSequencer() {
-        frameSequencerCycles++;
-        if (frameSequencerCycles < FRAME_SEQUENCER_CYCLES) {
-            return;
-        }
-        frameSequencerCycles = 0;
-        frameSequencerStep = (frameSequencerStep + 1) & 0x07;
-
-        if ((frameSequencerStep & 1) == 0) {
-            channel1.tickLength();
-            channel2.tickLength();
-            channel3.tickLength();
-            channel4.tickLength();
-        }
-        if (frameSequencerStep == 2 || frameSequencerStep == 6) {
-            channel1.tickSweep();
-        }
-        if (frameSequencerStep == 7) {
-            channel1.tickEnvelope();
-            channel2.tickEnvelope();
-            channel4.tickEnvelope();
-        }
+        return output.bufferedSampleBytes();
     }
 
     private void writeSample() {
@@ -329,28 +288,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             }
         }
 
-        previousLeftSample = smoothSample(previousLeftSample, clampSample(left * leftVolume));
-        previousRightSample = smoothSample(previousRightSample, clampSample(right * rightVolume));
-        putPcm16(previousLeftSample);
-        putPcm16(previousRightSample);
-    }
-
-    private int clampSample(int value) {
-        int scaled = value * 128;
-        return Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, scaled));
-    }
-
-    private int smoothSample(int previous, int current) {
-        return previous + ((current - previous) >> 2);
-    }
-
-    private void putPcm16(int sample) {
-        sampleBuffer[sampleBufferPosition++] = (byte) (sample & 0xFF);
-        sampleBuffer[sampleBufferPosition++] = (byte) ((sample >> 8) & 0xFF);
-        if (sampleBufferPosition == sampleBuffer.length) {
-            sink.write(sampleBuffer, sampleBufferPosition);
-            sampleBufferPosition = 0;
-        }
+        output.writeStereoSample(left * leftVolume, right * rightVolume);
     }
 
     private byte readNr52() {
@@ -367,8 +305,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         audioEnabled = enabled;
         registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) (enabled ? 0x80 : 0x00);
         if (enabled) {
-            frameSequencerCycles = 0;
-            frameSequencerStep = 0;
+            frameSequencer.reset();
         }
         if (!enabled) {
             Arrays.fill(registers, (byte) 0);
@@ -376,11 +313,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             channel2.disable();
             channel3.disable();
             channel4.disable();
-            frameSequencerCycles = 0;
-            frameSequencerStep = 0;
-            sampleBufferPosition = 0;
-            previousLeftSample = 0;
-            previousRightSample = 0;
+            frameSequencer.reset();
+            output.reset();
         }
     }
 
@@ -401,7 +335,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     @Override
     public int frameSequencerStep() {
-        return frameSequencerStep;
+        return frameSequencer.step();
     }
 
     @Override
@@ -411,20 +345,6 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     static int index(int address) {
         return address - 0xFF10;
-    }
-
-    private static AudioSink createDefaultSink() {
-        try {
-            AudioFormat format = new AudioFormat(SAMPLE_RATE, 16, 2, true, false);
-            SourceDataLine line = AudioSystem.getSourceDataLine(format);
-            line.open(format, 32 * 1024);
-            line.start();
-            return new SourceDataLineSink(line);
-        } catch (LineUnavailableException | IllegalArgumentException e) {
-            logger.warn("Audio output unavailable, running APU muted", e);
-            return (buffer, length) -> {
-            };
-        }
     }
 
 }
