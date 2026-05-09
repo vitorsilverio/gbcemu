@@ -140,6 +140,12 @@ public class EmulatorWindow {
 
         menuBar.add(snapshotMenu);
 
+        JMenu cheatMenu = new JMenu("Cheats");
+        JMenuItem openCheatsMenu = new JMenuItem("Open cheats");
+        openCheatsMenu.addActionListener(event -> menuActions.cheats().run());
+        cheatMenu.add(openCheatsMenu);
+        menuBar.add(cheatMenu);
+
         window.setJMenuBar(menuBar);
 
 

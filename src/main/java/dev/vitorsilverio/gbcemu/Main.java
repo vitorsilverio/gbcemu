@@ -2,8 +2,7 @@ package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
+import javax.swing.*;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
@@ -77,8 +76,15 @@ public class Main {
                 Main::resumeEmulator,
                 Main::stopEmulator,
                 Main::saveSnapshot,
-                Main::restoreSnapshot
+                Main::restoreSnapshot,
+                Main::configureCheats
         );
+    }
+
+    private static void configureCheats() {
+        if (activeEmulator != null) {
+            activeEmulator.openCheats();
+        }
     }
 
     private static void restoreSnapshot() {

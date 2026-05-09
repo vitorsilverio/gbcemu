@@ -35,6 +35,7 @@ public class Emulator {
     private final HDMA hdma;
     private final DMA dma;
     private final EmulatorWindow window;
+    private final GameSharkDevice gameSharkDevice;
     private final boolean throttled;
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
@@ -43,6 +44,7 @@ public class Emulator {
     private volatile boolean stopped;
     private int dots;
     private long frameStart = System.nanoTime();
+
 
     public Emulator(File biosFile, File romFile, File saveFile) {
         this(biosFile, romFile, saveFile, false, null);
@@ -54,6 +56,8 @@ public class Emulator {
 
     public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window) {
         this.bus = new Bus();
+        this.gameSharkDevice = new GameSharkDevice();
+        this.bus.addMemorySpace(gameSharkDevice);
         if (biosFile != null) {
             Bios bios = new Bios(biosFile);
             bus.addMemorySpace(bios);
@@ -134,6 +138,10 @@ public class Emulator {
 
     public void openDebugger() {
         DebugWindow.open(cpu, cpu.getBus(), ppu, debugController, this::pause, this::resume);
+    }
+
+    public void openCheats() {
+        new CheatsWindow(gameSharkDevice);
     }
 
     private void tickSystemCycle() {
@@ -228,6 +236,4 @@ public class Emulator {
         }
         resume();
     }
-
-
 }
