@@ -42,6 +42,10 @@ public class CartHeader {
         return cartridgeType;
     }
 
+    public String getTitle() {
+        return title.strip();
+    }
+
     public boolean isCgbCompatible() {
         return cgbFlag == (byte) 0x80 || cgbFlag == (byte) 0xC0;
     }

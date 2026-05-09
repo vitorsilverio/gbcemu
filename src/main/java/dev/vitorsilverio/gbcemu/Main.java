@@ -1,5 +1,6 @@
 package dev.vitorsilverio.gbcemu;
 
+import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 
 import javax.swing.*;
@@ -90,8 +91,14 @@ public class Main {
     private static void restoreSnapshot() {
         if (activeEmulator != null) {
             try (var fileReader = new FileInputStream(new File("savestate.sa1")); var objectStream = new ObjectInputStream(fileReader)){
-                var snapshot = (List<Snapshot>)objectStream.readObject();
-                activeEmulator.restoreSystemSnapshot(snapshot);
+                Object saveState = objectStream.readObject();
+                if (saveState instanceof SaveStateFile saveStateFile) {
+                    activeEmulator.restoreSaveStateFile(saveStateFile);
+                } else if (saveState instanceof List<?> snapshots) {
+                    activeEmulator.restoreSystemSnapshot((List<Snapshot>) snapshots);
+                } else {
+                    throw new IllegalArgumentException("Unsupported save state file: " + saveState.getClass().getName());
+                }
             }catch (Exception e) {
                 e.printStackTrace();
             }
@@ -101,7 +108,7 @@ public class Main {
 
     private static void saveSnapshot() {
         if (activeEmulator != null) {
-            var snapshot = activeEmulator.createSystemSnapthot();
+            var snapshot = activeEmulator.createSaveStateFile();
             try (var fileWriter = new FileOutputStream(new File("savestate.sa1")); var objectStream = new ObjectOutputStream(fileWriter)) {
                 objectStream.writeObject(snapshot);
             } catch (Exception e) {

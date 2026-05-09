@@ -27,7 +27,7 @@ public interface Snapshottable {
             }
         }
         System.out.println();
-        return new Snapshot(this.getClass().getSimpleName(), version, state);
+        return new Snapshot(this.getClass().getName(), version, state);
     }
 
     default void restoreSnapshot(Snapshot snapshot) {

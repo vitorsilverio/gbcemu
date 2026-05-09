@@ -15,10 +15,13 @@ import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
+import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.io.File;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +39,8 @@ public class Emulator {
     private final DMA dma;
     private final EmulatorWindow window;
     private final GameSharkDevice gameSharkDevice;
+    private final Cart cart;
+    private final File romFile;
     private final boolean throttled;
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
@@ -43,6 +48,7 @@ public class Emulator {
     private volatile boolean paused;
     private volatile boolean stopped;
     private int dots;
+    private long frameNumber;
     private long frameStart = System.nanoTime();
 
 
@@ -62,7 +68,8 @@ public class Emulator {
             Bios bios = new Bios(biosFile);
             bus.addMemorySpace(bios);
         }
-        Cart cart = CartFactory.fromFile(romFile, saveFile);
+        this.romFile = romFile;
+        this.cart = CartFactory.fromFile(romFile, saveFile);
         this.cartridgeCgbCompatible = cart.getHeader().isCgbCompatible();
         this.cpu = new Cpu(bus);
         this.timer = new Timer(bus);
@@ -171,9 +178,11 @@ public class Emulator {
                 sleepNanos(NANOS_PER_FRAME - elapsed);
             }
             dots = 0;
+            frameNumber++;
             frameStart = System.nanoTime();
         } else if (dots >= DOTS_PER_FRAME) {
             dots = 0;
+            frameNumber++;
         }
     }
 
@@ -213,27 +222,64 @@ public class Emulator {
         return systemSnapShot;
     }
 
+    public SaveStateFile createSaveStateFile() {
+        return new SaveStateFile(
+                SaveStateFile.CURRENT_FORMAT_VERSION,
+                new SaveStateMetadata(
+                        Instant.now(),
+                        cart.getHeader().getTitle(),
+                        romFile == null ? "" : romFile.getAbsolutePath(),
+                        cart.getHeader().getCartridgeType().name(),
+                        frameNumber,
+                        cpu.getPc(),
+                        ppu.copyFrameBufferArgb(),
+                        160,
+                        144
+                ),
+                createSystemSnapthot()
+        );
+    }
+
+    public void restoreSaveStateFile(SaveStateFile saveStateFile) throws Exception {
+        restoreSystemSnapshot(saveStateFile.snapshots());
+    }
+
     public void restoreSystemSnapshot(List<Snapshot> systemSnapShot) throws Exception {
         pause();
         for (Snapshot snapshot: systemSnapShot) {
             switch (snapshot.className()){
                 case ("dev.vitorsilverio.gbcemu.cpu.Cpu"):
+                case ("Cpu"):
                     cpu.restoreSnapshot(snapshot);
                     break;
                 case ("dev.vitorsilverio.gbcemu.ppu.VideoRam"):
+                case ("VideoRam"):
                     ppu.getVideoRam().restoreSnapshot(snapshot);
                     break;
                 case ("dev.vitorsilverio.gbcemu.ppu.OamRAM"):
+                case ("OamRAM"):
                     ppu.getOam().restoreSnapshot(snapshot);
                     break;
-                default:
-                    Class<?> clazz = Class.forName(snapshot.className());
-                    if (clazz.isAssignableFrom(MemorySpace.class)) {
-                        var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
-                        snapshotable.restoreSnapshot(snapshot);
-                    }
+                default: restoreMemorySpaceSnapshot(snapshot);
             }
         }
         resume();
+    }
+
+    private void restoreMemorySpaceSnapshot(Snapshot snapshot) throws ClassNotFoundException {
+        if (!snapshot.className().contains(".")) {
+            bus.getMemorySpaces().stream()
+                    .filter(Snapshottable.class::isInstance)
+                    .filter(memorySpace -> memorySpace.getClass().getSimpleName().equals(snapshot.className()))
+                    .findFirst()
+                    .ifPresent(memorySpace -> ((Snapshottable) memorySpace).restoreSnapshot(snapshot));
+            return;
+        }
+
+        Class<?> clazz = Class.forName(snapshot.className());
+        if (MemorySpace.class.isAssignableFrom(clazz)) {
+            var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
+            snapshotable.restoreSnapshot(snapshot);
+        }
     }
 }
