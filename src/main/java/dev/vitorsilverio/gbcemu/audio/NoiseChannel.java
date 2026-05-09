@@ -1,7 +1,7 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 class NoiseChannel extends SoundChannel {
-    private int lfsr = 0x7FFF;
+    private int lfsr;
 
     NoiseChannel(ApuContext context) {
         super(context);
@@ -30,7 +30,7 @@ class NoiseChannel extends SoundChannel {
             return;
         }
         enabled = true;
-        lfsr = 0x7FFF;
+        lfsr = 0;
         triggerEnvelope(ApuAddress.NR42_CHANNEL_4_VOLUME);
         timer = noiseTimerPeriod();
     }
@@ -43,20 +43,23 @@ class NoiseChannel extends SoundChannel {
         timer--;
         if (timer <= 0) {
             timer += noiseTimerPeriod();
-            int xor = (lfsr & 1) ^ ((lfsr >> 1) & 1);
-            lfsr = (lfsr >> 1) | (xor << 14);
+            if (((context.register(ApuAddress.NR43_CHANNEL_4_FREQUENCY) >> 4) & 0x0F) >= 14) {
+                return;
+            }
+            int nextBit = ((lfsr & 1) ^ ((lfsr >> 1) & 1)) ^ 1;
+            lfsr = (lfsr >> 1) | (nextBit << 14);
             if ((context.register(ApuAddress.NR43_CHANNEL_4_FREQUENCY) & 0x08) != 0) {
-                lfsr = (lfsr & ~(1 << 6)) | (xor << 6);
+                lfsr = (lfsr & ~(1 << 6)) | (nextBit << 6);
             }
         }
     }
 
     @Override
     int output() {
-        if (!enabled) {
+        if (!envelopeDacEnabled(ApuAddress.NR42_CHANNEL_4_VOLUME)) {
             return 0;
         }
-        return digitalOutput() - 8;
+        return 8 - digitalOutput();
     }
 
     @Override
@@ -81,5 +84,11 @@ class NoiseChannel extends SoundChannel {
 
     void tickEnvelope() {
         tickEnvelope(ApuAddress.NR42_CHANNEL_4_VOLUME);
+    }
+
+    @Override
+    protected void disable() {
+        super.disable();
+        lfsr = 0;
     }
 }

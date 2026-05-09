@@ -5,6 +5,7 @@ import java.io.Serializable;
 public record WaveChannelState(
         SoundChannelState common,
         int period,
-        int sampleIndex
+        int sampleIndex,
+        int lastSample
 ) implements Serializable {
 }

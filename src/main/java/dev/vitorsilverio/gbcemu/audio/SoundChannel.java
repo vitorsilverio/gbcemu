@@ -30,6 +30,10 @@ abstract class SoundChannel {
         }
     }
 
+    protected boolean envelopeDacEnabled(int envelopeRegisterAddress) {
+        return (context.register(envelopeRegisterAddress) & 0xF8) != 0;
+    }
+
     protected void triggerEnvelope(int envelopeRegisterAddress) {
         currentVolume = (context.register(envelopeRegisterAddress) >> 4) & 0x0F;
         envelopeTimer = context.register(envelopeRegisterAddress) & 0x07;

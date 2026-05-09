@@ -1,36 +1,21 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 final class ApuFrameSequencer {
-    private static final int CPU_CLOCK_HZ = 4_194_304;
-    private static final int FRAME_SEQUENCER_CYCLES = CPU_CLOCK_HZ / 512;
+    private int step = 7;
 
-    private int cycles;
-    private int step;
-
-    void load(int cycles, int step) {
-        this.cycles = cycles;
+    void load(int step) {
         this.step = step & 0x07;
     }
 
     void reset() {
-        cycles = 0;
-        step = 0;
-    }
-
-    int cycles() {
-        return cycles;
+        step = 7;
     }
 
     int step() {
         return step;
     }
 
-    void tick(PulseChannel channel1, PulseChannel channel2, WaveChannel channel3, NoiseChannel channel4) {
-        cycles++;
-        if (cycles < FRAME_SEQUENCER_CYCLES) {
-            return;
-        }
-        cycles = 0;
+    void clock(PulseChannel channel1, PulseChannel channel2, WaveChannel channel3, NoiseChannel channel4) {
         step = (step + 1) & 0x07;
 
         if ((step & 1) == 0) {

@@ -25,11 +25,20 @@ public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
     private byte timerControl;
 
     private int overflowDelay;
+    private Runnable divApuListener = () -> {
+    };
+    private Key1 key1;
+    private boolean key1Resolved;
 
     private final Bus bus;
 
     public Timer(Bus bus) {
         this.bus = bus;
+    }
+
+    public void setDivApuListener(Runnable divApuListener) {
+        this.divApuListener = divApuListener == null ? () -> {
+        } : divApuListener;
     }
 
     @Override
@@ -48,10 +57,7 @@ public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
 
     @Override
     public void tick() {
-        int increments = bus.findMemorySpace(Key1.class)
-                .filter(Key1::isDoubleSpeed)
-                .map(key1 -> 2)
-                .orElse(1);
+        int increments = isDoubleSpeed() ? 2 : 1;
         for (int i = 0; i < increments; i++) {
             tickSystemCounter();
         }
@@ -67,7 +73,9 @@ public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
         }
 
         boolean oldSignal = timerSignal();
+        boolean oldDivApuSignal = divApuSignal();
         systemCounter = (systemCounter + 1) & 0xFFFF;
+        clockDivApuOnFallingEdge(oldDivApuSignal);
         incrementOnFallingEdge(oldSignal);
     }
 
@@ -90,10 +98,13 @@ public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
     @Override
     public void write(int address, byte value) {
         boolean oldSignal;
+        boolean oldDivApuSignal;
         switch (address) {
             case DIVIDER_REG:
                 oldSignal = timerSignal();
+                oldDivApuSignal = divApuSignal();
                 systemCounter = 0;
+                clockDivApuOnFallingEdge(oldDivApuSignal);
                 incrementOnFallingEdge(oldSignal);
                 break;
             case TIMER_COUNTER_REG:
@@ -121,6 +132,25 @@ public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
         if (oldSignal && !timerSignal()) {
             incrementTimerCounter();
         }
+    }
+
+    private void clockDivApuOnFallingEdge(boolean oldSignal) {
+        if (oldSignal && !divApuSignal()) {
+            divApuListener.run();
+        }
+    }
+
+    private boolean divApuSignal() {
+        int bit = isDoubleSpeed() ? 13 : 12;
+        return (systemCounter & (1 << bit)) != 0;
+    }
+
+    private boolean isDoubleSpeed() {
+        if (!key1Resolved) {
+            key1 = bus.findMemorySpace(Key1.class).orElse(null);
+            key1Resolved = true;
+        }
+        return key1 != null && key1.isDoubleSpeed();
     }
 
     private boolean timerSignal() {

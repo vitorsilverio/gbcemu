@@ -98,6 +98,7 @@ public class Emulator {
                 this.settings.audioChannelVolumes(),
                 this.settings.audioChannelMuted()
         );
+        this.timer.setDivApuListener(this.apu::clockFrameSequencer);
         this.hdma = new HDMA(bus);
         this.dma = new DMA(bus);
         this.throttled = !headless;

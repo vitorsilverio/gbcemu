@@ -40,6 +40,10 @@ final class ApuRegisters {
         return wavePatternRam[offset & 0x0F];
     }
 
+    void writeWaveRamOffset(int offset, byte value) {
+        wavePatternRam[offset & 0x0F] = value;
+    }
+
     int period(int lowAddress, int highAddress) {
         return (read(lowAddress) & 0xFF) | ((read(highAddress) & 0x07) << 8);
     }

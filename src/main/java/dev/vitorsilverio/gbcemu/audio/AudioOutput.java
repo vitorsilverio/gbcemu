@@ -1,41 +1,44 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 final class AudioOutput {
+    private static final int CGB_HIGH_PASS_FACTOR = 996;
+    private static final int HIGH_PASS_DIVISOR = 1000;
+
     private final AudioSink sink;
     private final byte[] sampleBuffer = new byte[1024];
     private int sampleBufferPosition;
-    private int previousLeftSample;
-    private int previousRightSample;
+    private int leftCapacitor;
+    private int rightCapacitor;
 
     AudioOutput(AudioSink sink) {
         this.sink = sink;
     }
 
-    void restoreSmoothing(int previousLeftSample, int previousRightSample) {
-        this.previousLeftSample = previousLeftSample;
-        this.previousRightSample = previousRightSample;
+    void restoreHighPassFilter(int leftCapacitor, int rightCapacitor) {
+        this.leftCapacitor = leftCapacitor;
+        this.rightCapacitor = rightCapacitor;
         sampleBufferPosition = 0;
     }
 
     void reset() {
         sampleBufferPosition = 0;
-        previousLeftSample = 0;
-        previousRightSample = 0;
+        leftCapacitor = 0;
+        rightCapacitor = 0;
     }
 
     void writeStereoSample(int left, int right) {
-        previousLeftSample = smoothSample(previousLeftSample, clampSample(left));
-        previousRightSample = smoothSample(previousRightSample, clampSample(right));
-        putPcm16(previousLeftSample);
-        putPcm16(previousRightSample);
+        int filteredLeft = highPassLeft(clampSample(left));
+        int filteredRight = highPassRight(clampSample(right));
+        putPcm16(clampPcm(filteredLeft));
+        putPcm16(clampPcm(filteredRight));
     }
 
     int previousLeftSample() {
-        return previousLeftSample;
+        return leftCapacitor;
     }
 
     int previousRightSample() {
-        return previousRightSample;
+        return rightCapacitor;
     }
 
     int bufferedSampleBytes() {
@@ -44,11 +47,23 @@ final class AudioOutput {
 
     private int clampSample(int value) {
         int scaled = value * 128;
-        return Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, scaled));
+        return clampPcm(scaled);
     }
 
-    private int smoothSample(int previous, int current) {
-        return previous + ((current - previous) >> 2);
+    private int clampPcm(int value) {
+        return Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, value));
+    }
+
+    private int highPassLeft(int sample) {
+        int filtered = sample - leftCapacitor;
+        leftCapacitor = sample - filtered * CGB_HIGH_PASS_FACTOR / HIGH_PASS_DIVISOR;
+        return filtered;
+    }
+
+    private int highPassRight(int sample) {
+        int filtered = sample - rightCapacitor;
+        rightCapacitor = sample - filtered * CGB_HIGH_PASS_FACTOR / HIGH_PASS_DIVISOR;
+        return filtered;
     }
 
     private void putPcm16(int sample) {

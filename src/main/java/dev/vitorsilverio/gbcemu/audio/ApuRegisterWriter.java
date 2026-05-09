@@ -24,6 +24,10 @@ final class ApuRegisterWriter {
             return;
         }
         if (registers.isWaveRam(address)) {
+            if (audioEnabled && channel3.isPlaying()) {
+                registers.writeWaveRamOffset(channel3.currentWaveRamOffset(), value);
+                return;
+            }
             registers.writeWaveRamAddress(address, value);
             return;
         }

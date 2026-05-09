@@ -85,7 +85,7 @@ class PulseChannel extends SoundChannel {
         }
         enabled = true;
         triggerEnvelope(envelopeAddress);
-        timer = pulseTimerPeriod();
+        timer = (timer & 0x03) | (pulseTimerPeriod() & ~0x03);
     }
 
     @Override
@@ -102,10 +102,11 @@ class PulseChannel extends SoundChannel {
 
     @Override
     int output() {
-        if (!enabled) {
+        int envelopeAddress = channel == 0 ? ApuAddress.NR12_CHANNEL_1_VOLUME : ApuAddress.NR22_CHANNEL_2_VOLUME;
+        if (!envelopeDacEnabled(envelopeAddress)) {
             return 0;
         }
-        return digitalOutput() - 8;
+        return 8 - digitalOutput();
     }
 
     @Override
@@ -205,5 +206,15 @@ class PulseChannel extends SoundChannel {
 
     private int sweepStep() {
         return context.register(ApuAddress.NR10_CHANNEL_1_SWEEP) & 0x07;
+    }
+
+    @Override
+    protected void disable() {
+        super.disable();
+        dutyStep = 0;
+        sweepShadowPeriod = 0;
+        sweepTimer = 0;
+        sweepEnabled = false;
+        sweepNegateUsed = false;
     }
 }

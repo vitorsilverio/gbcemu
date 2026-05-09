@@ -5,10 +5,17 @@ final class ApuRegisterReader {
     }
 
     static byte read(int address, ApuRegisters registers, byte nr52) {
+        return read(address, registers, nr52, null);
+    }
+
+    static byte read(int address, ApuRegisters registers, byte nr52, WaveChannel channel3) {
         if (registers.isUnusedRegister(address)) {
             return (byte) 0xFF;
         }
         if (registers.isWaveRam(address)) {
+            if (channel3 != null && channel3.isPlaying()) {
+                return registers.readWaveRamOffset(channel3.currentWaveRamOffset());
+            }
             return registers.readWaveRamAddress(address);
         }
 

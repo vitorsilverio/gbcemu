@@ -47,7 +47,6 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 registers.copyRegisters(),
                 registers.copyWavePatternRam(),
                 sampleAccumulator,
-                frameSequencer.cycles(),
                 frameSequencer.step(),
                 output.previousLeftSample(),
                 output.previousRightSample(),
@@ -64,8 +63,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         registers.loadRegisters(state.registers());
         registers.loadWavePatternRam(state.wavePatternRam());
         sampleAccumulator = state.sampleAccumulator();
-        frameSequencer.load(state.frameSequencerCycles(), state.frameSequencerStep());
-        output.restoreSmoothing(state.previousLeftSample(), state.previousRightSample());
+        frameSequencer.load(state.frameSequencerStep());
+        output.restoreHighPassFilter(state.previousLeftSample(), state.previousRightSample());
         audioEnabled = state.audioEnabled();
         channel1.loadState(state.channel1());
         channel2.loadState(state.channel2());
@@ -83,13 +82,16 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         channel2.tick();
         channel3.tick();
         channel4.tick();
-        frameSequencer.tick(channel1, channel2, channel3, channel4);
 
         sampleAccumulator += SAMPLE_RATE;
         if (sampleAccumulator >= CPU_CLOCK_HZ) {
             sampleAccumulator -= CPU_CLOCK_HZ;
             writeSample();
         }
+    }
+
+    public void clockFrameSequencer() {
+        frameSequencer.clock(channel1, channel2, channel3, channel4);
     }
 
     @Override
@@ -107,7 +109,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         if (address == ApuAddress.PCM34_CGB_DIGITAL_OUTPUT) {
             return (byte) (channel3.digitalOutput() | (channel4.digitalOutput() << 4));
         }
-        return ApuRegisterReader.read(address, registers, readNr52());
+        return ApuRegisterReader.read(address, registers, readNr52(), channel3);
     }
 
     @Override

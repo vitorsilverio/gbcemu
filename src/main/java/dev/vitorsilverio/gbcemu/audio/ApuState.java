@@ -6,7 +6,6 @@ public record ApuState(
         byte[] registers,
         byte[] wavePatternRam,
         int sampleAccumulator,
-        int frameSequencerCycles,
         int frameSequencerStep,
         int previousLeftSample,
         int previousRightSample,

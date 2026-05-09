@@ -3,7 +3,6 @@ package dev.vitorsilverio.gbcemu;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateStore;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.util.Arrays;

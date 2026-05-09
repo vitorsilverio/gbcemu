@@ -114,8 +114,53 @@ class ApuTest {
         assertEquals(0x0F, apu.read(0xFF76) & 0x0F);
     }
 
+    @Test
+    void activeWaveChannelExposesCurrentWaveRamByteOnCgb() {
+        Apu apu = new Apu((buffer, length) -> {
+        });
+
+        apu.write(0xFF30, (byte) 0x12);
+        apu.write(0xFF31, (byte) 0x34);
+        apu.write(0xFF1A, (byte) 0x80);
+        apu.write(0xFF1C, (byte) 0x20);
+        apu.write(0xFF1D, (byte) 0xFF);
+        apu.write(0xFF1E, (byte) 0x87);
+        tick(apu, 2);
+
+        assertEquals(0x12, apu.read(0xFF3F) & 0xFF);
+
+        apu.write(0xFF3F, (byte) 0x56);
+
+        assertEquals(0x56, apu.read(0xFF30) & 0xFF);
+        apu.write(0xFF1A, (byte) 0x00);
+        assertEquals(0x34, apu.read(0xFF31) & 0xFF);
+    }
+
+    @Test
+    void disablingMasterAudioClearsWaveDigitalOutput() {
+        Apu apu = new Apu((buffer, length) -> {
+        });
+
+        apu.write(0xFF30, (byte) 0xF0);
+        apu.write(0xFF1A, (byte) 0x80);
+        apu.write(0xFF1C, (byte) 0x20);
+        apu.write(0xFF1D, (byte) 0xFF);
+        apu.write(0xFF1E, (byte) 0x87);
+        tick(apu, 64);
+
+        assertEquals(0x0F, apu.read(0xFF77) & 0x0F);
+
+        apu.write(0xFF26, (byte) 0x00);
+
+        assertEquals(0x00, apu.read(0xFF77) & 0x0F);
+    }
+
     private void tickUntilSamplesAreBuffered(Apu apu) {
-        for (int i = 0; i < 200; i++) {
+        tick(apu, 200);
+    }
+
+    private void tick(Apu apu, int ticks) {
+        for (int i = 0; i < ticks; i++) {
             apu.tick();
         }
     }

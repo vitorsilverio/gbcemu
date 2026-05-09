@@ -78,6 +78,29 @@ class TimerTest {
         assertEquals(1, timer.read(0xFF05) & 0xFF);
     }
 
+    @Test
+    void divApuClocksAt512HzFromDividerFallingEdge() {
+        Timer timer = new Timer(new Bus());
+        int[] clocks = {0};
+        timer.setDivApuListener(() -> clocks[0]++);
+
+        tick(timer, 8192);
+
+        assertEquals(1, clocks[0]);
+    }
+
+    @Test
+    void divResetCanClockDivApu() {
+        Timer timer = new Timer(new Bus());
+        int[] clocks = {0};
+        timer.setDivApuListener(() -> clocks[0]++);
+        tick(timer, 4096);
+
+        timer.write(0xFF04, (byte) 0x00);
+
+        assertEquals(1, clocks[0]);
+    }
+
     private void tick(Timer timer, int ticks) {
         for (int i = 0; i < ticks; i++) {
             timer.tick();
