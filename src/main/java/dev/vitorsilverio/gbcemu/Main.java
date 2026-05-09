@@ -1,12 +1,10 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
-import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 
 import javax.swing.*;
 import java.io.*;
 import java.util.Arrays;
-import java.util.List;
 import java.util.prefs.Preferences;
 
 public class Main {
@@ -94,8 +92,6 @@ public class Main {
                 Object saveState = objectStream.readObject();
                 if (saveState instanceof SaveStateFile saveStateFile) {
                     activeEmulator.restoreSaveStateFile(saveStateFile);
-                } else if (saveState instanceof List<?> snapshots) {
-                    activeEmulator.restoreSystemSnapshot((List<Snapshot>) snapshots);
                 } else {
                     throw new IllegalArgumentException("Unsupported save state file: " + saveState.getClass().getName());
                 }

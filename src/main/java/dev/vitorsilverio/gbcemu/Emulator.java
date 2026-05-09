@@ -9,12 +9,14 @@ import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.debug.DebugController;
 import dev.vitorsilverio.gbcemu.debug.DebugWindow;
+import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.*;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
@@ -22,8 +24,6 @@ import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.io.File;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Emulator {
 
@@ -37,6 +37,12 @@ public class Emulator {
     private final Serial serial;
     private final HDMA hdma;
     private final DMA dma;
+    private final Bios bios;
+    private final WorkRam workRam;
+    private final ZeroPage zeroPage;
+    private final Key0 key0;
+    private final Key1 key1;
+    private final InfraredPort infraredPort;
     private final EmulatorWindow window;
     private final GameSharkDevice gameSharkDevice;
     private final Cart cart;
@@ -66,8 +72,10 @@ public class Emulator {
         this.gameSharkDevice = new GameSharkDevice();
         this.bus.addMemorySpace(gameSharkDevice);
         if (biosFile != null) {
-            Bios bios = new Bios(biosFile);
+            bios = new Bios(biosFile);
             bus.addMemorySpace(bios);
+        } else {
+            bios = null;
         }
         this.romFile = romFile;
         this.cart = CartFactory.fromFile(romFile, saveFile);
@@ -87,16 +95,19 @@ public class Emulator {
         Controller controller = headless ? new IdleController() : new KeyboardController();
         var joypad = new Joypad(bus, controller);
         bus.addMemorySpace(joypad);
-        var workRam = new WorkRam();
+        workRam = new WorkRam();
         bus.addMemorySpace(workRam);
         var echoRam = new EchoRam(workRam);
         bus.addMemorySpace(echoRam);
-        var zeroPage = new ZeroPage();
+        zeroPage = new ZeroPage();
         bus.addMemorySpace(zeroPage);
         bus.addMemorySpace(cart);
-        bus.addMemorySpace(new Key0(ppu::setCgbMode));
-        bus.addMemorySpace(new Key1());
-        bus.addMemorySpace(new InfraredPort());
+        key0 = new Key0(ppu::setCgbMode);
+        key1 = new Key1();
+        infraredPort = new InfraredPort();
+        bus.addMemorySpace(key0);
+        bus.addMemorySpace(key1);
+        bus.addMemorySpace(infraredPort);
         bus.addMemorySpace(new UnusedIoRegisters());
         this.window = headless ? null : window;
         if (this.window != null) {
@@ -212,21 +223,6 @@ public class Emulator {
 
     }
 
-    public List<Snapshot> createSystemSnapthot() {
-        synchronized (stateLock) {
-            var version = 1;
-            var systemSnapShot = new ArrayList<Snapshot>();
-            systemSnapShot.add(cpu.createSnapshot(version));
-            systemSnapShot.add(ppu.getVideoRam().createSnapshot(version));
-            systemSnapShot.add(ppu.getOam().createSnapshot(version));
-
-            systemSnapShot.addAll(bus.getMemorySpaces().stream()
-                    .filter(m -> m instanceof Snapshottable)
-                    .map(m -> ((Snapshottable)m).createSnapshot(version)).toList());
-            return systemSnapShot;
-        }
-    }
-
     public SaveStateFile createSaveStateFile() {
         synchronized (stateLock) {
             return new SaveStateFile(
@@ -242,53 +238,72 @@ public class Emulator {
                             160,
                             144
                     ),
-                    createSystemSnapthot()
+                    createEmulatorState()
             );
         }
     }
 
-    public void restoreSaveStateFile(SaveStateFile saveStateFile) throws Exception {
-        restoreSystemSnapshot(saveStateFile.snapshots());
+    public EmulatorState createEmulatorState() {
+        synchronized (stateLock) {
+            var version = EmulatorState.CURRENT_VERSION;
+            return new EmulatorState(
+                    version,
+                    bus.findMemorySpace(InterruptManager.class).map(interrupts -> interrupts.createSnapshot(version)).orElse(null),
+                    bios == null ? null : bios.createSnapshot(version),
+                    cpu.createSnapshot(version),
+                    timer.createSnapshot(version),
+                    ppu.createSnapshot(version),
+                    ppu.getVideoRam().createSnapshot(version),
+                    ppu.getOam().createSnapshot(version),
+                    serial.createSnapshot(version),
+                    hdma.createSnapshot(version),
+                    dma.createSnapshot(version),
+                    workRam.createSnapshot(version),
+                    zeroPage.createSnapshot(version),
+                    cart.createSnapshot(version),
+                    key0.createSnapshot(version),
+                    key1.createSnapshot(version),
+                    infraredPort.createSnapshot(version)
+            );
+        }
     }
 
-    public void restoreSystemSnapshot(List<Snapshot> systemSnapShot) throws Exception {
+    public void restoreSaveStateFile(SaveStateFile saveStateFile) {
+        restoreEmulatorState(saveStateFile.state());
+    }
+
+    public void restoreEmulatorState(EmulatorState emulatorState) {
         pause();
         synchronized (stateLock) {
-            for (Snapshot snapshot: systemSnapShot) {
-                switch (snapshot.className()){
-                    case ("dev.vitorsilverio.gbcemu.cpu.Cpu"):
-                    case ("Cpu"):
-                        cpu.restoreSnapshot(snapshot);
-                        break;
-                    case ("dev.vitorsilverio.gbcemu.ppu.VideoRam"):
-                    case ("VideoRam"):
-                        ppu.getVideoRam().restoreSnapshot(snapshot);
-                        break;
-                    case ("dev.vitorsilverio.gbcemu.ppu.OamRAM"):
-                    case ("OamRAM"):
-                        ppu.getOam().restoreSnapshot(snapshot);
-                        break;
-                    default: restoreMemorySpaceSnapshot(snapshot);
-                }
-            }
+            restore(interruptManager(), emulatorState.interruptManager());
+            restore(bios, emulatorState.bios());
+            restore(cpu, emulatorState.cpu());
+            restore(timer, emulatorState.timer());
+            restore(ppu, emulatorState.ppu());
+            restore(ppu.getVideoRam(), emulatorState.videoRam());
+            restore(ppu.getOam(), emulatorState.oam());
+            restore(serial, emulatorState.serial());
+            restore(hdma, emulatorState.hdma());
+            restore(dma, emulatorState.dma());
+            restore(workRam, emulatorState.workRam());
+            restore(zeroPage, emulatorState.zeroPage());
+            restore(cart, emulatorState.cart());
+            restore(key0, emulatorState.key0());
+            restore(key1, emulatorState.key1());
+            restore(infraredPort, emulatorState.infrared());
         }
         resume();
     }
 
-    private void restoreMemorySpaceSnapshot(Snapshot snapshot) throws ClassNotFoundException {
-        if (!snapshot.className().contains(".")) {
-            bus.getMemorySpaces().stream()
-                    .filter(Snapshottable.class::isInstance)
-                    .filter(memorySpace -> memorySpace.getClass().getSimpleName().equals(snapshot.className()))
-                    .findFirst()
-                    .ifPresent(memorySpace -> ((Snapshottable) memorySpace).restoreSnapshot(snapshot));
+    private InterruptManager interruptManager() {
+        return bus.findMemorySpace(InterruptManager.class).orElseThrow();
+    }
+
+    private void restore(Snapshottable snapshottable, Snapshot snapshot) {
+        if (snapshottable == null || snapshot == null) {
             return;
         }
-
-        Class<?> clazz = Class.forName(snapshot.className());
-        if (MemorySpace.class.isAssignableFrom(clazz)) {
-            var snapshotable = (Snapshottable)bus.findSpace(clazz).orElseThrow();
-            snapshotable.restoreSnapshot(snapshot);
-        }
+        snapshottable.restoreSnapshot(snapshot);
     }
+
 }
