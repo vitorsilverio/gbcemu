@@ -1,6 +1,6 @@
 package dev.vitorsilverio.gbcemu.controller;
 
-import org.slf4j.Logger;
+import dev.vitorsilverio.gbcemu.AppSettings;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -8,9 +8,8 @@ import java.util.function.Consumer;
 
 public class KeyboardController implements Controller, KeyListener {
 
-    private static final Logger logger = org.slf4j.LoggerFactory.getLogger(KeyboardController.class);
-
     private Consumer<ButtonType> onButtonPress;
+    private int[] keyCodes;
     private boolean buttonA_Pressed = false;
     private boolean buttonB_Pressed = false;
     private boolean buttonStart_Pressed = false;
@@ -20,8 +19,17 @@ public class KeyboardController implements Controller, KeyListener {
     private boolean buttonLeft_Pressed = false;
     private boolean buttonRight_Pressed = false;
 
-    public KeyboardController() {
+    public KeyboardController(AppSettings settings) {
+        applySettings(settings);
+    }
 
+    public void applySettings(AppSettings settings) {
+        int[] updated = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length];
+        for (int i = 0; i < updated.length; i++) {
+            updated[i] = settings.controllerKeyCode(i);
+        }
+        keyCodes = updated;
+        releaseAll();
     }
 
     @Override
@@ -77,57 +85,65 @@ public class KeyboardController implements Controller, KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_Z -> {
+        int keyCode = e.getKeyCode();
+        if (keyCode == keyCodes[0]) {
                 buttonA_Pressed = true;
                 emit(ButtonType.ACTION);
-            }
-            case KeyEvent.VK_X -> {
+        } else if (keyCode == keyCodes[1]) {
                 buttonB_Pressed = true;
                 emit(ButtonType.ACTION);
-            }
-            case KeyEvent.VK_ENTER -> {
+        } else if (keyCode == keyCodes[2]) {
                 buttonStart_Pressed = true;
                 emit(ButtonType.ACTION);
-            }
-            case KeyEvent.VK_SPACE -> {
+        } else if (keyCode == keyCodes[3]) {
                 buttonSelect_Pressed = true;
                 emit(ButtonType.ACTION);
-            }
-            case KeyEvent.VK_UP -> {
+        } else if (keyCode == keyCodes[4]) {
                 buttonUp_Pressed = true;
                 emit(ButtonType.DIRECTIONAL);
-            }
-            case KeyEvent.VK_DOWN -> {
+        } else if (keyCode == keyCodes[5]) {
                 buttonDown_Pressed = true;
                 emit(ButtonType.DIRECTIONAL);
-            }
-            case KeyEvent.VK_LEFT -> {
+        } else if (keyCode == keyCodes[6]) {
                 buttonLeft_Pressed = true;
                 emit(ButtonType.DIRECTIONAL);
-            }
-            case KeyEvent.VK_RIGHT -> {
+        } else if (keyCode == keyCodes[7]) {
                 buttonRight_Pressed = true;
                 emit(ButtonType.DIRECTIONAL);
-            }
-            default -> {
-                // Do nothing
-            }
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_Z -> buttonA_Pressed = false;
-            case KeyEvent.VK_X -> buttonB_Pressed = false;
-            case KeyEvent.VK_ENTER -> buttonStart_Pressed = false;
-            case KeyEvent.VK_SPACE -> buttonSelect_Pressed = false;
-            case KeyEvent.VK_UP -> buttonUp_Pressed = false;
-            case KeyEvent.VK_DOWN -> buttonDown_Pressed = false;
-            case KeyEvent.VK_LEFT -> buttonLeft_Pressed = false;
-            case KeyEvent.VK_RIGHT -> buttonRight_Pressed = false;
+        int keyCode = e.getKeyCode();
+        if (keyCode == keyCodes[0]) {
+            buttonA_Pressed = false;
+        } else if (keyCode == keyCodes[1]) {
+            buttonB_Pressed = false;
+        } else if (keyCode == keyCodes[2]) {
+            buttonStart_Pressed = false;
+        } else if (keyCode == keyCodes[3]) {
+            buttonSelect_Pressed = false;
+        } else if (keyCode == keyCodes[4]) {
+            buttonUp_Pressed = false;
+        } else if (keyCode == keyCodes[5]) {
+            buttonDown_Pressed = false;
+        } else if (keyCode == keyCodes[6]) {
+            buttonLeft_Pressed = false;
+        } else if (keyCode == keyCodes[7]) {
+            buttonRight_Pressed = false;
         }
+    }
+
+    private void releaseAll() {
+        buttonA_Pressed = false;
+        buttonB_Pressed = false;
+        buttonStart_Pressed = false;
+        buttonSelect_Pressed = false;
+        buttonUp_Pressed = false;
+        buttonDown_Pressed = false;
+        buttonLeft_Pressed = false;
+        buttonRight_Pressed = false;
     }
 
     private void emit(ButtonType buttonType) {

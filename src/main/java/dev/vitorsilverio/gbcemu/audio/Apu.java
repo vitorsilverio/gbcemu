@@ -22,6 +22,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private final WaveChannel channel3 = new WaveChannel(this);
     private final NoiseChannel channel4 = new NoiseChannel(this);
     private final int[] debugChannelVolumes = {100, 100, 100, 100};
+    private final boolean[] debugChannelMuted = {false, false, false, false};
     private int debugMasterVolume = 100;
     private int debugLeftVolume = 100;
     private int debugRightVolume = 100;
@@ -145,6 +146,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     private int debugOutput(int channel, int output) {
+        if (debugChannelMuted[channel]) {
+            return 0;
+        }
         return output * debugChannelVolumes[channel] / 100;
     }
 
@@ -157,11 +161,11 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     public boolean debugChannelMuted(int channel) {
-        return debugChannelVolume(channel) == 0;
+        return debugChannelMuted[channelIndex(channel)];
     }
 
     public void setDebugChannelMuted(int channel, boolean muted) {
-        setDebugChannelVolume(channel, muted ? 0 : 100);
+        debugChannelMuted[channelIndex(channel)] = muted;
     }
 
     public int debugMasterVolume() {
@@ -186,6 +190,18 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     public void setDebugRightVolume(int volume) {
         debugRightVolume = clampPercent(volume);
+    }
+
+    public void applyDebugVolumes(int masterVolume, int leftVolume, int rightVolume, int[] channelVolumes, boolean[] channelMuted) {
+        setDebugMasterVolume(masterVolume);
+        setDebugLeftVolume(leftVolume);
+        setDebugRightVolume(rightVolume);
+        for (int i = 0; i < Math.min(channelVolumes.length, debugChannelVolumes.length); i++) {
+            debugChannelVolumes[i] = clampPercent(channelVolumes[i]);
+        }
+        for (int i = 0; i < Math.min(channelMuted.length, debugChannelMuted.length); i++) {
+            debugChannelMuted[i] = channelMuted[i];
+        }
     }
 
     private int channelIndex(int channel) {

@@ -13,17 +13,23 @@ public class EmulatorWindow {
 
     private static final int WIDTH = 160;
     private static final int HEIGHT = 144;
-    private static final int SCALE = 4;
 
     private final JFrame window = new JFrame("GBC EMU");
     private final JPanel screen;
     private final Timer repaintTimer;
     private final Timer overlayTimer;
+    private int scale;
+    private boolean smoothScaling;
+    private boolean fullscreen;
     private Ppu ppu;
     private KeyListener keyListener;
     private OverlayIcon overlayIcon;
 
-    public EmulatorWindow(EmulatorMenuActions menuActions) {
+    public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings) {
+        int scale = settings.screenScale();
+        this.scale = Math.max(1, Math.min(8, scale));
+        this.smoothScaling = settings.smoothScaling();
+        this.fullscreen = settings.fullscreen();
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         screen = new JPanel() {
             @Override
@@ -39,16 +45,58 @@ public class EmulatorWindow {
         });
         overlayTimer.setRepeats(false);
         screen.setFocusable(true);
-        screen.setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
+        screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
         window.setContentPane(screen);
         window.setResizable(false);
         installMenu(menuActions);
-        window.pack();
-        window.setLocationRelativeTo(null);
+        applyWindowMode();
     }
 
     public void show() {
         window.setVisible(true);
+    }
+
+    public Frame owner() {
+        return window;
+    }
+
+    public void setScale(int scale) {
+        this.scale = Math.max(1, Math.min(8, scale));
+        SwingUtilities.invokeLater(() -> {
+            screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
+            applyWindowMode();
+            screen.repaint();
+        });
+    }
+
+    public void applySettings(AppSettings settings) {
+        this.scale = Math.max(1, Math.min(8, settings.screenScale()));
+        this.smoothScaling = settings.smoothScaling();
+        this.fullscreen = settings.fullscreen();
+        SwingUtilities.invokeLater(() -> {
+            screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
+            applyWindowMode();
+            screen.repaint();
+        });
+    }
+
+    private void applyWindowMode() {
+        boolean visible = window.isVisible();
+        if (visible) {
+            window.dispose();
+        }
+        window.setUndecorated(fullscreen);
+        window.setResizable(fullscreen);
+        if (fullscreen) {
+            window.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        } else {
+            window.setExtendedState(JFrame.NORMAL);
+            window.pack();
+            window.setLocationRelativeTo(null);
+        }
+        if (visible) {
+            window.setVisible(true);
+        }
     }
 
     public void attach(Ppu ppu, KeyListener keyListener) {
@@ -134,6 +182,10 @@ public class EmulatorWindow {
         configureBios.addActionListener(event -> menuActions.configureDefaultBios().run());
         emulatorMenu.add(configureBios);
 
+        JMenuItem settings = new JMenuItem("Settings...");
+        settings.addActionListener(event -> menuActions.openSettings().run());
+        emulatorMenu.add(settings);
+
         menuBar.add(emulatorMenu);
 
         JMenu debugMenu = new JMenu("Debug");
@@ -198,8 +250,15 @@ public class EmulatorWindow {
 
     private void drawFrame(Graphics g) {
         if(ppu!=null) {
+            Graphics2D graphics = (Graphics2D) g;
+            graphics.setRenderingHint(
+                    RenderingHints.KEY_INTERPOLATION,
+                    smoothScaling ? RenderingHints.VALUE_INTERPOLATION_BILINEAR : RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
+            );
             Image frame = ppu.getFrameBuffer();
-            g.drawImage(frame, 0, 0, WIDTH * SCALE, HEIGHT * SCALE, null);
+            int drawWidth = fullscreen ? screen.getWidth() : WIDTH * scale;
+            int drawHeight = fullscreen ? screen.getHeight() : HEIGHT * scale;
+            graphics.drawImage(frame, 0, 0, drawWidth, drawHeight, null);
         }
         drawOverlay(g);
     }

@@ -28,10 +28,6 @@ public class Emulator {
 
     private static final int DOTS_PER_FRAME = 70224;
     private static final long NANOS_PER_FRAME = 16_742_706L;
-    private static final int REWIND_SECONDS = 15;
-    private static final int REWIND_CAPTURE_INTERVAL_FRAMES = 30;
-    private static final int REWIND_CAPACITY = (60 / REWIND_CAPTURE_INTERVAL_FRAMES) * REWIND_SECONDS;
-
     private final Cpu cpu;
     private final Timer timer;
     private final Ppu ppu;
@@ -46,6 +42,7 @@ public class Emulator {
     private final Key1 key1;
     private final InfraredPort infraredPort;
     private final EmulatorWindow window;
+    private final KeyboardController keyboardController;
     private final GameSharkDevice gameSharkDevice;
     private final Cart cart;
     private final File romFile;
@@ -53,7 +50,8 @@ public class Emulator {
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
     private final Bus bus;
-    private final RewindBuffer rewindBuffer = new RewindBuffer(REWIND_CAPACITY);
+    private RewindBuffer rewindBuffer;
+    private AppSettings settings;
     private final Object stateLock = new Object();
     private volatile boolean paused;
     private volatile boolean stopped;
@@ -71,6 +69,12 @@ public class Emulator {
     }
 
     public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window) {
+        this(biosFile, romFile, saveFile, headless, window, AppSettings.defaults());
+    }
+
+    public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window, AppSettings settings) {
+        this.settings = settings.normalized();
+        this.rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
         this.bus = new Bus();
         this.gameSharkDevice = new GameSharkDevice();
         this.bus.addMemorySpace(gameSharkDevice);
@@ -87,6 +91,13 @@ public class Emulator {
         this.timer = new Timer(bus);
         this.ppu = new Ppu(bus, biosFile != null || cartridgeCgbCompatible);
         this.apu = headless ? Apu.muted() : new Apu();
+        this.apu.applyDebugVolumes(
+                this.settings.audioMasterVolume(),
+                this.settings.audioLeftVolume(),
+                this.settings.audioRightVolume(),
+                this.settings.audioChannelVolumes(),
+                this.settings.audioChannelMuted()
+        );
         this.hdma = new HDMA(bus);
         this.dma = new DMA(bus);
         this.throttled = !headless;
@@ -95,7 +106,8 @@ public class Emulator {
         bus.addMemorySpace(apu);
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
-        Controller controller = headless ? new IdleController() : new KeyboardController();
+        keyboardController = headless ? null : new KeyboardController(this.settings);
+        Controller controller = headless ? new IdleController() : keyboardController;
         var joypad = new Joypad(bus, controller);
         bus.addMemorySpace(joypad);
         workRam = new WorkRam();
@@ -168,6 +180,21 @@ public class Emulator {
         new AudioDebugWindow(apu);
     }
 
+    public void applySettings(AppSettings settings) {
+        this.settings = settings.normalized();
+        apu.applyDebugVolumes(
+                this.settings.audioMasterVolume(),
+                this.settings.audioLeftVolume(),
+                this.settings.audioRightVolume(),
+                this.settings.audioChannelVolumes(),
+                this.settings.audioChannelMuted()
+        );
+        rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
+        if (keyboardController != null) {
+            keyboardController.applySettings(this.settings);
+        }
+    }
+
     public void openMemoryDebugger() {
         new MemoryDebugWindow(bus);
     }
@@ -222,7 +249,7 @@ public class Emulator {
     }
 
     private void recordRewindSnapshot() {
-        if (frameNumber % REWIND_CAPTURE_INTERVAL_FRAMES != 0) {
+        if (frameNumber % settings.rewindCaptureIntervalFrames() != 0) {
             return;
         }
         rewindBuffer.add(createSaveStateFile());

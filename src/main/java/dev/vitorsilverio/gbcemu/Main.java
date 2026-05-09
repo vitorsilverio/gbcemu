@@ -13,6 +13,7 @@ public class Main {
 
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(Main.class);
     private static final String DEFAULT_BIOS_KEY = "defaultBios";
+    private static AppSettings settings = AppSettings.load(PREFERENCES);
     private static Emulator activeEmulator;
     private static Options activeOptions;
     private static EmulatorWindow window;
@@ -40,14 +41,14 @@ public class Main {
                 return;
             }
             activeOptions = options;
-            window = new EmulatorWindow(menuActions());
+            window = new EmulatorWindow(menuActions(), settings);
             window.show();
             return;
         }
 
         activeOptions = options;
         if (!options.headless()) {
-            window = new EmulatorWindow(menuActions());
+            window = new EmulatorWindow(menuActions(), settings);
             window.show();
         }
         startEmulator(options);
@@ -73,6 +74,7 @@ public class Main {
         return new EmulatorMenuActions(
                 Main::openRomFromMenu,
                 Main::configureDefaultBios,
+                Main::openSettings,
                 Main::pauseEmulator,
                 Main::resumeEmulator,
                 Main::stopEmulator,
@@ -92,6 +94,22 @@ public class Main {
     private static void configureCheats() {
         if (activeEmulator != null) {
             activeEmulator.openCheats();
+        }
+    }
+
+    private static void openSettings() {
+        SettingsDialog dialog = new SettingsDialog(window == null ? null : window.owner(), settings, Main::applySettings);
+        dialog.setVisible(true);
+    }
+
+    private static void applySettings(AppSettings newSettings) {
+        settings = newSettings.normalized();
+        settings.save(PREFERENCES);
+        if (window != null) {
+            window.applySettings(settings);
+        }
+        if (activeEmulator != null) {
+            activeEmulator.applySettings(settings);
         }
     }
 
@@ -262,7 +280,8 @@ public class Main {
                 options.romFile(),
                 options.saveFile(),
                 options.headless(),
-                options.headless() ? null : window
+                options.headless() ? null : window,
+                settings
         );
         if (options.skipBios()) {
             emulator.skipBios();

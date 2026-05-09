@@ -91,12 +91,9 @@ public class AudioDebugWindow {
         volume.addChangeListener(event -> {
             apu.setDebugChannelVolume(channel, volume.getValue());
             value.setText(volume.getValue() + "%");
-            mute.setSelected(volume.getValue() == 0);
         });
         mute.addActionListener(event -> {
             apu.setDebugChannelMuted(channel, mute.isSelected());
-            volume.setValue(apu.debugChannelVolume(channel));
-            value.setText(volume.getValue() + "%");
         });
     }
 
