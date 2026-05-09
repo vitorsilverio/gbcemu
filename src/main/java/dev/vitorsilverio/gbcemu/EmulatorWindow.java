@@ -128,12 +128,12 @@ public class EmulatorWindow {
         menuBar.add(debugMenu);
 
         JMenu snapshotMenu = new JMenu("Save states");
-        JMenuItem saveSnapshot = new JMenuItem("Save state");
+        JMenuItem saveSnapshot = new JMenuItem("Save states...");
         saveSnapshot.addActionListener(event -> menuActions.saveSnapshoot().run());
         saveSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F4, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         snapshotMenu.add(saveSnapshot);
 
-        JMenuItem restoreSnapshot = new JMenuItem("Load state");
+        JMenuItem restoreSnapshot = new JMenuItem("Load states...");
         restoreSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         restoreSnapshot.addActionListener(event -> menuActions.restoreSnapshot().run());
         snapshotMenu.add(restoreSnapshot);

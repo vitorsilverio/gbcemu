@@ -1,9 +1,9 @@
 package dev.vitorsilverio.gbcemu;
 
-import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
+import dev.vitorsilverio.gbcemu.snapshot.SaveStateStore;
 
 import javax.swing.*;
-import java.io.*;
+import java.io.File;
 import java.util.Arrays;
 import java.util.prefs.Preferences;
 
@@ -14,6 +14,7 @@ public class Main {
     private static Emulator activeEmulator;
     private static Options activeOptions;
     private static EmulatorWindow window;
+    private static final SaveStateStore SAVE_STATE_STORE = new SaveStateStore();
 
     public static void main(String[] args) {
         var javaHome = System.getProperty("java.home", ".");
@@ -87,33 +88,29 @@ public class Main {
     }
 
     private static void restoreSnapshot() {
-        if (activeEmulator != null) {
-            try (var fileReader = new FileInputStream(new File("savestate.sa1")); var objectStream = new ObjectInputStream(fileReader)){
-                Object saveState = objectStream.readObject();
-                if (saveState instanceof SaveStateFile saveStateFile) {
-                    activeEmulator.restoreSaveStateFile(saveStateFile);
-                } else {
-                    throw new IllegalArgumentException("Unsupported save state file: " + saveState.getClass().getName());
-                }
-            }catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        }
+        openSaveStateDialog();
     }
 
     private static void saveSnapshot() {
-        if (activeEmulator != null) {
-            var snapshot = activeEmulator.createSaveStateFile();
-            try (var fileWriter = new FileOutputStream(new File("savestate.sa1")); var objectStream = new ObjectOutputStream(fileWriter)) {
-                objectStream.writeObject(snapshot);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        openSaveStateDialog();
     }
 
-
+    private static void openSaveStateDialog() {
+        if (activeEmulator == null || activeOptions == null || activeOptions.romFile() == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Load a ROM before using save states.",
+                    "Save states",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        SaveStateDialog dialog = new SaveStateDialog(
+                activeOptions.romFile(),
+                SAVE_STATE_STORE,
+                activeEmulator::createSaveStateFile,
+                activeEmulator::restoreSaveStateFile
+        );
+        dialog.setVisible(true);
+    }
 
     private static void openRomFromMenu() {
         File romFile = chooseRomFile();
