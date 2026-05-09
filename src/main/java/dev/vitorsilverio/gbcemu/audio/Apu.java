@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.audio;
 
 import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
-public class Apu implements MemorySpace, MachineCycle {
+public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState> {
 
     private static final Logger logger = LoggerFactory.getLogger(Apu.class);
 
@@ -90,10 +91,10 @@ public class Apu implements MemorySpace, MachineCycle {
     private int previousRightSample;
     private boolean audioEnabled = true;
 
-    private PulseChannel channel1 = new PulseChannel(0);
-    private PulseChannel channel2 = new PulseChannel(1);
-    private WaveChannel channel3 = new WaveChannel();
-    private NoiseChannel channel4 = new NoiseChannel();
+    private final PulseChannel channel1 = new PulseChannel(0);
+    private final PulseChannel channel2 = new PulseChannel(1);
+    private final WaveChannel channel3 = new WaveChannel();
+    private final NoiseChannel channel4 = new NoiseChannel();
 
     public Apu() {
         this(createDefaultSink());
@@ -109,6 +110,41 @@ public class Apu implements MemorySpace, MachineCycle {
         registers[index(NR50_MASTER_VOLUME)] = 0x77;
         registers[index(NR51_SOUND_PANNING)] = (byte) 0xFF;
         registers[index(NR52_AUDIO_MASTER_CONTROL)] = (byte) 0x80;
+    }
+
+    @Override
+    public ApuState saveState() {
+        return new ApuState(
+                registers.clone(),
+                wavePatternRam.clone(),
+                sampleAccumulator,
+                frameSequencerCycles,
+                frameSequencerStep,
+                previousLeftSample,
+                previousRightSample,
+                audioEnabled,
+                channel1.saveState(),
+                channel2.saveState(),
+                channel3.saveState(),
+                channel4.saveState()
+        );
+    }
+
+    @Override
+    public void loadState(ApuState state) {
+        System.arraycopy(state.registers(), 0, registers, 0, Math.min(registers.length, state.registers().length));
+        System.arraycopy(state.wavePatternRam(), 0, wavePatternRam, 0, Math.min(wavePatternRam.length, state.wavePatternRam().length));
+        sampleAccumulator = state.sampleAccumulator();
+        frameSequencerCycles = state.frameSequencerCycles();
+        frameSequencerStep = state.frameSequencerStep() & 0x07;
+        previousLeftSample = state.previousLeftSample();
+        previousRightSample = state.previousRightSample();
+        audioEnabled = state.audioEnabled();
+        sampleBufferPosition = 0;
+        channel1.loadState(state.channel1());
+        channel2.loadState(state.channel2());
+        channel3.loadState(state.channel3());
+        channel4.loadState(state.channel4());
     }
 
     @Override
@@ -466,6 +502,18 @@ public class Apu implements MemorySpace, MachineCycle {
         protected int envelopeTimer;
         protected int timer;
 
+        protected SoundChannelState saveCommonState() {
+            return new SoundChannelState(enabled, lengthTimer, currentVolume, envelopeTimer, timer);
+        }
+
+        protected void loadCommonState(SoundChannelState state) {
+            enabled = state.enabled();
+            lengthTimer = state.lengthTimer();
+            currentVolume = state.currentVolume();
+            envelopeTimer = state.envelopeTimer();
+            timer = state.timer();
+        }
+
         protected void setEnvelope(byte value) {
             if ((value & 0xF8) == 0) {
                 enabled = false;
@@ -562,6 +610,28 @@ public class Apu implements MemorySpace, MachineCycle {
 
         private PulseChannel(int channel) {
             this.channel = channel;
+        }
+
+        private PulseChannelState saveState() {
+            return new PulseChannelState(
+                    saveCommonState(),
+                    period,
+                    dutyStep,
+                    sweepShadowPeriod,
+                    sweepTimer,
+                    sweepEnabled,
+                    sweepNegateUsed
+            );
+        }
+
+        private void loadState(PulseChannelState state) {
+            loadCommonState(state.common());
+            period = state.period();
+            dutyStep = state.dutyStep() & 0x07;
+            sweepShadowPeriod = state.sweepShadowPeriod();
+            sweepTimer = state.sweepTimer();
+            sweepEnabled = state.sweepEnabled();
+            sweepNegateUsed = state.sweepNegateUsed();
         }
 
         private void setLength(int length) {
@@ -733,6 +803,16 @@ public class Apu implements MemorySpace, MachineCycle {
         private int period;
         private int sampleIndex;
 
+        private WaveChannelState saveState() {
+            return new WaveChannelState(saveCommonState(), period, sampleIndex);
+        }
+
+        private void loadState(WaveChannelState state) {
+            loadCommonState(state.common());
+            period = state.period();
+            sampleIndex = state.sampleIndex() & 0x1F;
+        }
+
         private void updatePeriod() {
             period = period(NR33_CHANNEL_3_FREQUENCY_LO, NR34_CHANNEL_3_FREQUENCY_HI);
         }
@@ -804,6 +884,15 @@ public class Apu implements MemorySpace, MachineCycle {
 
     private class NoiseChannel extends SoundChannel implements Serializable {
         private int lfsr = 0x7FFF;
+
+        private NoiseChannelState saveState() {
+            return new NoiseChannelState(saveCommonState(), lfsr);
+        }
+
+        private void loadState(NoiseChannelState state) {
+            loadCommonState(state.common());
+            lfsr = state.lfsr() & 0x7FFF;
+        }
 
         private void trigger() {
             boolean lengthWasZero = lengthTimer == 0;

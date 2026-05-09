@@ -253,6 +253,7 @@ public class Emulator {
                     ppu.saveState(),
                     ppu.getVideoRam().saveState(),
                     ppu.getOam().saveState(),
+                    apu.saveState(),
                     serial.saveState(),
                     hdma.saveState(),
                     dma.saveState(),
@@ -282,6 +283,7 @@ public class Emulator {
             ppu.loadState(emulatorState.ppu());
             ppu.getVideoRam().loadState(emulatorState.videoRam());
             ppu.getOam().loadState(emulatorState.oam());
+            apu.loadState(emulatorState.apu());
             serial.loadState(emulatorState.serial());
             hdma.loadState(emulatorState.hdma());
             dma.loadState(emulatorState.dma());

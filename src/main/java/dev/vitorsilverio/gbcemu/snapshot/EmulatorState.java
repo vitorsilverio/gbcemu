@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.snapshot;
 
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
+import dev.vitorsilverio.gbcemu.audio.ApuState;
 import dev.vitorsilverio.gbcemu.cpu.CpuState;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
 import dev.vitorsilverio.gbcemu.memory.BiosState;
@@ -28,6 +29,7 @@ public record EmulatorState(
         PpuState ppu,
         VideoRamState videoRam,
         OamState oam,
+        ApuState apu,
         SerialState serial,
         HdmaState hdma,
         DmaState dma,
