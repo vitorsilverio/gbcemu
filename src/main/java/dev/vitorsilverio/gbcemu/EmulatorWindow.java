@@ -18,8 +18,10 @@ public class EmulatorWindow {
     private final JFrame window = new JFrame("GBC EMU");
     private final JPanel screen;
     private final Timer repaintTimer;
+    private final Timer overlayTimer;
     private Ppu ppu;
     private KeyListener keyListener;
+    private OverlayIcon overlayIcon;
 
     public EmulatorWindow(EmulatorMenuActions menuActions) {
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -31,6 +33,11 @@ public class EmulatorWindow {
             }
         };
         repaintTimer = new Timer(16, event -> screen.repaint());
+        overlayTimer = new Timer(900, event -> {
+            overlayIcon = null;
+            screen.repaint();
+        });
+        overlayTimer.setRepeats(false);
         screen.setFocusable(true);
         screen.setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
         window.setContentPane(screen);
@@ -80,6 +87,14 @@ public class EmulatorWindow {
             return;
         }
         SwingUtilities.invokeLater(screen::repaint);
+    }
+
+    public void showOverlay(OverlayIcon icon) {
+        SwingUtilities.invokeLater(() -> {
+            overlayIcon = icon;
+            overlayTimer.restart();
+            screen.repaint();
+        });
     }
 
     private void detachKeyListener() {
@@ -170,7 +185,78 @@ public class EmulatorWindow {
             Image frame = ppu.getFrameBuffer();
             g.drawImage(frame, 0, 0, WIDTH * SCALE, HEIGHT * SCALE, null);
         }
+        drawOverlay(g);
     }
 
+    private void drawOverlay(Graphics g) {
+        if (overlayIcon == null) {
+            return;
+        }
+        Graphics2D g2 = (Graphics2D) g.create();
+        try {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int width = overlayIcon == OverlayIcon.PAUSE ? 96 : 88;
+            int x = screen.getWidth() - width - 16;
+            int y = 14;
+            int height = 42;
+            g2.setColor(new Color(0, 0, 0, 150));
+            g2.fillRoundRect(x, y, width, height, 8, 8);
+            g2.setColor(new Color(255, 255, 255, 230));
+            g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            drawOverlaySymbol(g2, overlayIcon, x + 16, y + 10);
+            g2.setColor(new Color(255, 255, 255, 110));
+            g2.drawLine(x + 44, y + 8, x + 44, y + height - 8);
+            g2.setColor(new Color(255, 255, 255, 230));
+            g2.setFont(g2.getFont().deriveFont(Font.BOLD, 13f));
+            g2.drawString(overlayIcon.label(), x + 54, y + 27);
+        } finally {
+            g2.dispose();
+        }
+    }
 
+    private void drawOverlaySymbol(Graphics2D g2, OverlayIcon icon, int x, int y) {
+        switch (icon) {
+            case PLAY -> {
+                Polygon triangle = new Polygon();
+                triangle.addPoint(x, y);
+                triangle.addPoint(x, y + 22);
+                triangle.addPoint(x + 18, y + 11);
+                g2.fillPolygon(triangle);
+            }
+            case PAUSE -> {
+                g2.fillRect(x, y, 6, 22);
+                g2.fillRect(x + 12, y, 6, 22);
+            }
+            case STOP -> g2.fillRect(x, y + 2, 18, 18);
+            case REWIND -> {
+                Polygon left = new Polygon();
+                left.addPoint(x + 8, y);
+                left.addPoint(x + 8, y + 22);
+                left.addPoint(x - 6, y + 11);
+                g2.fillPolygon(left);
+                Polygon right = new Polygon();
+                right.addPoint(x + 22, y);
+                right.addPoint(x + 22, y + 22);
+                right.addPoint(x + 8, y + 11);
+                g2.fillPolygon(right);
+            }
+        }
+    }
+
+    public enum OverlayIcon {
+        PLAY("PLAY"),
+        PAUSE("PAUSE"),
+        STOP("STOP"),
+        REWIND("REW");
+
+        private final String label;
+
+        OverlayIcon(String label) {
+            this.label = label;
+        }
+
+        private String label() {
+            return label;
+        }
+    }
 }

@@ -112,7 +112,9 @@ public class Main {
                     "No rewind snapshot is available yet.",
                     "Rewind",
                     JOptionPane.INFORMATION_MESSAGE);
+            return;
         }
+        showOverlay(EmulatorWindow.OverlayIcon.REWIND);
     }
 
     private static void saveSnapshot() {
@@ -171,12 +173,14 @@ public class Main {
     private static void pauseEmulator() {
         if (activeEmulator != null) {
             activeEmulator.pause();
+            showOverlay(EmulatorWindow.OverlayIcon.PAUSE);
         }
     }
 
     private static void resumeEmulator() {
         if (activeEmulator != null) {
             activeEmulator.resume();
+            showOverlay(EmulatorWindow.OverlayIcon.PLAY);
         }
     }
 
@@ -184,6 +188,13 @@ public class Main {
         if (activeEmulator != null) {
             activeEmulator.stop();
             activeEmulator = null;
+            showOverlay(EmulatorWindow.OverlayIcon.STOP);
+        }
+    }
+
+    private static void showOverlay(EmulatorWindow.OverlayIcon icon) {
+        if (window != null) {
+            window.showOverlay(icon);
         }
     }
 
