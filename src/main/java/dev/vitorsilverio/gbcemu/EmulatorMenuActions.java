@@ -9,6 +9,7 @@ public record EmulatorMenuActions(
         Runnable stop,
         Runnable saveSnapshoot,
         Runnable restoreSnapshot,
+        Runnable manageSnapshots,
         Runnable cheats
 ) {
 }

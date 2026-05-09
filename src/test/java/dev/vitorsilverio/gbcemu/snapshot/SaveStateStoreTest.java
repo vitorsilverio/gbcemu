@@ -31,6 +31,7 @@ class SaveStateStoreTest {
         assertEquals("Pokemon Silver.sa1", slots.get(1).file().getName());
         assertEquals(2, store.nextSlotIndex(romFile));
         assertTrue(slots.get(0).saveStateFile().metadata().romTitle().contains("slot0"));
+        assertEquals("slot0", store.load(romFile, 0).orElseThrow().saveStateFile().metadata().romTitle());
     }
 
     private SaveStateFile saveState(String title, long frame) {

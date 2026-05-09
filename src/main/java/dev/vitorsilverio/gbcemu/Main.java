@@ -77,6 +77,7 @@ public class Main {
                 Main::stopEmulator,
                 Main::saveSnapshot,
                 Main::restoreSnapshot,
+                Main::openSaveStateDialog,
                 Main::configureCheats
         );
     }
@@ -88,19 +89,46 @@ public class Main {
     }
 
     private static void restoreSnapshot() {
-        openSaveStateDialog();
+        if (!hasActiveRomForSaveStates()) {
+            return;
+        }
+        SAVE_STATE_STORE.load(activeOptions.romFile(), 0)
+                .ifPresentOrElse(
+                        slot -> activeEmulator.restoreSaveStateFile(slot.saveStateFile()),
+                        () -> JOptionPane.showMessageDialog(null,
+                                "Slot 0 is empty for this ROM.",
+                                "Save states",
+                                JOptionPane.INFORMATION_MESSAGE)
+                );
     }
 
     private static void saveSnapshot() {
-        openSaveStateDialog();
+        if (!hasActiveRomForSaveStates()) {
+            return;
+        }
+        try {
+            SAVE_STATE_STORE.save(activeOptions.romFile(), 0, activeEmulator.createSaveStateFile());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null,
+                    "Failed to save slot 0: " + e.getMessage(),
+                    "Save states",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private static void openSaveStateDialog() {
+    private static boolean hasActiveRomForSaveStates() {
         if (activeEmulator == null || activeOptions == null || activeOptions.romFile() == null) {
             JOptionPane.showMessageDialog(null,
                     "Load a ROM before using save states.",
                     "Save states",
                     JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
+    private static void openSaveStateDialog() {
+        if (!hasActiveRomForSaveStates()) {
             return;
         }
         SaveStateDialog dialog = new SaveStateDialog(

@@ -42,6 +42,14 @@ public class SaveStateStore {
         return new Slot(slotIndex, file, saveStateFile);
     }
 
+    public Optional<Slot> load(File romFile, int slotIndex) {
+        File file = fileForSlot(romFile, slotIndex);
+        if (!file.isFile()) {
+            return Optional.empty();
+        }
+        return read(file).map(saveState -> new Slot(slotIndex, file, saveState));
+    }
+
     public int nextSlotIndex(File romFile) {
         return list(romFile).stream()
                 .mapToInt(Slot::index)
