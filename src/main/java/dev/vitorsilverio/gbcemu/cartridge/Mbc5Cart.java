@@ -38,6 +38,11 @@ public class Mbc5Cart extends Cart {
     }
 
     @Override
+    protected int currentRomBank() {
+        return Math.floorMod(selectedRomBank(), romBanks);
+    }
+
+    @Override
     protected byte readExternal(int address) {
         if (!ramEnabled) {
             return (byte) 0xFF;

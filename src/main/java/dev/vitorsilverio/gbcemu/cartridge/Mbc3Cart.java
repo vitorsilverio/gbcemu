@@ -51,6 +51,11 @@ public class Mbc3Cart extends Cart {
     }
 
     @Override
+    protected int currentRomBank() {
+        return normalizeRomBank(romBank);
+    }
+
+    @Override
     protected byte readExternal(int address) {
         if (!ramAndTimerEnabled) {
             return (byte) 0xFF;

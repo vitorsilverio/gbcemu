@@ -43,6 +43,7 @@ public class DebugWindow {
     private final DebugController debugController;
     private final Runnable pauseAction;
     private final Runnable resumeAction;
+    private final DisassemblyCache disassemblyCache;
     private final JFrame window = new JFrame("GBC EMU Debugger");
     private final Map<String, JTextField> stateFields = new LinkedHashMap<>();
     private final DefaultTableModel instructionModel = new DefaultTableModel() {
@@ -88,6 +89,7 @@ public class DebugWindow {
         this.debugController = debugController;
         this.pauseAction = pauseAction;
         this.resumeAction = resumeAction;
+        this.disassemblyCache = new DisassemblyCache(bus);
         initialize();
     }
 
@@ -157,6 +159,7 @@ public class DebugWindow {
         addStateField(statePanel, "LYC");
 
         instructionModel.addColumn("Addr");
+        instructionModel.addColumn("Bank");
         instructionModel.addColumn("Bytes");
         instructionModel.addColumn("Instruction");
         instructionTable.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 12));
@@ -164,7 +167,8 @@ public class DebugWindow {
         instructionTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         instructionTable.getColumnModel().getColumn(0).setPreferredWidth(70);
         instructionTable.getColumnModel().getColumn(1).setPreferredWidth(110);
-        instructionTable.getColumnModel().getColumn(2).setPreferredWidth(360);
+        instructionTable.getColumnModel().getColumn(2).setPreferredWidth(110);
+        instructionTable.getColumnModel().getColumn(3).setPreferredWidth(360);
 
         panel.add(statePanel, BorderLayout.NORTH);
         panel.add(new JScrollPane(instructionTable), BorderLayout.CENTER);
@@ -372,7 +376,7 @@ public class DebugWindow {
         StringBuilder builder = new StringBuilder("Instructions near PC\n");
         int address = cpu.getPc();
         for (int i = 0; i < 24; i++) {
-            Disassembler.Decoded decoded = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
+            Disassembler.Decoded decoded = disassemblyCache.decode(address);
             builder.append(String.format("%04X: %s%n", address, decoded.text()));
             address = (address + decoded.length()) & 0xFFFF;
         }
@@ -381,19 +385,28 @@ public class DebugWindow {
 
     private void refreshInstructionTable() {
         instructionModel.setRowCount(0);
-        int address = cpu.getPc();
-        for (int i = 0; i < 32; i++) {
-            Disassembler.Decoded decoded = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
-            instructionModel.addRow(new Object[]{
-                    String.format("%04X", address),
-                    decoded.bytes(),
-                    decoded.instruction()
-            });
-            address = (address + decoded.length()) & 0xFFFF;
+        int pc = cpu.getPc();
+        int selectedRow = 0;
+        for (Disassembler.Decoded decoded : disassemblyCache.previousInstructions(pc, 12)) {
+            addInstructionRow(decoded);
+            selectedRow++;
+        }
+        for (Disassembler.Decoded decoded : disassemblyCache.decodeForward(pc, 28)) {
+            addInstructionRow(decoded);
         }
         if (instructionModel.getRowCount() > 0) {
-            instructionTable.setRowSelectionInterval(0, 0);
+            instructionTable.setRowSelectionInterval(selectedRow, selectedRow);
+            instructionTable.scrollRectToVisible(instructionTable.getCellRect(Math.max(0, selectedRow - 4), 0, true));
         }
+    }
+
+    private void addInstructionRow(Disassembler.Decoded decoded) {
+        instructionModel.addRow(new Object[]{
+                String.format("%04X", decoded.address()),
+                disassemblyCache.location(decoded.address()),
+                decoded.bytes(),
+                decoded.instruction()
+        });
     }
 
 

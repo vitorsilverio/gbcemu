@@ -29,6 +29,7 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
     protected final CartHeader header;
     protected final byte[] rom;
     protected final CartridgeRam ram;
+    private final MemoryBank romMemoryBank = new RomMemoryBank();
     protected final int romBanks;
     protected final File saveFile;
 
@@ -107,7 +108,11 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
 
     @Override
     public List<MemoryBank> memoryBanks() {
-        return List.of(ram);
+        return List.of(romMemoryBank, ram);
+    }
+
+    protected int currentRomBank() {
+        return romBanks > 1 ? 1 : 0;
     }
 
     protected int normalizeRomBank(int bank) {
@@ -227,5 +232,37 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
             writeExtraSaveData(output);
         }
         return bytes.toByteArray();
+    }
+
+    private class RomMemoryBank implements MemoryBank {
+
+        @Override
+        public String bankName() {
+            return "Cartridge ROM";
+        }
+
+        @Override
+        public int bankCount() {
+            return romBanks;
+        }
+
+        @Override
+        public int bankSize() {
+            return ROM_BANK_SIZE;
+        }
+
+        @Override
+        public int currentBank() {
+            return currentRomBank();
+        }
+
+        @Override
+        public byte readBank(int bank, int offset) {
+            return readRom(Math.floorMod(bank, romBanks) * ROM_BANK_SIZE + Math.floorMod(offset, ROM_BANK_SIZE));
+        }
+
+        @Override
+        public void writeBank(int bank, int offset, byte value) {
+        }
     }
 }
