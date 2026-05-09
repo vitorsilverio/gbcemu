@@ -45,6 +45,7 @@ public class Emulator {
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
     private final Bus bus;
+    private final Object stateLock = new Object();
     private volatile boolean paused;
     private volatile boolean stopped;
     private int dots;
@@ -117,10 +118,12 @@ public class Emulator {
                 paused = true;
                 continue;
             }
-            if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
-                cpu.tick();
-            } else {
-                tickSystemCycle();
+            synchronized (stateLock) {
+                if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
+                    cpu.tick();
+                } else {
+                    tickSystemCycle();
+                }
             }
         }
         if (window != null) {
@@ -210,34 +213,38 @@ public class Emulator {
     }
 
     public List<Snapshot> createSystemSnapthot() {
-        var version = 1;
-        var systemSnapShot = new ArrayList<Snapshot>();
-        systemSnapShot.add(cpu.createSnapshot(version));
-        systemSnapShot.add(ppu.getVideoRam().createSnapshot(version));
-        systemSnapShot.add(ppu.getOam().createSnapshot(version));
+        synchronized (stateLock) {
+            var version = 1;
+            var systemSnapShot = new ArrayList<Snapshot>();
+            systemSnapShot.add(cpu.createSnapshot(version));
+            systemSnapShot.add(ppu.getVideoRam().createSnapshot(version));
+            systemSnapShot.add(ppu.getOam().createSnapshot(version));
 
-        systemSnapShot.addAll(bus.getMemorySpaces().stream()
-                .filter(m -> m instanceof Snapshottable)
-                .map(m -> ((Snapshottable)m).createSnapshot(version)).toList());
-        return systemSnapShot;
+            systemSnapShot.addAll(bus.getMemorySpaces().stream()
+                    .filter(m -> m instanceof Snapshottable)
+                    .map(m -> ((Snapshottable)m).createSnapshot(version)).toList());
+            return systemSnapShot;
+        }
     }
 
     public SaveStateFile createSaveStateFile() {
-        return new SaveStateFile(
-                SaveStateFile.CURRENT_FORMAT_VERSION,
-                new SaveStateMetadata(
-                        Instant.now(),
-                        cart.getHeader().getTitle(),
-                        romFile == null ? "" : romFile.getAbsolutePath(),
-                        cart.getHeader().getCartridgeType().name(),
-                        frameNumber,
-                        cpu.getPc(),
-                        ppu.copyFrameBufferArgb(),
-                        160,
-                        144
-                ),
-                createSystemSnapthot()
-        );
+        synchronized (stateLock) {
+            return new SaveStateFile(
+                    SaveStateFile.CURRENT_FORMAT_VERSION,
+                    new SaveStateMetadata(
+                            Instant.now(),
+                            cart.getHeader().getTitle(),
+                            romFile == null ? "" : romFile.getAbsolutePath(),
+                            cart.getHeader().getCartridgeType().name(),
+                            frameNumber,
+                            cpu.getPc(),
+                            ppu.copyFrameBufferArgb(),
+                            160,
+                            144
+                    ),
+                    createSystemSnapthot()
+            );
+        }
     }
 
     public void restoreSaveStateFile(SaveStateFile saveStateFile) throws Exception {
@@ -246,21 +253,23 @@ public class Emulator {
 
     public void restoreSystemSnapshot(List<Snapshot> systemSnapShot) throws Exception {
         pause();
-        for (Snapshot snapshot: systemSnapShot) {
-            switch (snapshot.className()){
-                case ("dev.vitorsilverio.gbcemu.cpu.Cpu"):
-                case ("Cpu"):
-                    cpu.restoreSnapshot(snapshot);
-                    break;
-                case ("dev.vitorsilverio.gbcemu.ppu.VideoRam"):
-                case ("VideoRam"):
-                    ppu.getVideoRam().restoreSnapshot(snapshot);
-                    break;
-                case ("dev.vitorsilverio.gbcemu.ppu.OamRAM"):
-                case ("OamRAM"):
-                    ppu.getOam().restoreSnapshot(snapshot);
-                    break;
-                default: restoreMemorySpaceSnapshot(snapshot);
+        synchronized (stateLock) {
+            for (Snapshot snapshot: systemSnapShot) {
+                switch (snapshot.className()){
+                    case ("dev.vitorsilverio.gbcemu.cpu.Cpu"):
+                    case ("Cpu"):
+                        cpu.restoreSnapshot(snapshot);
+                        break;
+                    case ("dev.vitorsilverio.gbcemu.ppu.VideoRam"):
+                    case ("VideoRam"):
+                        ppu.getVideoRam().restoreSnapshot(snapshot);
+                        break;
+                    case ("dev.vitorsilverio.gbcemu.ppu.OamRAM"):
+                    case ("OamRAM"):
+                        ppu.getOam().restoreSnapshot(snapshot);
+                        break;
+                    default: restoreMemorySpaceSnapshot(snapshot);
+                }
             }
         }
         resume();

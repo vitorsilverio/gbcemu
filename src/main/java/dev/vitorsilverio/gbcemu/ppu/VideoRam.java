@@ -2,9 +2,11 @@ package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Savable;
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -87,6 +89,78 @@ public class VideoRam implements MemorySpace, Snapshottable {
     public TileMap getTileMap(TileMapArea TileMapArea, int tileIndex) {
         int index = (TileMapArea.getAddress() - 0x9800) & 0xFFFF;
         return tileMaps[index + tileIndex];
+    }
+
+    @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("bank", bank);
+        state.put("tileData", copyTileData());
+        state.put("tileMapIndexes", copyTileMapIndexes());
+        state.put("tileMapAttributes", copyTileMapAttributes());
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        bank = (int) snapshot.state().getOrDefault("bank", 0);
+
+        Object tileData = snapshot.state().get("tileData");
+        if (tileData instanceof byte[][][] data) {
+            restoreTileData(data);
+        }
+
+        Object indexes = snapshot.state().get("tileMapIndexes");
+        Object attributes = snapshot.state().get("tileMapAttributes");
+        if (indexes instanceof byte[] tileMapIndexes && attributes instanceof byte[] tileMapAttributes) {
+            restoreTileMaps(tileMapIndexes, tileMapAttributes);
+        }
+    }
+
+    private byte[][][] copyTileData() {
+        byte[][][] data = new byte[tiles.length][tiles[0].length][16];
+        for (int bankIndex = 0; bankIndex < tiles.length; bankIndex++) {
+            for (int tileIndex = 0; tileIndex < tiles[bankIndex].length; tileIndex++) {
+                for (int byteIndex = 0; byteIndex < 16; byteIndex++) {
+                    data[bankIndex][tileIndex][byteIndex] = tiles[bankIndex][tileIndex].getData(byteIndex);
+                }
+            }
+        }
+        return data;
+    }
+
+    private void restoreTileData(byte[][][] data) {
+        for (int bankIndex = 0; bankIndex < Math.min(data.length, tiles.length); bankIndex++) {
+            for (int tileIndex = 0; tileIndex < Math.min(data[bankIndex].length, tiles[bankIndex].length); tileIndex++) {
+                for (int byteIndex = 0; byteIndex < Math.min(data[bankIndex][tileIndex].length, 16); byteIndex++) {
+                    tiles[bankIndex][tileIndex].setData(byteIndex, data[bankIndex][tileIndex][byteIndex]);
+                }
+            }
+        }
+    }
+
+    private byte[] copyTileMapIndexes() {
+        byte[] indexes = new byte[tileMaps.length];
+        for (int i = 0; i < tileMaps.length; i++) {
+            indexes[i] = (byte) tileMaps[i].getIndex();
+        }
+        return indexes;
+    }
+
+    private byte[] copyTileMapAttributes() {
+        byte[] attributes = new byte[tileMaps.length];
+        for (int i = 0; i < tileMaps.length; i++) {
+            attributes[i] = tileMaps[i].getAttributes();
+        }
+        return attributes;
+    }
+
+    private void restoreTileMaps(byte[] indexes, byte[] attributes) {
+        int length = Math.min(tileMaps.length, Math.min(indexes.length, attributes.length));
+        for (int i = 0; i < length; i++) {
+            tileMaps[i].setIndex(indexes[i]);
+            tileMaps[i].setAttributes(attributes[i]);
+        }
     }
 
     @Override

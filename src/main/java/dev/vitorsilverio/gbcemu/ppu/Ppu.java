@@ -143,6 +143,14 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
     }
 
     private void execVRAMRead() {
+        if (currentColumn >= 160) {
+            currentColumn = 160;
+            mode = PpuMode.HBLANK;
+            cycles = -1;
+            hBlankCycles = Math.max(1, hBlankCycles);
+            return;
+        }
+
         // wait penalty
         if (penaltyDelay > 0) {
             penaltyDelay--;
@@ -517,6 +525,31 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
 
     public boolean isHBlank() {
         return mode == PpuMode.HBLANK;
+    }
+
+    @Override
+    public void restoreSnapshot(Snapshot snapshot) {
+        Snapshottable.super.restoreSnapshot(snapshot);
+        normalizeRestoredState();
+    }
+
+    private void normalizeRestoredState() {
+        currentLine = Math.max(0, Math.min(currentLine, 153));
+        currentColumn = Math.max(0, Math.min(currentColumn, 160));
+        cycles = Math.max(-1, Math.min(cycles, SCANLINE_CYCLES - 1));
+        penaltyDelay = Math.max(0, penaltyDelay);
+        hBlankCycles = Math.max(1, hBlankCycles);
+
+        if (currentLine >= 144) {
+            mode = PpuMode.VBLANK;
+            currentColumn = 160;
+            return;
+        }
+
+        if (mode == PpuMode.VRAM_READ && currentColumn >= 160) {
+            mode = PpuMode.HBLANK;
+            currentColumn = 160;
+        }
     }
 
     public DebugSnapshot debugSnapshot() {
