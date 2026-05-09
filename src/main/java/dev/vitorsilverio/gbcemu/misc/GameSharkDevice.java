@@ -34,7 +34,6 @@ public class GameSharkDevice implements MemorySpace {
         return String.join("\n", cheats.values().stream().map(Cheat::toString).toList());
     }
 
-
     @Override
     public boolean contains(int address) {
         return cheats.containsKey(address) && cheats.get(address).active();
