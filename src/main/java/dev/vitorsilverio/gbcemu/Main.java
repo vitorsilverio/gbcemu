@@ -3,6 +3,8 @@ package dev.vitorsilverio.gbcemu;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateStore;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.util.Arrays;
 import java.util.prefs.Preferences;
@@ -208,6 +210,7 @@ public class Main {
     private static File chooseRomFile() {
         JFileChooser chooser = new JFileChooser(currentDirectory());
         chooser.setDialogTitle("Open ROM");
+        chooser.setFileFilter(new FileNameExtensionFilter("Games", "gb", "gbc"));
         if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
             return null;
         }
