@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-public class TileMap {
+import java.io.Serializable;
+
+public class TileMap implements Serializable {
     private byte index;
 
     private boolean priority;

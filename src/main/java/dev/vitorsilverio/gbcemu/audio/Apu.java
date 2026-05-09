@@ -15,7 +15,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
-public class Apu implements MemorySpace, MachineCycle, Snapshottable {
+public class Apu implements MemorySpace, MachineCycle {
 
     private static final Logger logger = LoggerFactory.getLogger(Apu.class);
 
@@ -377,7 +377,7 @@ public class Apu implements MemorySpace, MachineCycle, Snapshottable {
         void write(byte[] buffer, int length);
     }
 
-    private static class SourceDataLineSink implements AudioSink {
+    private static class SourceDataLineSink implements AudioSink, Serializable {
         private final SourceDataLine line;
         private static final int BUFFER_SIZE = 65536;
         private static final int PREBUFFER_BYTES = 4096;

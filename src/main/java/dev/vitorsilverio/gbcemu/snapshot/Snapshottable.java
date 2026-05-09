@@ -6,12 +6,16 @@ import java.util.*;
 
 public interface Snapshottable {
 
+
+
     default Snapshot createSnapshot(int version) {
+        System.out.println(this.getClass().getName());
         Map<String, Object> state = new HashMap<>();
         for (Field field : this.getClass().getDeclaredFields()) {
             if (field.isAnnotationPresent(Savable.class)) {
                 Savable ann = field.getAnnotation(Savable.class);
                 if (version >= ann.sinceVersion()) {
+                    System.out.println(field.getType().getName()+" "+field.getName());
                     field.setAccessible(true);
                     try {
                         Object value = field.get(this);
@@ -22,6 +26,7 @@ public interface Snapshottable {
                 }
             }
         }
+        System.out.println();
         return new Snapshot(this.getClass().getSimpleName(), version, state);
     }
 

@@ -1,9 +1,12 @@
 package dev.vitorsilverio.gbcemu;
 
+import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import java.io.File;
+import java.io.*;
 import java.util.Arrays;
+import java.util.List;
 import java.util.prefs.Preferences;
 
 public class Main {
@@ -72,9 +75,36 @@ public class Main {
                 Main::openDebugger,
                 Main::pauseEmulator,
                 Main::resumeEmulator,
-                Main::stopEmulator
+                Main::stopEmulator,
+                Main::saveSnapshot,
+                Main::restoreSnapshot
         );
     }
+
+    private static void restoreSnapshot() {
+        if (activeEmulator != null) {
+            try (var fileReader = new FileInputStream(new File("savestate.sa1")); var objectStream = new ObjectInputStream(fileReader)){
+                var snapshot = (List<Snapshot>)objectStream.readObject();
+                activeEmulator.restoreSystemSnapshot(snapshot);
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    private static void saveSnapshot() {
+        if (activeEmulator != null) {
+            var snapshot = activeEmulator.createSystemSnapthot();
+            try (var fileWriter = new FileOutputStream(new File("savestate.sa1")); var objectStream = new ObjectOutputStream(fileWriter)) {
+                objectStream.writeObject(snapshot);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
 
     private static void openRomFromMenu() {
         File romFile = chooseRomFile();

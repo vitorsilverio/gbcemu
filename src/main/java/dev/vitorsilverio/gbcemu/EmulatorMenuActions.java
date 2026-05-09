@@ -6,6 +6,8 @@ public record EmulatorMenuActions(
         Runnable openDebugger,
         Runnable pause,
         Runnable resume,
-        Runnable stop
+        Runnable stop,
+        Runnable saveSnapshoot,
+        Runnable restoreSnapshot
 ) {
 }

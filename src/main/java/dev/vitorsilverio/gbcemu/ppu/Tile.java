@@ -4,9 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.image.BufferedImage;
+import java.io.Serializable;
 import java.util.Map;
 
-public class Tile extends BufferedImage {
+public class Tile extends BufferedImage implements Serializable {
 
     private static final Logger logger = LoggerFactory.getLogger(Tile.class);
 
