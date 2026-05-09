@@ -416,46 +416,9 @@ public class Cpu implements MachineCycle, Stateful<CpuState> {
         writeWord(sp, value);
     }
 
-    public CpuSnapshot snapshot() {
-        return new CpuSnapshot(
-                pc, sp,
-                a & 0xFF, b & 0xFF, c & 0xFF, d & 0xFF, e & 0xFF, h & 0xFF, l & 0xFF,
-                getAf(), getBc(), getDe(), getHl(),
-                zeroFlag, negativeFlag, halfCarryFlag, carryFlag,
-                halted, stopped, ime, imeEnableDelay, haltBug, speedRate
-        );
-    }
-
     @Override
     public String toString() {
         return String.format("PC: %04X SP: %04X AF: %04X BC: %04X DE: %04X HL: %04X",
                 pc, sp, getAf(), getBc(), getDe(), getHl());
-    }
-
-    public record CpuSnapshot(
-            int pc,
-            int sp,
-            int a,
-            int b,
-            int c,
-            int d,
-            int e,
-            int h,
-            int l,
-            int af,
-            int bc,
-            int de,
-            int hl,
-            boolean zeroFlag,
-            boolean negativeFlag,
-            boolean halfCarryFlag,
-            boolean carryFlag,
-            boolean halted,
-            boolean stopped,
-            boolean ime,
-            int imeEnableDelay,
-            boolean haltBug,
-            int speedRate
-    ) {
     }
 }

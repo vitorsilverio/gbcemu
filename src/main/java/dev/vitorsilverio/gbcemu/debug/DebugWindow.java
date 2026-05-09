@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.debug;
 
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
+import dev.vitorsilverio.gbcemu.cpu.CpuState;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.ppu.TileMapArea;
@@ -277,30 +278,30 @@ public class DebugWindow {
     }
 
     private void refreshStateFields() {
-        Cpu.CpuSnapshot cpuSnapshot = cpu.snapshot();
+        CpuState cpuState = cpu.saveState();
         Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
-        setState("PC", "%04X", cpuSnapshot.pc());
-        setState("SP", "%04X", cpuSnapshot.sp());
-        setState("AF", "%04X", cpuSnapshot.af());
-        setState("BC", "%04X", cpuSnapshot.bc());
-        setState("DE", "%04X", cpuSnapshot.de());
-        setState("HL", "%04X", cpuSnapshot.hl());
-        setState("A", "%02X", cpuSnapshot.a());
-        setState("B", "%02X", cpuSnapshot.b());
-        setState("C", "%02X", cpuSnapshot.c());
-        setState("D", "%02X", cpuSnapshot.d());
-        setState("E", "%02X", cpuSnapshot.e());
-        setState("H", "%02X", cpuSnapshot.h());
-        setState("L", "%02X", cpuSnapshot.l());
+        setState("PC", "%04X", cpuState.pc());
+        setState("SP", "%04X", cpuState.sp());
+        setState("AF", "%04X", cpuState.af());
+        setState("BC", "%04X", cpuState.bc());
+        setState("DE", "%04X", cpuState.de());
+        setState("HL", "%04X", cpuState.hl());
+        setState("A", "%02X", cpuState.aUnsigned());
+        setState("B", "%02X", cpuState.bUnsigned());
+        setState("C", "%02X", cpuState.cUnsigned());
+        setState("D", "%02X", cpuState.dUnsigned());
+        setState("E", "%02X", cpuState.eUnsigned());
+        setState("H", "%02X", cpuState.hUnsigned());
+        setState("L", "%02X", cpuState.lUnsigned());
         setState("Flags", "%s%s%s%s",
-                cpuSnapshot.zeroFlag() ? "Z" : "-",
-                cpuSnapshot.negativeFlag() ? "N" : "-",
-                cpuSnapshot.halfCarryFlag() ? "H" : "-",
-                cpuSnapshot.carryFlag() ? "C" : "-");
-        setState("IME", "%s", cpuSnapshot.ime());
-        setState("Halted", "%s", cpuSnapshot.halted());
-        setState("Stopped", "%s", cpuSnapshot.stopped());
-        setState("Speed", "%dx", cpuSnapshot.speedRate());
+                cpuState.zeroFlag() ? "Z" : "-",
+                cpuState.negativeFlag() ? "N" : "-",
+                cpuState.halfCarryFlag() ? "H" : "-",
+                cpuState.carryFlag() ? "C" : "-");
+        setState("IME", "%s", cpuState.ime());
+        setState("Halted", "%s", cpuState.halted());
+        setState("Stopped", "%s", cpuState.stopped());
+        setState("Speed", "%dx", cpuState.speedRate());
         stateFields.get("Break").setText(debugController.breakReason());
         setState("LCDC", "%02X", ppuSnapshot.lcdc());
         setState("STAT", "%02X", ppuSnapshot.stat());
@@ -320,7 +321,7 @@ public class DebugWindow {
     }
 
     private String cpuSnapshotText() {
-        Cpu.CpuSnapshot cpuSnapshot = cpu.snapshot();
+        CpuState cpuState = cpu.saveState();
         Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
         return String.format("""
                         CPU
@@ -332,10 +333,10 @@ public class DebugWindow {
                         PPU
                         LCDC:%02X STAT:%02X mode:%s LY:%02X LX:%03d cycles:%03d SCX:%02X SCY:%02X WX:%02X WY:%02X LYC:%02X CGB:%s
                         """,
-                cpuSnapshot.pc(), cpuSnapshot.sp(), cpuSnapshot.af(), cpuSnapshot.bc(), cpuSnapshot.de(), cpuSnapshot.hl(),
-                cpuSnapshot.a(), cpuSnapshot.b(), cpuSnapshot.c(), cpuSnapshot.d(), cpuSnapshot.e(), cpuSnapshot.h(), cpuSnapshot.l(),
-                cpuSnapshot.zeroFlag(), cpuSnapshot.negativeFlag(), cpuSnapshot.halfCarryFlag(), cpuSnapshot.carryFlag(),
-                cpuSnapshot.ime(), cpuSnapshot.halted(), cpuSnapshot.stopped(), cpuSnapshot.haltBug(), cpuSnapshot.speedRate(),
+                cpuState.pc(), cpuState.sp(), cpuState.af(), cpuState.bc(), cpuState.de(), cpuState.hl(),
+                cpuState.aUnsigned(), cpuState.bUnsigned(), cpuState.cUnsigned(), cpuState.dUnsigned(), cpuState.eUnsigned(), cpuState.hUnsigned(), cpuState.lUnsigned(),
+                cpuState.zeroFlag(), cpuState.negativeFlag(), cpuState.halfCarryFlag(), cpuState.carryFlag(),
+                cpuState.ime(), cpuState.halted(), cpuState.stopped(), cpuState.haltBug(), cpuState.speedRate(),
                 debugController.breakReason(),
                 ppuSnapshot.lcdc(), ppuSnapshot.stat(), ppuSnapshot.mode(), ppuSnapshot.line(), ppuSnapshot.column(),
                 ppuSnapshot.cycles(), ppuSnapshot.scrollX(), ppuSnapshot.scrollY(), ppuSnapshot.windowX(), ppuSnapshot.windowY(),
