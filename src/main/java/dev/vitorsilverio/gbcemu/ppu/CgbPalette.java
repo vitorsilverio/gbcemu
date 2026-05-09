@@ -78,4 +78,13 @@ public class CgbPalette implements Serializable {
         return paletteData[currentAddress];
     }
 
+    public byte[] copyData() {
+        return paletteData.clone();
+    }
+
+    public void restoreData(byte[] data, byte index) {
+        System.arraycopy(data, 0, paletteData, 0, Math.min(data.length, paletteData.length));
+        setPaletteIndex(index);
+    }
+
 }

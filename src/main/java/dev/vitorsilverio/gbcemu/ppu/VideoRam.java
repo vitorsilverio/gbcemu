@@ -1,7 +1,6 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 
@@ -14,9 +13,9 @@ public class VideoRam implements MemorySpace, Snapshottable {
 
     private static final int VBK = 0xFF4F;
 
-    @Savable private final Tile[][] tiles = new Tile[2][384];
-    @Savable private final TileMap[] tileMaps = new TileMap[256 * 256];
-    @Savable private int bank = 0;
+    private final Tile[][] tiles = new Tile[2][384];
+    private final TileMap[] tileMaps = new TileMap[256 * 256];
+    private int bank = 0;
 
     public VideoRam() {
         for (int i = 0; i < tiles.length; i++) {

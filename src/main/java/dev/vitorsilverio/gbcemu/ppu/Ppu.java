@@ -4,7 +4,6 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
-import dev.vitorsilverio.gbcemu.snapshot.Savable;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshot;
 import dev.vitorsilverio.gbcemu.snapshot.Snapshottable;
 import org.slf4j.Logger;
@@ -13,7 +12,9 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
 
@@ -49,36 +50,36 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
             BGPI, BGPD, OBPI, OBPD, OPRI
     );
 
-    @Savable private PpuControl control = new PpuControl();
+    private final PpuControl control = new PpuControl();
     private final VideoRam videoRam = new VideoRam();
     private final OamRAM oam = new OamRAM();
     private final Bus bus;
-    @Savable private CgbPalette bgPalette = new CgbPalette();
-    @Savable private CgbPalette objPalette = new CgbPalette();
-    @Savable private DmgPalette bgPaletteDmg = new DmgPalette();
-    @Savable private DmgPalette obj0PaletteDmg = new DmgPalette();
-    @Savable private DmgPalette obj1PaletteDmg = new DmgPalette();
+    private final CgbPalette bgPalette = new CgbPalette();
+    private final CgbPalette objPalette = new CgbPalette();
+    private final DmgPalette bgPaletteDmg = new DmgPalette();
+    private final DmgPalette obj0PaletteDmg = new DmgPalette();
+    private final DmgPalette obj1PaletteDmg = new DmgPalette();
     private final Stat stat = new Stat();
-    @Savable private final int[][] frameBuffer; // 160x144 pixels
-    @Savable private final int[][] bgColorIndexes; // 160x144 pixels
-    @Savable private final boolean[][] bgPriorities; // 160x144 pixels
-    @Savable private boolean cgbMode;
+    private final int[][] frameBuffer; // 160x144 pixels
+    private final int[][] bgColorIndexes; // 160x144 pixels
+    private final boolean[][] bgPriorities; // 160x144 pixels
+    private boolean cgbMode;
 
-    @Savable private int cycles;
-    @Savable private PpuMode mode = PpuMode.OAM_READ;
-    @Savable private int currentLine;
-    @Savable private int currentColumn;
-    @Savable private int scrollX;
-    @Savable private int scrollY;
-    @Savable private int penaltyDelay = 0;
-    @Savable private int hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
-    @Savable private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.CGB;
-    @Savable private byte lineCompare = 0;
-    @Savable private int windowX;
-    @Savable private int windowY;
+    private int cycles;
+    private PpuMode mode = PpuMode.OAM_READ;
+    private int currentLine;
+    private int currentColumn;
+    private int scrollX;
+    private int scrollY;
+    private int penaltyDelay = 0;
+    private int hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
+    private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.CGB;
+    private byte lineCompare = 0;
+    private int windowX;
+    private int windowY;
 
-    @Savable private boolean previousStatSignal;
-    @Savable private volatile boolean frameReady;
+    private boolean previousStatSignal;
+    private volatile boolean frameReady;
 
 
 
@@ -528,9 +529,108 @@ public class Ppu implements MemorySpace, MachineCycle, Snapshottable {
     }
 
     @Override
+    public Snapshot createSnapshot(int version) {
+        Map<String, Object> state = new HashMap<>();
+        state.put("control", control.getData());
+        state.put("stat", stat.getData());
+        state.put("bgPalette", bgPalette.copyData());
+        state.put("bgPaletteIndex", bgPalette.getPaletteIndex());
+        state.put("objPalette", objPalette.copyData());
+        state.put("objPaletteIndex", objPalette.getPaletteIndex());
+        state.put("bgPaletteDmg", bgPaletteDmg.getData());
+        state.put("obj0PaletteDmg", obj0PaletteDmg.getData());
+        state.put("obj1PaletteDmg", obj1PaletteDmg.getData());
+        state.put("frameBuffer", copyIntMatrix(frameBuffer));
+        state.put("bgColorIndexes", copyIntMatrix(bgColorIndexes));
+        state.put("bgPriorities", copyBooleanMatrix(bgPriorities));
+        state.put("cgbMode", cgbMode);
+        state.put("cycles", cycles);
+        state.put("mode", mode.name());
+        state.put("currentLine", currentLine);
+        state.put("currentColumn", currentColumn);
+        state.put("scrollX", scrollX);
+        state.put("scrollY", scrollY);
+        state.put("penaltyDelay", penaltyDelay);
+        state.put("hBlankCycles", hBlankCycles);
+        state.put("objectPriorityMode", objectPriorityMode.name());
+        state.put("lineCompare", lineCompare);
+        state.put("windowX", windowX);
+        state.put("windowY", windowY);
+        state.put("previousStatSignal", previousStatSignal);
+        state.put("frameReady", frameReady);
+        return new Snapshot(getClass().getName(), version, state);
+    }
+
+    @Override
     public void restoreSnapshot(Snapshot snapshot) {
-        Snapshottable.super.restoreSnapshot(snapshot);
+        Map<String, Object> state = snapshot.state();
+        control.setData((byte) state.getOrDefault("control", (byte) 0));
+        stat.setData((byte) state.getOrDefault("stat", (byte) 0));
+        restoreCgbPalette(bgPalette, state, "bgPalette", "bgPaletteIndex");
+        restoreCgbPalette(objPalette, state, "objPalette", "objPaletteIndex");
+        bgPaletteDmg.setData((byte) state.getOrDefault("bgPaletteDmg", (byte) 0));
+        obj0PaletteDmg.setData((byte) state.getOrDefault("obj0PaletteDmg", (byte) 0));
+        obj1PaletteDmg.setData((byte) state.getOrDefault("obj1PaletteDmg", (byte) 0));
+        restoreIntMatrix(state.get("frameBuffer"), frameBuffer);
+        restoreIntMatrix(state.get("bgColorIndexes"), bgColorIndexes);
+        restoreBooleanMatrix(state.get("bgPriorities"), bgPriorities);
+        cgbMode = (boolean) state.getOrDefault("cgbMode", cgbMode);
+        cycles = (int) state.getOrDefault("cycles", 0);
+        mode = PpuMode.valueOf((String) state.getOrDefault("mode", PpuMode.OAM_READ.name()));
+        currentLine = (int) state.getOrDefault("currentLine", 0);
+        currentColumn = (int) state.getOrDefault("currentColumn", 0);
+        scrollX = (int) state.getOrDefault("scrollX", 0);
+        scrollY = (int) state.getOrDefault("scrollY", 0);
+        penaltyDelay = (int) state.getOrDefault("penaltyDelay", 0);
+        hBlankCycles = (int) state.getOrDefault("hBlankCycles", SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES);
+        objectPriorityMode = ObjectPriorityMode.valueOf((String) state.getOrDefault("objectPriorityMode", ObjectPriorityMode.CGB.name()));
+        lineCompare = (byte) state.getOrDefault("lineCompare", (byte) 0);
+        windowX = (int) state.getOrDefault("windowX", 0);
+        windowY = (int) state.getOrDefault("windowY", 0);
+        previousStatSignal = (boolean) state.getOrDefault("previousStatSignal", false);
+        frameReady = (boolean) state.getOrDefault("frameReady", false);
         normalizeRestoredState();
+    }
+
+    private int[][] copyIntMatrix(int[][] source) {
+        int[][] copy = new int[source.length][];
+        for (int i = 0; i < source.length; i++) {
+            copy[i] = source[i].clone();
+        }
+        return copy;
+    }
+
+    private boolean[][] copyBooleanMatrix(boolean[][] source) {
+        boolean[][] copy = new boolean[source.length][];
+        for (int i = 0; i < source.length; i++) {
+            copy[i] = source[i].clone();
+        }
+        return copy;
+    }
+
+    private void restoreIntMatrix(Object source, int[][] destination) {
+        if (!(source instanceof int[][] matrix)) {
+            return;
+        }
+        for (int i = 0; i < Math.min(matrix.length, destination.length); i++) {
+            System.arraycopy(matrix[i], 0, destination[i], 0, Math.min(matrix[i].length, destination[i].length));
+        }
+    }
+
+    private void restoreBooleanMatrix(Object source, boolean[][] destination) {
+        if (!(source instanceof boolean[][] matrix)) {
+            return;
+        }
+        for (int i = 0; i < Math.min(matrix.length, destination.length); i++) {
+            System.arraycopy(matrix[i], 0, destination[i], 0, Math.min(matrix[i].length, destination[i].length));
+        }
+    }
+
+    private void restoreCgbPalette(CgbPalette palette, Map<String, Object> state, String dataKey, String indexKey) {
+        Object data = state.get(dataKey);
+        if (data instanceof byte[] bytes) {
+            palette.restoreData(bytes, (byte) state.getOrDefault(indexKey, (byte) 0));
+        }
     }
 
     private void normalizeRestoredState() {
