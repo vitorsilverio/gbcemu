@@ -10,11 +10,10 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
-public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState> {
+public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuContext {
 
     private static final Logger logger = LoggerFactory.getLogger(Apu.class);
 
@@ -28,29 +27,29 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState> {
     private static final int PCM12_CGB_DIGITAL_OUTPUT = 0xFF76;
     private static final int PCM34_CGB_DIGITAL_OUTPUT = 0xFF77;
 
-    private static final int NR10_CHANNEL_1_SWEEP = 0xFF10;
-    private static final int NR11_CHANNEL_1_DUTY = 0xFF11;
-    private static final int NR12_CHANNEL_1_VOLUME = 0xFF12;
-    private static final int NR13_CHANNEL_1_FREQUENCY_LO = 0xFF13;
-    private static final int NR14_CHANNEL_1_FREQUENCY_HI = 0xFF14;
+    static final int NR10_CHANNEL_1_SWEEP = 0xFF10;
+    static final int NR11_CHANNEL_1_DUTY = 0xFF11;
+    static final int NR12_CHANNEL_1_VOLUME = 0xFF12;
+    static final int NR13_CHANNEL_1_FREQUENCY_LO = 0xFF13;
+    static final int NR14_CHANNEL_1_FREQUENCY_HI = 0xFF14;
 
     private static final int NR20_UNUSED = 0xFF15;
-    private static final int NR21_CHANNEL_2_DUTY = 0xFF16;
-    private static final int NR22_CHANNEL_2_VOLUME = 0xFF17;
-    private static final int NR23_CHANNEL_2_FREQUENCY_LO = 0xFF18;
-    private static final int NR24_CHANNEL_2_FREQUENCY_HI = 0xFF19;
+    static final int NR21_CHANNEL_2_DUTY = 0xFF16;
+    static final int NR22_CHANNEL_2_VOLUME = 0xFF17;
+    static final int NR23_CHANNEL_2_FREQUENCY_LO = 0xFF18;
+    static final int NR24_CHANNEL_2_FREQUENCY_HI = 0xFF19;
 
-    private static final int NR30_CHANNEL_3_ON_OFF = 0xFF1A;
+    static final int NR30_CHANNEL_3_ON_OFF = 0xFF1A;
     private static final int NR31_CHANNEL_3_LENGTH = 0xFF1B;
-    private static final int NR32_CHANNEL_3_VOLUME = 0xFF1C;
-    private static final int NR33_CHANNEL_3_FREQUENCY_LO = 0xFF1D;
-    private static final int NR34_CHANNEL_3_FREQUENCY_HI = 0xFF1E;
+    static final int NR32_CHANNEL_3_VOLUME = 0xFF1C;
+    static final int NR33_CHANNEL_3_FREQUENCY_LO = 0xFF1D;
+    static final int NR34_CHANNEL_3_FREQUENCY_HI = 0xFF1E;
 
     private static final int NR40_UNUSED = 0xFF1F;
     private static final int NR41_CHANNEL_4_LENGTH = 0xFF20;
-    private static final int NR42_CHANNEL_4_VOLUME = 0xFF21;
-    private static final int NR43_CHANNEL_4_FREQUENCY = 0xFF22;
-    private static final int NR44_CHANNEL_4_CONTROL = 0xFF23;
+    static final int NR42_CHANNEL_4_VOLUME = 0xFF21;
+    static final int NR43_CHANNEL_4_FREQUENCY = 0xFF22;
+    static final int NR44_CHANNEL_4_CONTROL = 0xFF23;
 
     private static final List<Integer> REGISTERS = List.of(
             NR50_MASTER_VOLUME,
@@ -91,10 +90,10 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState> {
     private int previousRightSample;
     private boolean audioEnabled = true;
 
-    private final PulseChannel channel1 = new PulseChannel(0);
-    private final PulseChannel channel2 = new PulseChannel(1);
-    private final WaveChannel channel3 = new WaveChannel();
-    private final NoiseChannel channel4 = new NoiseChannel();
+    private final PulseChannel channel1 = new PulseChannel(this, 0);
+    private final PulseChannel channel2 = new PulseChannel(this, 1);
+    private final WaveChannel channel3 = new WaveChannel(this);
+    private final NoiseChannel channel4 = new NoiseChannel(this);
 
     public Apu() {
         this(createDefaultSink());
@@ -385,11 +384,32 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState> {
         }
     }
 
-    private int period(int lowAddress, int highAddress) {
+    @Override
+    public byte register(int address) {
+        return registers[index(address)];
+    }
+
+    @Override
+    public void setRegister(int address, byte value) {
+        registers[index(address)] = value;
+    }
+
+    @Override
+    public byte wavePatternRam(int offset) {
+        return wavePatternRam[offset & 0x0F];
+    }
+
+    @Override
+    public int frameSequencerStep() {
+        return frameSequencerStep;
+    }
+
+    @Override
+    public int period(int lowAddress, int highAddress) {
         return (registers[index(lowAddress)] & 0xFF) | ((registers[index(highAddress)] & 0x07) << 8);
     }
 
-    private static int index(int address) {
+    static int index(int address) {
         return address - 0xFF10;
     }
 
@@ -407,558 +427,4 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState> {
         }
     }
 
-    interface AudioSink {
-        void write(byte[] buffer, int length);
-    }
-
-    private static class SourceDataLineSink implements AudioSink, Serializable {
-        private final SourceDataLine line;
-        private static final int BUFFER_SIZE = 65536;
-        private static final int PREBUFFER_BYTES = 4096;
-        private static final int WRITE_CHUNK_SIZE = 512;
-
-        private final byte[] buffer = new byte[BUFFER_SIZE];
-        private int readPosition;
-        private int writePosition;
-        private int size;
-        private boolean primed;
-
-        private SourceDataLineSink(SourceDataLine line) {
-            this.line = line;
-            Thread thread = new Thread(this::run, "gbcemu-audio");
-            thread.setDaemon(true);
-            thread.start();
-        }
-
-        @Override
-        public synchronized void write(byte[] source, int length) {
-            int written = 0;
-            while (written < length) {
-                while (size == BUFFER_SIZE) {
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-
-                int writable = Math.min(length - written, BUFFER_SIZE - size);
-                for (int i = 0; i < writable; i++) {
-                    buffer[writePosition] = source[written + i];
-                    writePosition = (writePosition + 1) % BUFFER_SIZE;
-                }
-                size += writable;
-                written += writable;
-                notifyAll();
-            }
-        }
-
-        private synchronized int read(byte[] destination) throws InterruptedException {
-            while (!primed && size < PREBUFFER_BYTES) {
-                wait();
-            }
-            primed = true;
-
-            int length = Math.min(destination.length, Math.min(size, line.available()));
-            if (length <= 0) {
-                if (size == 0) {
-                    primed = false;
-                }
-                return 0;
-            }
-
-            for (int i = 0; i < length; i++) {
-                destination[i] = buffer[readPosition];
-                readPosition = (readPosition + 1) % BUFFER_SIZE;
-            }
-            size -= length;
-            notifyAll();
-            return length;
-        }
-
-        private void run() {
-            byte[] chunk = new byte[WRITE_CHUNK_SIZE];
-            while (true) {
-                try {
-                    int length = read(chunk);
-                    if (length > 0) {
-                        line.write(chunk, 0, length);
-                    } else {
-                        Thread.sleep(1);
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
-        }
-    }
-
-    private abstract class SoundChannel {
-        protected boolean enabled;
-        protected int lengthTimer;
-        protected int currentVolume;
-        protected int envelopeTimer;
-        protected int timer;
-
-        protected SoundChannelState saveCommonState() {
-            return new SoundChannelState(enabled, lengthTimer, currentVolume, envelopeTimer, timer);
-        }
-
-        protected void loadCommonState(SoundChannelState state) {
-            enabled = state.enabled();
-            lengthTimer = state.lengthTimer();
-            currentVolume = state.currentVolume();
-            envelopeTimer = state.envelopeTimer();
-            timer = state.timer();
-        }
-
-        protected void setEnvelope(byte value) {
-            if ((value & 0xF8) == 0) {
-                enabled = false;
-            }
-        }
-
-        protected void triggerEnvelope(int envelopeRegisterAddress) {
-            currentVolume = (registers[index(envelopeRegisterAddress)] >> 4) & 0x0F;
-            envelopeTimer = registers[index(envelopeRegisterAddress)] & 0x07;
-        }
-
-        protected void tickEnvelope(int envelopeRegisterAddress) {
-            int envelope = registers[index(envelopeRegisterAddress)] & 0xFF;
-            int pace = envelope & 0x07;
-            if (!enabled || pace == 0) {
-                return;
-            }
-            envelopeTimer--;
-            if (envelopeTimer > 0) {
-                return;
-            }
-            envelopeTimer = pace;
-            if ((envelope & 0x08) != 0 && currentVolume < 15) {
-                currentVolume++;
-            } else if ((envelope & 0x08) == 0 && currentVolume > 0) {
-                currentVolume--;
-            }
-        }
-
-        protected void tickLength(int controlRegisterAddress) {
-            if ((registers[index(controlRegisterAddress)] & 0x40) == 0 || lengthTimer <= 0) {
-                return;
-            }
-            lengthTimer--;
-            if (lengthTimer == 0) {
-                enabled = false;
-            }
-        }
-
-        protected void clockLengthOnEnable(byte oldValue, byte newValue) {
-            boolean oldEnabled = (oldValue & 0x40) != 0;
-            boolean newEnabled = (newValue & 0x40) != 0;
-            if (!oldEnabled && newEnabled && shouldClockLengthOnEnable() && lengthTimer > 0) {
-                lengthTimer--;
-                if (lengthTimer == 0) {
-                    enabled = false;
-                }
-            }
-        }
-
-        private boolean shouldClockLengthOnEnable() {
-            return (frameSequencerStep & 1) == 0;
-        }
-
-        protected void clockLengthAfterTriggerIfNeeded(int controlRegisterAddress) {
-            if ((registers[index(controlRegisterAddress)] & 0x40) != 0 && shouldClockLengthOnEnable() && lengthTimer > 0) {
-                lengthTimer--;
-                if (lengthTimer == 0) {
-                    enabled = false;
-                }
-            }
-        }
-
-        protected void disable() {
-            enabled = false;
-            timer = 0;
-            lengthTimer = 0;
-            currentVolume = 0;
-            envelopeTimer = 0;
-        }
-
-        abstract void tick();
-
-        abstract int output();
-
-        abstract int digitalOutput();
-    }
-
-    private class PulseChannel extends SoundChannel implements Serializable {
-        private final int channel;
-        private int period;
-        private int dutyStep;
-        private int sweepShadowPeriod;
-        private int sweepTimer;
-        private boolean sweepEnabled;
-        private boolean sweepNegateUsed;
-
-        private final int[][] dutyPatterns = {
-                {0, 0, 0, 0, 0, 0, 0, 1},
-                {1, 0, 0, 0, 0, 0, 0, 1},
-                {1, 0, 0, 0, 0, 1, 1, 1},
-                {0, 1, 1, 1, 1, 1, 1, 0}
-        };
-
-        private PulseChannel(int channel) {
-            this.channel = channel;
-        }
-
-        private PulseChannelState saveState() {
-            return new PulseChannelState(
-                    saveCommonState(),
-                    period,
-                    dutyStep,
-                    sweepShadowPeriod,
-                    sweepTimer,
-                    sweepEnabled,
-                    sweepNegateUsed
-            );
-        }
-
-        private void loadState(PulseChannelState state) {
-            loadCommonState(state.common());
-            period = state.period();
-            dutyStep = state.dutyStep() & 0x07;
-            sweepShadowPeriod = state.sweepShadowPeriod();
-            sweepTimer = state.sweepTimer();
-            sweepEnabled = state.sweepEnabled();
-            sweepNegateUsed = state.sweepNegateUsed();
-        }
-
-        private void setLength(int length) {
-            lengthTimer = length == 0 ? 64 : length;
-        }
-
-        private void updatePeriod() {
-            period = channel == 0
-                    ? period(NR13_CHANNEL_1_FREQUENCY_LO, NR14_CHANNEL_1_FREQUENCY_HI)
-                    : period(NR23_CHANNEL_2_FREQUENCY_LO, NR24_CHANNEL_2_FREQUENCY_HI);
-        }
-
-        private void setSweep(byte oldValue, byte newValue) {
-            if (channel != 0) {
-                return;
-            }
-            boolean wasNegate = (oldValue & 0x08) != 0;
-            boolean isNegate = (newValue & 0x08) != 0;
-            if (wasNegate && !isNegate && sweepNegateUsed) {
-                enabled = false;
-            }
-        }
-
-        private void trigger() {
-            int envelopeAddress = channel == 0 ? NR12_CHANNEL_1_VOLUME : NR22_CHANNEL_2_VOLUME;
-            boolean lengthWasZero = lengthTimer == 0;
-            enabled = true;
-            if (lengthWasZero) {
-                lengthTimer = 64;
-            }
-            if (lengthWasZero) {
-                clockLengthAfterTriggerIfNeeded(channel == 0 ? NR14_CHANNEL_1_FREQUENCY_HI : NR24_CHANNEL_2_FREQUENCY_HI);
-            }
-            boolean sweepAllowsChannel = triggerSweep();
-            if ((registers[index(envelopeAddress)] & 0xF8) == 0) {
-                enabled = false;
-                return;
-            }
-            if (!sweepAllowsChannel) {
-                enabled = false;
-                return;
-            }
-            enabled = true;
-            triggerEnvelope(envelopeAddress);
-            timer = pulseTimerPeriod();
-        }
-
-        @Override
-        void tick() {
-            if (!enabled) {
-                return;
-            }
-            timer--;
-            if (timer <= 0) {
-                timer += pulseTimerPeriod();
-                dutyStep = (dutyStep + 1) & 0x07;
-            }
-        }
-
-        @Override
-        int output() {
-            if (!enabled) {
-                return 0;
-            }
-            return digitalOutput() - 8;
-        }
-
-        @Override
-        int digitalOutput() {
-            if (!enabled) {
-                return 0;
-            }
-            int dutyAddress = channel == 0 ? NR11_CHANNEL_1_DUTY : NR21_CHANNEL_2_DUTY;
-            int duty = (registers[index(dutyAddress)] >> 6) & 0x03;
-            return dutyPatterns[duty][dutyStep] == 0 ? 0 : currentVolume;
-        }
-
-        private int pulseTimerPeriod() {
-            return Math.max(4, (2048 - period) * 4);
-        }
-
-        private void tickLength() {
-            tickLength(channel == 0 ? NR14_CHANNEL_1_FREQUENCY_HI : NR24_CHANNEL_2_FREQUENCY_HI);
-        }
-
-        private void tickEnvelope() {
-            tickEnvelope(channel == 0 ? NR12_CHANNEL_1_VOLUME : NR22_CHANNEL_2_VOLUME);
-        }
-
-        private boolean triggerSweep() {
-            if (channel != 0) {
-                return true;
-            }
-            sweepShadowPeriod = period;
-            sweepTimer = sweepPace();
-            if (sweepTimer == 0) {
-                sweepTimer = 8;
-            }
-            sweepEnabled = sweepPace() != 0 || sweepStep() != 0;
-            sweepNegateUsed = false;
-            if (sweepStep() == 0) {
-                return true;
-            }
-            return calculateSweepPeriod() <= 0x7FF;
-        }
-
-        private void tickSweep() {
-            if (channel != 0 || !sweepEnabled) {
-                return;
-            }
-            sweepTimer--;
-            if (sweepTimer > 0) {
-                return;
-            }
-            sweepTimer = sweepPace();
-            if (sweepTimer == 0) {
-                sweepTimer = 8;
-            }
-            if (sweepPace() == 0) {
-                return;
-            }
-
-            int calculatedPeriod = calculateSweepPeriod();
-            if (calculatedPeriod > 0x7FF) {
-                enabled = false;
-                return;
-            }
-            if (sweepStep() == 0) {
-                return;
-            }
-
-            sweepShadowPeriod = calculatedPeriod;
-            period = calculatedPeriod;
-            writeChannel1Period(calculatedPeriod);
-            if (calculateSweepPeriod() > 0x7FF) {
-                enabled = false;
-            }
-        }
-
-        private int calculateSweepPeriod() {
-            int delta = sweepShadowPeriod >> sweepStep();
-            if (sweepNegate()) {
-                sweepNegateUsed = true;
-                return (sweepShadowPeriod - delta) & 0x7FF;
-            }
-            return sweepShadowPeriod + delta;
-        }
-
-        private void writeChannel1Period(int value) {
-            registers[index(NR13_CHANNEL_1_FREQUENCY_LO)] = (byte) value;
-            int high = registers[index(NR14_CHANNEL_1_FREQUENCY_HI)] & 0xF8;
-            registers[index(NR14_CHANNEL_1_FREQUENCY_HI)] = (byte) (high | ((value >> 8) & 0x07));
-        }
-
-        private int sweepPace() {
-            return (registers[index(NR10_CHANNEL_1_SWEEP)] >> 4) & 0x07;
-        }
-
-        private boolean sweepNegate() {
-            return (registers[index(NR10_CHANNEL_1_SWEEP)] & 0x08) != 0;
-        }
-
-        private int sweepStep() {
-            return registers[index(NR10_CHANNEL_1_SWEEP)] & 0x07;
-        }
-    }
-
-    private class WaveChannel extends SoundChannel implements Serializable {
-        private int period;
-        private int sampleIndex;
-
-        private WaveChannelState saveState() {
-            return new WaveChannelState(saveCommonState(), period, sampleIndex);
-        }
-
-        private void loadState(WaveChannelState state) {
-            loadCommonState(state.common());
-            period = state.period();
-            sampleIndex = state.sampleIndex() & 0x1F;
-        }
-
-        private void updatePeriod() {
-            period = period(NR33_CHANNEL_3_FREQUENCY_LO, NR34_CHANNEL_3_FREQUENCY_HI);
-        }
-
-        private void trigger() {
-            boolean lengthWasZero = lengthTimer == 0;
-            enabled = true;
-            if (lengthWasZero) {
-                lengthTimer = 256;
-            }
-            if (lengthWasZero) {
-                clockLengthAfterTriggerIfNeeded(NR34_CHANNEL_3_FREQUENCY_HI);
-            }
-            if ((registers[index(NR30_CHANNEL_3_ON_OFF)] & 0x80) == 0) {
-                enabled = false;
-                return;
-            }
-            enabled = true;
-            timer = waveTimerPeriod();
-            sampleIndex = 0;
-        }
-
-        @Override
-        void tick() {
-            if (!enabled) {
-                return;
-            }
-            timer--;
-            if (timer <= 0) {
-                timer += waveTimerPeriod();
-                sampleIndex = (sampleIndex + 1) & 0x1F;
-            }
-        }
-
-        @Override
-        int output() {
-            if (!enabled) {
-                return 0;
-            }
-            return digitalOutput() - 8;
-        }
-
-        @Override
-        int digitalOutput() {
-            if (!enabled) {
-                return 0;
-            }
-            int packed = wavePatternRam[sampleIndex / 2] & 0xFF;
-            int sample = (sampleIndex & 1) == 0 ? packed >> 4 : packed & 0x0F;
-            int volumeCode = (registers[index(NR32_CHANNEL_3_VOLUME)] >> 5) & 0x03;
-            int shifted = switch (volumeCode) {
-                case 0 -> 0;
-                case 1 -> sample;
-                case 2 -> sample >> 1;
-                case 3 -> sample >> 2;
-                default -> 0;
-            };
-            return shifted;
-        }
-
-        private int waveTimerPeriod() {
-            return Math.max(2, (2048 - period) * 2);
-        }
-
-        private void tickLength() {
-            tickLength(NR34_CHANNEL_3_FREQUENCY_HI);
-        }
-    }
-
-    private class NoiseChannel extends SoundChannel implements Serializable {
-        private int lfsr = 0x7FFF;
-
-        private NoiseChannelState saveState() {
-            return new NoiseChannelState(saveCommonState(), lfsr);
-        }
-
-        private void loadState(NoiseChannelState state) {
-            loadCommonState(state.common());
-            lfsr = state.lfsr() & 0x7FFF;
-        }
-
-        private void trigger() {
-            boolean lengthWasZero = lengthTimer == 0;
-            enabled = true;
-            if (lengthWasZero) {
-                lengthTimer = 64;
-            }
-            if (lengthWasZero) {
-                clockLengthAfterTriggerIfNeeded(NR44_CHANNEL_4_CONTROL);
-            }
-            if ((registers[index(NR42_CHANNEL_4_VOLUME)] & 0xF8) == 0) {
-                enabled = false;
-                return;
-            }
-            enabled = true;
-            lfsr = 0x7FFF;
-            triggerEnvelope(NR42_CHANNEL_4_VOLUME);
-            timer = noiseTimerPeriod();
-        }
-
-        @Override
-        void tick() {
-            if (!enabled) {
-                return;
-            }
-            timer--;
-            if (timer <= 0) {
-                timer += noiseTimerPeriod();
-                int xor = (lfsr & 1) ^ ((lfsr >> 1) & 1);
-                lfsr = (lfsr >> 1) | (xor << 14);
-                if ((registers[index(NR43_CHANNEL_4_FREQUENCY)] & 0x08) != 0) {
-                    lfsr = (lfsr & ~(1 << 6)) | (xor << 6);
-                }
-            }
-        }
-
-        @Override
-        int output() {
-            if (!enabled) {
-                return 0;
-            }
-            return digitalOutput() - 8;
-        }
-
-        @Override
-        int digitalOutput() {
-            if (!enabled) {
-                return 0;
-            }
-            return (lfsr & 1) == 0 ? currentVolume : 0;
-        }
-
-        private int noiseTimerPeriod() {
-            int value = registers[index(NR43_CHANNEL_4_FREQUENCY)] & 0xFF;
-            int divisorCode = value & 0x07;
-            int divisor = divisorCode == 0 ? 8 : divisorCode * 16;
-            int shift = (value >> 4) & 0x0F;
-            return Math.max(8, divisor << shift);
-        }
-
-        private void tickLength() {
-            tickLength(NR44_CHANNEL_4_CONTROL);
-        }
-
-        private void tickEnvelope() {
-            tickEnvelope(NR42_CHANNEL_4_VOLUME);
-        }
-    }
 }
