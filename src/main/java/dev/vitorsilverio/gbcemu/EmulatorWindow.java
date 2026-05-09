@@ -137,13 +137,25 @@ public class EmulatorWindow {
         menuBar.add(emulatorMenu);
 
         JMenu debugMenu = new JMenu("Debug");
-        JMenuItem openDebugger = new JMenuItem("Open debugger");
-        openDebugger.addActionListener(event -> menuActions.openDebugger().run());
-        debugMenu.add(openDebugger);
-
         JMenuItem openAudioDebugger = new JMenuItem("Audio channels...");
         openAudioDebugger.addActionListener(event -> menuActions.audioDebugger().run());
         debugMenu.add(openAudioDebugger);
+
+        JMenuItem openMemoryDebugger = new JMenuItem("Memory...");
+        openMemoryDebugger.addActionListener(event -> menuActions.memoryDebugger().run());
+        debugMenu.add(openMemoryDebugger);
+
+        JMenuItem openPpuDebugger = new JMenuItem("PPU / Tiles...");
+        openPpuDebugger.addActionListener(event -> menuActions.ppuDebugger().run());
+        debugMenu.add(openPpuDebugger);
+
+        JMenuItem openCpuDebugger = new JMenuItem("CPU / Disassembly...");
+        openCpuDebugger.addActionListener(event -> menuActions.cpuDebugger().run());
+        debugMenu.add(openCpuDebugger);
+
+        JMenuItem openCartDebugger = new JMenuItem("Cart / MBC...");
+        openCartDebugger.addActionListener(event -> menuActions.cartDebugger().run());
+        debugMenu.add(openCartDebugger);
         menuBar.add(debugMenu);
 
         JMenu snapshotMenu = new JMenu("Save states");

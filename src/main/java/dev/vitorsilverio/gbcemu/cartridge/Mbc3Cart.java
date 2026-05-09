@@ -116,6 +116,16 @@ public class Mbc3Cart extends Cart {
         rtc.restoreState(state);
     }
 
+    @Override
+    protected void putDebugProperties(Map<String, String> properties) {
+        properties.put("MBC3 ROM register", String.valueOf(romBank));
+        properties.put("MBC3 RAM register", String.valueOf(ramBank));
+        properties.put("RAM/RTC select", String.format("%02X", ramOrRtcSelect));
+        properties.put("Latch value", String.format("%02X", latchValue));
+        properties.put("RAM/Timer enabled", String.valueOf(ramAndTimerEnabled));
+        rtc.putDebugProperties(properties);
+    }
+
     private static class Mbc3Rtc {
         private final LongSupplier currentEpochSeconds;
         private final int[] latched = new int[5];
@@ -245,6 +255,24 @@ public class Mbc3Cart extends Cart {
             days = (int) state.getOrDefault("rtcDays", 0);
             halted = (boolean) state.getOrDefault("rtcHalted", false);
             carry = (boolean) state.getOrDefault("rtcCarry", false);
+        }
+
+        private void putDebugProperties(Map<String, String> properties) {
+            updateLiveRegisters();
+            properties.put("RTC seconds", String.valueOf(seconds));
+            properties.put("RTC minutes", String.valueOf(minutes));
+            properties.put("RTC hours", String.valueOf(hours));
+            properties.put("RTC days", String.valueOf(days));
+            properties.put("RTC halted", String.valueOf(halted));
+            properties.put("RTC carry", String.valueOf(carry));
+            properties.put("RTC latched", String.format(
+                    "%02X %02X %02X %02X %02X",
+                    latched[0],
+                    latched[1],
+                    latched[2],
+                    latched[3],
+                    latched[4]
+            ));
         }
     }
 }

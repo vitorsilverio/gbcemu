@@ -3,7 +3,6 @@ package dev.vitorsilverio.gbcemu;
 public record EmulatorMenuActions(
         Runnable openRom,
         Runnable configureDefaultBios,
-        Runnable openDebugger,
         Runnable pause,
         Runnable resume,
         Runnable stop,
@@ -12,6 +11,10 @@ public record EmulatorMenuActions(
         Runnable rewindSnapshot,
         Runnable manageSnapshots,
         Runnable cheats,
-        Runnable audioDebugger
+        Runnable audioDebugger,
+        Runnable memoryDebugger,
+        Runnable ppuDebugger,
+        Runnable cpuDebugger,
+        Runnable cartDebugger
 ) {
 }

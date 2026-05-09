@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,6 +65,24 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
 
     public CartHeader getHeader() {
         return header;
+    }
+
+    public Map<String, String> debugProperties() {
+        Map<String, String> properties = new LinkedHashMap<>();
+        properties.put("Mapper", getClass().getSimpleName());
+        properties.put("Title", header.getTitle());
+        properties.put("Type", header.getCartridgeType().name());
+        properties.put("CGB compatible", String.valueOf(header.isCgbCompatible()));
+        properties.put("ROM size", String.format("%d bytes", rom.length));
+        properties.put("ROM banks", String.valueOf(romBanks));
+        properties.put("Current ROM bank", String.valueOf(currentRomBank()));
+        properties.put("RAM size", String.format("%d bytes", ram.size()));
+        properties.put("RAM banks", String.valueOf(ram.bankCount()));
+        properties.put("Current RAM bank", String.valueOf(ram.currentBank()));
+        properties.put("Save file", saveFile == null ? "(none)" : saveFile.getAbsolutePath());
+        properties.put("Save dirty", String.valueOf(saveDirty));
+        putDebugProperties(properties);
+        return properties;
     }
 
     protected byte readFixedRom(int address) {
@@ -205,6 +224,9 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
     }
 
     protected void restoreMapperState(Map<String, Object> state) {
+    }
+
+    protected void putDebugProperties(Map<String, String> properties) {
     }
 
     private int defaultRamSize(CartridgeType type) {

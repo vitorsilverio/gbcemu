@@ -68,4 +68,11 @@ public class Mbc1Cart extends Cart {
         ramBank = (int) state.getOrDefault("ramBank", 0);
         ramEnabled = (boolean) state.getOrDefault("ramEnabled", false);
     }
+
+    @Override
+    protected void putDebugProperties(Map<String, String> properties) {
+        properties.put("MBC1 ROM register", String.valueOf(romBank));
+        properties.put("MBC1 RAM register", String.valueOf(ramBank));
+        properties.put("RAM enabled", String.valueOf(ramEnabled));
+    }
 }

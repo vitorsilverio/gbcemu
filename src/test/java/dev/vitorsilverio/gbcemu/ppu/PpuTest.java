@@ -214,6 +214,29 @@ class PpuTest {
     }
 
     @Test
+    void disablingLcdResetsLyAndStopsPpuUntilEnabledAgain() {
+        Ppu ppu = new Ppu(new Bus());
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 456 * 145);
+
+        assertEquals(145, ppu.read(0xFF44) & 0xFF);
+
+        ppu.write(0xFF40, (byte) 0x00);
+
+        assertEquals(0, ppu.read(0xFF44) & 0xFF);
+        assertEquals(0, ppu.read(0xFF41) & 0x03);
+
+        tick(ppu, 456 * 4);
+
+        assertEquals(0, ppu.read(0xFF44) & 0xFF);
+
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 456);
+
+        assertEquals(1, ppu.read(0xFF44) & 0xFF);
+    }
+
+    @Test
     void vblankInterruptIsRequestedOnlyWhenEnteringVblank() {
         Bus bus = new Bus();
         Ppu ppu = new Ppu(bus);

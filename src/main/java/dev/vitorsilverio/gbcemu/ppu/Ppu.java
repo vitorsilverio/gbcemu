@@ -457,7 +457,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
         switch (address) {
             case LCDC:
-                control.setData(value);
+                writeControl(value);
                 return;
             case SCY:
                 scrollY = value & 0xFF;
@@ -502,6 +502,37 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 windowY = value & 0xFF;
                 return;
         }
+    }
+
+    private void writeControl(byte value) {
+        boolean wasEnabled = control.isEnabled();
+        control.setData(value);
+        boolean enabled = control.isEnabled();
+        if (wasEnabled && !enabled) {
+            disableLcd();
+        } else if (!wasEnabled && enabled) {
+            enableLcd();
+        }
+    }
+
+    private void disableLcd() {
+        currentLine = 0;
+        currentColumn = 0;
+        cycles = 0;
+        penaltyDelay = 0;
+        hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
+        mode = PpuMode.HBLANK;
+        previousStatSignal = false;
+    }
+
+    private void enableLcd() {
+        currentLine = 0;
+        currentColumn = 0;
+        cycles = 0;
+        penaltyDelay = 0;
+        hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
+        mode = PpuMode.OAM_READ;
+        previousStatSignal = false;
     }
 
     public BufferedImage getFrameBuffer() {

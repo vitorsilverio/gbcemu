@@ -92,4 +92,14 @@ public class Mbc5Cart extends Cart {
         ramEnabled = (boolean) state.getOrDefault("ramEnabled", false);
         rumbleEnabled = (boolean) state.getOrDefault("rumbleEnabled", false);
     }
+
+    @Override
+    protected void putDebugProperties(Map<String, String> properties) {
+        properties.put("MBC5 ROM low", String.format("%02X", romBankLow));
+        properties.put("MBC5 ROM high", String.valueOf(romBankHigh));
+        properties.put("Selected ROM bank", String.valueOf(selectedRomBank()));
+        properties.put("MBC5 RAM register", String.valueOf(ramBank));
+        properties.put("RAM enabled", String.valueOf(ramEnabled));
+        properties.put("Rumble enabled", String.valueOf(rumbleEnabled));
+    }
 }

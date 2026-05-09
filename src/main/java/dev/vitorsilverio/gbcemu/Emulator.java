@@ -7,8 +7,8 @@ import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
+import dev.vitorsilverio.gbcemu.debug.CpuDebugWindow;
 import dev.vitorsilverio.gbcemu.debug.DebugController;
-import dev.vitorsilverio.gbcemu.debug.DebugWindow;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.*;
@@ -160,16 +160,28 @@ public class Emulator {
         paused = false;
     }
 
-    public void openDebugger() {
-        DebugWindow.open(cpu, cpu.getBus(), ppu, debugController, this::pause, this::resume);
-    }
-
     public void openCheats() {
         new CheatsWindow(gameSharkDevice);
     }
 
     public void openAudioDebugger() {
         new AudioDebugWindow(apu);
+    }
+
+    public void openMemoryDebugger() {
+        new MemoryDebugWindow(bus);
+    }
+
+    public void openPpuDebugger() {
+        new PpuDebugWindow(ppu);
+    }
+
+    public void openCpuDebugger() {
+        new CpuDebugWindow(cpu, bus, ppu, debugController);
+    }
+
+    public void openCartDebugger() {
+        new CartDebugWindow(cart);
     }
 
     private void tickSystemCycle() {

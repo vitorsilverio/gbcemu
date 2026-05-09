@@ -73,7 +73,6 @@ public class Main {
         return new EmulatorMenuActions(
                 Main::openRomFromMenu,
                 Main::configureDefaultBios,
-                Main::openDebugger,
                 Main::pauseEmulator,
                 Main::resumeEmulator,
                 Main::stopEmulator,
@@ -82,7 +81,11 @@ public class Main {
                 Main::rewindSnapshot,
                 Main::openSaveStateDialog,
                 Main::configureCheats,
-                Main::openAudioDebugger
+                Main::openAudioDebugger,
+                Main::openMemoryDebugger,
+                Main::openPpuDebugger,
+                Main::openCpuDebugger,
+                Main::openCartDebugger
         );
     }
 
@@ -95,6 +98,30 @@ public class Main {
     private static void openAudioDebugger() {
         if (activeEmulator != null) {
             activeEmulator.openAudioDebugger();
+        }
+    }
+
+    private static void openMemoryDebugger() {
+        if (activeEmulator != null) {
+            activeEmulator.openMemoryDebugger();
+        }
+    }
+
+    private static void openPpuDebugger() {
+        if (activeEmulator != null) {
+            activeEmulator.openPpuDebugger();
+        }
+    }
+
+    private static void openCpuDebugger() {
+        if (activeEmulator != null) {
+            activeEmulator.openCpuDebugger();
+        }
+    }
+
+    private static void openCartDebugger() {
+        if (activeEmulator != null) {
+            activeEmulator.openCartDebugger();
         }
     }
 
@@ -171,12 +198,6 @@ public class Main {
         }
         Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
         startEmulator(baseOptions.withRomFile(romFile));
-    }
-
-    private static void openDebugger() {
-        if (activeEmulator != null) {
-            activeEmulator.openDebugger();
-        }
     }
 
     private static void pauseEmulator() {
