@@ -9,36 +9,6 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private static final int CPU_CLOCK_HZ = 4_194_304;
     private static final int SAMPLE_RATE = 44_100;
 
-    static final int NR50_MASTER_VOLUME = 0xFF24;
-    static final int NR51_SOUND_PANNING = 0xFF25;
-    static final int NR52_AUDIO_MASTER_CONTROL = 0xFF26;
-    private static final int PCM12_CGB_DIGITAL_OUTPUT = 0xFF76;
-    private static final int PCM34_CGB_DIGITAL_OUTPUT = 0xFF77;
-
-    static final int NR10_CHANNEL_1_SWEEP = 0xFF10;
-    static final int NR11_CHANNEL_1_DUTY = 0xFF11;
-    static final int NR12_CHANNEL_1_VOLUME = 0xFF12;
-    static final int NR13_CHANNEL_1_FREQUENCY_LO = 0xFF13;
-    static final int NR14_CHANNEL_1_FREQUENCY_HI = 0xFF14;
-
-    private static final int NR20_UNUSED = 0xFF15;
-    static final int NR21_CHANNEL_2_DUTY = 0xFF16;
-    static final int NR22_CHANNEL_2_VOLUME = 0xFF17;
-    static final int NR23_CHANNEL_2_FREQUENCY_LO = 0xFF18;
-    static final int NR24_CHANNEL_2_FREQUENCY_HI = 0xFF19;
-
-    static final int NR30_CHANNEL_3_ON_OFF = 0xFF1A;
-    private static final int NR31_CHANNEL_3_LENGTH = 0xFF1B;
-    static final int NR32_CHANNEL_3_VOLUME = 0xFF1C;
-    static final int NR33_CHANNEL_3_FREQUENCY_LO = 0xFF1D;
-    static final int NR34_CHANNEL_3_FREQUENCY_HI = 0xFF1E;
-
-    private static final int NR40_UNUSED = 0xFF1F;
-    private static final int NR41_CHANNEL_4_LENGTH = 0xFF20;
-    static final int NR42_CHANNEL_4_VOLUME = 0xFF21;
-    static final int NR43_CHANNEL_4_FREQUENCY = 0xFF22;
-    static final int NR44_CHANNEL_4_CONTROL = 0xFF23;
-
     private final ApuRegisters registers = new ApuRegisters();
     private final AudioOutput output;
     private final ApuMixer mixer;
@@ -120,45 +90,24 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     @Override
     public boolean contains(int address) {
         return registers.contains(address)
-                || address == PCM12_CGB_DIGITAL_OUTPUT
-                || address == PCM34_CGB_DIGITAL_OUTPUT;
+                || address == ApuAddress.PCM12_CGB_DIGITAL_OUTPUT
+                || address == ApuAddress.PCM34_CGB_DIGITAL_OUTPUT;
     }
 
     @Override
     public byte read(int address) {
-        if (address == PCM12_CGB_DIGITAL_OUTPUT) {
+        if (address == ApuAddress.PCM12_CGB_DIGITAL_OUTPUT) {
             return (byte) (channel1.digitalOutput() | (channel2.digitalOutput() << 4));
         }
-        if (address == PCM34_CGB_DIGITAL_OUTPUT) {
+        if (address == ApuAddress.PCM34_CGB_DIGITAL_OUTPUT) {
             return (byte) (channel3.digitalOutput() | (channel4.digitalOutput() << 4));
         }
-        if (registers.isUnusedRegister(address)) {
-            return (byte) 0xFF;
-        }
-        if (registers.isWaveRam(address)) {
-            return registers.readWaveRamAddress(address);
-        }
-
-        return switch (address) {
-            case NR10_CHANNEL_1_SWEEP -> (byte) ((registers.read(address) & 0x7F) | 0x80);
-            case NR11_CHANNEL_1_DUTY, NR21_CHANNEL_2_DUTY -> (byte) ((registers.read(address) & 0xC0) | 0x3F);
-            case NR13_CHANNEL_1_FREQUENCY_LO, NR23_CHANNEL_2_FREQUENCY_LO,
-                 NR33_CHANNEL_3_FREQUENCY_LO -> (byte) 0xFF;
-            case NR14_CHANNEL_1_FREQUENCY_HI, NR24_CHANNEL_2_FREQUENCY_HI,
-                 NR34_CHANNEL_3_FREQUENCY_HI, NR44_CHANNEL_4_CONTROL -> (byte) ((registers.read(address) & 0x40) | 0xBF);
-            case NR30_CHANNEL_3_ON_OFF -> (byte) ((registers.read(address) & 0x80) | 0x7F);
-            case NR31_CHANNEL_3_LENGTH, NR41_CHANNEL_4_LENGTH -> (byte) 0xFF;
-            case NR32_CHANNEL_3_VOLUME -> (byte) ((registers.read(address) & 0x60) | 0x9F);
-            case NR43_CHANNEL_4_FREQUENCY -> registers.read(address);
-            case NR52_AUDIO_MASTER_CONTROL -> readNr52();
-            case NR20_UNUSED, NR40_UNUSED -> (byte) 0xFF;
-            default -> registers.read(address);
-        };
+        return ApuRegisterReader.read(address, registers, readNr52());
     }
 
     @Override
     public void write(int address, byte value) {
-        if (address == PCM12_CGB_DIGITAL_OUTPUT || address == PCM34_CGB_DIGITAL_OUTPUT) {
+        if (address == ApuAddress.PCM12_CGB_DIGITAL_OUTPUT || address == ApuAddress.PCM34_CGB_DIGITAL_OUTPUT) {
             return;
         }
         if (registers.isUnusedRegister(address)) {
@@ -169,7 +118,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             return;
         }
 
-        if (address == NR52_AUDIO_MASTER_CONTROL) {
+        if (address == ApuAddress.NR52_AUDIO_MASTER_CONTROL) {
             setAudioEnabled((value & 0x80) != 0);
             return;
         }
@@ -181,44 +130,44 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         byte oldValue = registers.read(address);
         registers.write(address, value);
         switch (address) {
-            case NR10_CHANNEL_1_SWEEP -> channel1.setSweep(oldValue, value);
-            case NR11_CHANNEL_1_DUTY -> channel1.setLength(64 - (value & 0x3F));
-            case NR12_CHANNEL_1_VOLUME -> channel1.setEnvelope(value);
-            case NR13_CHANNEL_1_FREQUENCY_LO -> channel1.updatePeriod();
-            case NR14_CHANNEL_1_FREQUENCY_HI -> {
+            case ApuAddress.NR10_CHANNEL_1_SWEEP -> channel1.setSweep(oldValue, value);
+            case ApuAddress.NR11_CHANNEL_1_DUTY -> channel1.setLength(64 - (value & 0x3F));
+            case ApuAddress.NR12_CHANNEL_1_VOLUME -> channel1.setEnvelope(value);
+            case ApuAddress.NR13_CHANNEL_1_FREQUENCY_LO -> channel1.updatePeriod();
+            case ApuAddress.NR14_CHANNEL_1_FREQUENCY_HI -> {
                 channel1.clockLengthOnEnable(oldValue, value);
                 channel1.updatePeriod();
                 if ((value & 0x80) != 0) {
                     channel1.trigger();
                 }
             }
-            case NR21_CHANNEL_2_DUTY -> channel2.setLength(64 - (value & 0x3F));
-            case NR22_CHANNEL_2_VOLUME -> channel2.setEnvelope(value);
-            case NR23_CHANNEL_2_FREQUENCY_LO -> channel2.updatePeriod();
-            case NR24_CHANNEL_2_FREQUENCY_HI -> {
+            case ApuAddress.NR21_CHANNEL_2_DUTY -> channel2.setLength(64 - (value & 0x3F));
+            case ApuAddress.NR22_CHANNEL_2_VOLUME -> channel2.setEnvelope(value);
+            case ApuAddress.NR23_CHANNEL_2_FREQUENCY_LO -> channel2.updatePeriod();
+            case ApuAddress.NR24_CHANNEL_2_FREQUENCY_HI -> {
                 channel2.clockLengthOnEnable(oldValue, value);
                 channel2.updatePeriod();
                 if ((value & 0x80) != 0) {
                     channel2.trigger();
                 }
             }
-            case NR30_CHANNEL_3_ON_OFF -> {
+            case ApuAddress.NR30_CHANNEL_3_ON_OFF -> {
                 if ((value & 0x80) == 0) {
                     channel3.enabled = false;
                 }
             }
-            case NR31_CHANNEL_3_LENGTH -> channel3.lengthTimer = 256 - (value & 0xFF);
-            case NR33_CHANNEL_3_FREQUENCY_LO -> channel3.updatePeriod();
-            case NR34_CHANNEL_3_FREQUENCY_HI -> {
+            case ApuAddress.NR31_CHANNEL_3_LENGTH -> channel3.lengthTimer = 256 - (value & 0xFF);
+            case ApuAddress.NR33_CHANNEL_3_FREQUENCY_LO -> channel3.updatePeriod();
+            case ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI -> {
                 channel3.clockLengthOnEnable(oldValue, value);
                 channel3.updatePeriod();
                 if ((value & 0x80) != 0) {
                     channel3.trigger();
                 }
             }
-            case NR41_CHANNEL_4_LENGTH -> channel4.lengthTimer = 64 - (value & 0x3F);
-            case NR42_CHANNEL_4_VOLUME -> channel4.setEnvelope(value);
-            case NR44_CHANNEL_4_CONTROL -> {
+            case ApuAddress.NR41_CHANNEL_4_LENGTH -> channel4.lengthTimer = 64 - (value & 0x3F);
+            case ApuAddress.NR42_CHANNEL_4_VOLUME -> channel4.setEnvelope(value);
+            case ApuAddress.NR44_CHANNEL_4_CONTROL -> {
                 channel4.clockLengthOnEnable(oldValue, value);
                 if ((value & 0x80) != 0) {
                     channel4.trigger();
@@ -234,8 +183,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     private void writeSample() {
-        int nr50 = registers.read(NR50_MASTER_VOLUME) & 0xFF;
-        int nr51 = registers.read(NR51_SOUND_PANNING) & 0xFF;
+        int nr50 = registers.read(ApuAddress.NR50_MASTER_VOLUME) & 0xFF;
+        int nr51 = registers.read(ApuAddress.NR51_SOUND_PANNING) & 0xFF;
         mixer.writeSample(
                 nr50,
                 nr51,
@@ -258,7 +207,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     private void setAudioEnabled(boolean enabled) {
         audioEnabled = enabled;
-        registers.write(NR52_AUDIO_MASTER_CONTROL, (byte) (enabled ? 0x80 : 0x00));
+        registers.write(ApuAddress.NR52_AUDIO_MASTER_CONTROL, (byte) (enabled ? 0x80 : 0x00));
         if (enabled) {
             frameSequencer.reset();
         }

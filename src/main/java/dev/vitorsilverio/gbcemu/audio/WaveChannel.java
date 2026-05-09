@@ -19,7 +19,7 @@ class WaveChannel extends SoundChannel {
     }
 
     void updatePeriod() {
-        period = context.period(Apu.NR33_CHANNEL_3_FREQUENCY_LO, Apu.NR34_CHANNEL_3_FREQUENCY_HI);
+        period = context.period(ApuAddress.NR33_CHANNEL_3_FREQUENCY_LO, ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI);
     }
 
     void trigger() {
@@ -29,9 +29,9 @@ class WaveChannel extends SoundChannel {
             lengthTimer = 256;
         }
         if (lengthWasZero) {
-            clockLengthAfterTriggerIfNeeded(Apu.NR34_CHANNEL_3_FREQUENCY_HI);
+            clockLengthAfterTriggerIfNeeded(ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI);
         }
-        if ((context.register(Apu.NR30_CHANNEL_3_ON_OFF) & 0x80) == 0) {
+        if ((context.register(ApuAddress.NR30_CHANNEL_3_ON_OFF) & 0x80) == 0) {
             enabled = false;
             return;
         }
@@ -67,7 +67,7 @@ class WaveChannel extends SoundChannel {
         }
         int packed = context.wavePatternRam(sampleIndex / 2) & 0xFF;
         int sample = (sampleIndex & 1) == 0 ? packed >> 4 : packed & 0x0F;
-        int volumeCode = (context.register(Apu.NR32_CHANNEL_3_VOLUME) >> 5) & 0x03;
+        int volumeCode = (context.register(ApuAddress.NR32_CHANNEL_3_VOLUME) >> 5) & 0x03;
         return switch (volumeCode) {
             case 0 -> 0;
             case 1 -> sample;
@@ -82,6 +82,6 @@ class WaveChannel extends SoundChannel {
     }
 
     void tickLength() {
-        tickLength(Apu.NR34_CHANNEL_3_FREQUENCY_HI);
+        tickLength(ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI);
     }
 }

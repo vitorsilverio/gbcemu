@@ -70,9 +70,9 @@ final class ApuRegisters {
     }
 
     private void setPowerOnDefaults() {
-        write(Apu.NR50_MASTER_VOLUME, (byte) 0x77);
-        write(Apu.NR51_SOUND_PANNING, (byte) 0xFF);
-        write(Apu.NR52_AUDIO_MASTER_CONTROL, (byte) 0x80);
+        write(ApuAddress.NR50_MASTER_VOLUME, (byte) 0x77);
+        write(ApuAddress.NR51_SOUND_PANNING, (byte) 0xFF);
+        write(ApuAddress.NR52_AUDIO_MASTER_CONTROL, (byte) 0x80);
     }
 
     static int index(int address) {
