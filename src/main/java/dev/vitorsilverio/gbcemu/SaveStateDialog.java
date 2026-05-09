@@ -18,8 +18,11 @@ import javax.swing.JSplitPane;
 import javax.swing.ListSelectionModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.GridLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -60,7 +63,8 @@ class SaveStateDialog extends JDialog {
         this.restoreAction = restoreAction;
         buildUi();
         refresh();
-        setSize(760, 440);
+        setMinimumSize(new Dimension(980, 560));
+        setSize(1040, 620);
         setLocationRelativeTo(null);
     }
 
@@ -71,10 +75,11 @@ class SaveStateDialog extends JDialog {
         JPanel details = new JPanel(new BorderLayout(8, 8));
         details.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         preview.setHorizontalAlignment(JLabel.CENTER);
-        preview.setPreferredSize(new Dimension(320, 288));
-        details.add(preview, BorderLayout.NORTH);
+        preview.setVerticalAlignment(JLabel.TOP);
+        preview.setPreferredSize(new Dimension(340, 310));
+        details.add(preview, BorderLayout.WEST);
 
-        JPanel fields = new JPanel(new GridLayout(0, 2, 6, 4));
+        JPanel fields = new JPanel(new GridBagLayout());
         addField(fields, "Created", createdAt);
         addField(fields, "ROM", romTitle);
         addField(fields, "Cart", cartridgeType);
@@ -84,7 +89,7 @@ class SaveStateDialog extends JDialog {
         details.add(fields, BorderLayout.CENTER);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(slots), details);
-        splitPane.setDividerLocation(260);
+        splitPane.setDividerLocation(340);
         add(splitPane, BorderLayout.CENTER);
 
         JPanel actions = new JPanel();
@@ -189,13 +194,32 @@ class SaveStateDialog extends JDialog {
 
     private static JLabel valueLabel() {
         JLabel label = new JLabel();
-        label.setMinimumSize(new Dimension(120, 20));
+        label.setFont(label.getFont().deriveFont(Font.PLAIN, 14f));
+        label.setMinimumSize(new Dimension(260, 28));
+        label.setPreferredSize(new Dimension(360, 28));
         return label;
     }
 
     private static void addField(JPanel panel, String name, JLabel value) {
-        panel.add(new JLabel(name));
-        panel.add(value);
+        int row = panel.getComponentCount() / 2;
+        JLabel label = new JLabel(name);
+        label.setFont(label.getFont().deriveFont(Font.BOLD, 14f));
+
+        GridBagConstraints labelConstraints = new GridBagConstraints();
+        labelConstraints.gridx = 0;
+        labelConstraints.gridy = row;
+        labelConstraints.anchor = GridBagConstraints.WEST;
+        labelConstraints.insets = new Insets(0, 0, 10, 12);
+        panel.add(label, labelConstraints);
+
+        GridBagConstraints valueConstraints = new GridBagConstraints();
+        valueConstraints.gridx = 1;
+        valueConstraints.gridy = row;
+        valueConstraints.weightx = 1;
+        valueConstraints.fill = GridBagConstraints.HORIZONTAL;
+        valueConstraints.anchor = GridBagConstraints.WEST;
+        valueConstraints.insets = new Insets(0, 0, 10, 0);
+        panel.add(value, valueConstraints);
     }
 
     private record SlotEntry(int index, SaveStateStore.Slot slot) {

@@ -140,6 +140,13 @@ public class EmulatorWindow {
 
         snapshotMenu.addSeparator();
 
+        JMenuItem rewindSnapshot = new JMenuItem("Rewind one snapshot");
+        rewindSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0));
+        rewindSnapshot.addActionListener(event -> menuActions.rewindSnapshot().run());
+        snapshotMenu.add(rewindSnapshot);
+
+        snapshotMenu.addSeparator();
+
         JMenuItem manageSnapshot = new JMenuItem("Manage save states...");
         manageSnapshot.addActionListener(event -> menuActions.manageSnapshots().run());
         snapshotMenu.add(manageSnapshot);

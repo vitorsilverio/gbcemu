@@ -77,6 +77,7 @@ public class Main {
                 Main::stopEmulator,
                 Main::saveSnapshot,
                 Main::restoreSnapshot,
+                Main::rewindSnapshot,
                 Main::openSaveStateDialog,
                 Main::configureCheats
         );
@@ -100,6 +101,18 @@ public class Main {
                                 "Save states",
                                 JOptionPane.INFORMATION_MESSAGE)
                 );
+    }
+
+    private static void rewindSnapshot() {
+        if (activeEmulator == null) {
+            return;
+        }
+        if (!activeEmulator.rewindOneSnapshot()) {
+            JOptionPane.showMessageDialog(null,
+                    "No rewind snapshot is available yet.",
+                    "Rewind",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     private static void saveSnapshot() {

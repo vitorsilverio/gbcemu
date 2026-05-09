@@ -26,6 +26,7 @@ Este documento organiza as melhorias e metas do emulador. A ideia é manter uma 
   - Tornar a duracao configuravel.
   - Usar ring buffer de snapshots por frame ou intervalos fixos.
   - Restaurar snapshots enquanto o usuario segura uma tecla/botao.
+  - [x] Primeira versao do ring buffer em memoria com restauracao manual por F6.
 
 - [ ] GameShark / cheats.
   - Suportar codigos GameShark/Game Genie relevantes para GB/GBC.

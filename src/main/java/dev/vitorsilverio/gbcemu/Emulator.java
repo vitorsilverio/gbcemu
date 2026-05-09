@@ -17,6 +17,7 @@ import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
+import dev.vitorsilverio.gbcemu.snapshot.RewindBuffer;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
 
@@ -27,6 +28,9 @@ public class Emulator {
 
     private static final int DOTS_PER_FRAME = 70224;
     private static final long NANOS_PER_FRAME = 16_742_706L;
+    private static final int REWIND_SECONDS = 15;
+    private static final int REWIND_CAPTURE_INTERVAL_FRAMES = 30;
+    private static final int REWIND_CAPACITY = (60 / REWIND_CAPTURE_INTERVAL_FRAMES) * REWIND_SECONDS;
 
     private final Cpu cpu;
     private final Timer timer;
@@ -49,6 +53,7 @@ public class Emulator {
     private final boolean cartridgeCgbCompatible;
     private final DebugController debugController = new DebugController();
     private final Bus bus;
+    private final RewindBuffer rewindBuffer = new RewindBuffer(REWIND_CAPACITY);
     private final Object stateLock = new Object();
     private volatile boolean paused;
     private volatile boolean stopped;
@@ -191,11 +196,20 @@ public class Emulator {
             }
             dots = 0;
             frameNumber++;
+            recordRewindSnapshot();
             frameStart = System.nanoTime();
         } else if (dots >= DOTS_PER_FRAME) {
             dots = 0;
             frameNumber++;
+            recordRewindSnapshot();
         }
+    }
+
+    private void recordRewindSnapshot() {
+        if (frameNumber % REWIND_CAPTURE_INTERVAL_FRAMES != 0) {
+            return;
+        }
+        rewindBuffer.add(createSaveStateFile());
     }
 
     private void sleepNanos(long nanos) {
@@ -269,6 +283,12 @@ public class Emulator {
 
     public void restoreSaveStateFile(SaveStateFile saveStateFile) {
         restoreEmulatorState(saveStateFile.state());
+    }
+
+    public boolean rewindOneSnapshot() {
+        var snapshot = rewindBuffer.popLatest();
+        snapshot.ifPresent(this::restoreSaveStateFile);
+        return snapshot.isPresent();
     }
 
     public void restoreEmulatorState(EmulatorState emulatorState) {
