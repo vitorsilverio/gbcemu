@@ -21,8 +21,11 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.Timer;
 import javax.swing.event.TableModelEvent;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
@@ -32,6 +35,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class DebugWindow {
 
@@ -159,6 +164,7 @@ public class DebugWindow {
         addStateField(statePanel, "LYC");
 
         instructionModel.addColumn("Addr");
+        instructionModel.addColumn("BP");
         instructionModel.addColumn("Bank");
         instructionModel.addColumn("Bytes");
         instructionModel.addColumn("Instruction");
@@ -166,11 +172,27 @@ public class DebugWindow {
         instructionTable.setRowHeight(22);
         instructionTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         instructionTable.getColumnModel().getColumn(0).setPreferredWidth(70);
-        instructionTable.getColumnModel().getColumn(1).setPreferredWidth(110);
+        instructionTable.getColumnModel().getColumn(1).setPreferredWidth(34);
         instructionTable.getColumnModel().getColumn(2).setPreferredWidth(110);
-        instructionTable.getColumnModel().getColumn(3).setPreferredWidth(360);
+        instructionTable.getColumnModel().getColumn(3).setPreferredWidth(110);
+        instructionTable.getColumnModel().getColumn(4).setPreferredWidth(360);
+        instructionTable.setDefaultRenderer(Object.class, new InstructionCellRenderer());
+        instructionTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2 && instructionTable.getSelectedRow() >= 0) {
+                    toggleSelectedInstructionBreakpoint();
+                }
+            }
+        });
+
+        JPanel controls = new JPanel();
+        JButton toggleBreakpoint = new JButton("Toggle BP");
+        toggleBreakpoint.addActionListener(event -> toggleSelectedInstructionBreakpoint());
+        controls.add(toggleBreakpoint);
 
         panel.add(statePanel, BorderLayout.NORTH);
+        panel.add(controls, BorderLayout.SOUTH);
         panel.add(new JScrollPane(instructionTable), BorderLayout.CENTER);
         return panel;
     }
@@ -403,10 +425,26 @@ public class DebugWindow {
     private void addInstructionRow(Disassembler.Decoded decoded) {
         instructionModel.addRow(new Object[]{
                 String.format("%04X", decoded.address()),
+                debugController.hasPcBreakpoint(decoded.address()) ? "●" : "",
                 disassemblyCache.location(decoded.address()),
                 decoded.bytes(),
                 decoded.instruction()
         });
+    }
+
+    private void toggleSelectedInstructionBreakpoint() {
+        int row = instructionTable.getSelectedRow();
+        if (row < 0) {
+            return;
+        }
+        int address = parseHex(String.valueOf(instructionModel.getValueAt(row, 0)), -1);
+        if (address < 0 || address > 0xFFFF) {
+            return;
+        }
+        debugController.togglePcBreakpoint(address);
+        pcBreakpoint.setText(String.format("%04X", address));
+        refreshBreakpoints();
+        refreshInstructionTable();
     }
 
 
@@ -559,6 +597,35 @@ public class DebugWindow {
             }
             Image scaled = image.getScaledInstance(image.getWidth() * scale, image.getHeight() * scale, Image.SCALE_FAST);
             graphics.drawImage(scaled, 0, 0, null);
+        }
+    }
+
+    private class InstructionCellRenderer extends DefaultTableCellRenderer {
+        private final Color breakpointBackground = new Color(80, 24, 24);
+        private final Color breakpointForeground = new Color(255, 220, 220);
+
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean selected,
+                boolean focused,
+                int row,
+                int column
+        ) {
+            Component component = super.getTableCellRendererComponent(table, value, selected, focused, row, column);
+            if (selected) {
+                return component;
+            }
+            boolean hasBreakpoint = "●".equals(String.valueOf(table.getValueAt(row, 1)));
+            if (hasBreakpoint) {
+                component.setBackground(breakpointBackground);
+                component.setForeground(breakpointForeground);
+            } else {
+                component.setBackground(table.getBackground());
+                component.setForeground(table.getForeground());
+            }
+            return component;
         }
     }
 }

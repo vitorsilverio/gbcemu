@@ -18,6 +18,19 @@ public class DebugController {
         pcBreakpoints.remove(pc & 0xFFFF);
     }
 
+    public synchronized void togglePcBreakpoint(int pc) {
+        pc &= 0xFFFF;
+        if (pcBreakpoints.contains(pc)) {
+            pcBreakpoints.remove(pc);
+            return;
+        }
+        pcBreakpoints.add(pc);
+    }
+
+    public synchronized boolean hasPcBreakpoint(int pc) {
+        return pcBreakpoints.contains(pc & 0xFFFF);
+    }
+
     public synchronized List<Integer> pcBreakpoints() {
         return new ArrayList<>(pcBreakpoints);
     }
