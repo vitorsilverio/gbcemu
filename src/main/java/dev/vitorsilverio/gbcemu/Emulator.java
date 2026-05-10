@@ -59,6 +59,7 @@ public class Emulator {
     private int dots;
     private long frameNumber;
     private long frameStart = System.nanoTime();
+    private long nextFrameDeadline = frameStart + NANOS_PER_FRAME;
     private long performanceStatsStart = System.nanoTime();
     private int performanceStatsFrames;
 
@@ -169,6 +170,7 @@ public class Emulator {
         debugController.ignorePcBreakpointOnce(cpu.getPc());
         paused = false;
         frameStart = System.nanoTime();
+        nextFrameDeadline = frameStart + NANOS_PER_FRAME;
         performanceStatsStart = frameStart;
         performanceStatsFrames = 0;
     }
@@ -245,11 +247,7 @@ public class Emulator {
             recordRewindSnapshot();
             updatePerformanceStats();
             if (throttled) {
-                long elapsed = System.nanoTime() - frameStart;
-                if (elapsed < NANOS_PER_FRAME) {
-                    sleepNanos(NANOS_PER_FRAME - elapsed);
-                }
-                frameStart = System.nanoTime();
+                throttleFrame();
             }
         }
     }
@@ -267,6 +265,33 @@ public class Emulator {
         performanceStatsStart = now;
         if (window != null) {
             window.updatePerformanceStats(fps, speedPercent);
+        }
+    }
+
+    private void throttleFrame() {
+        long now = System.nanoTime();
+        if (now < nextFrameDeadline) {
+            sleepUntil(nextFrameDeadline);
+            now = System.nanoTime();
+        }
+        frameStart = now;
+        nextFrameDeadline += NANOS_PER_FRAME;
+        if (now - nextFrameDeadline > NANOS_PER_FRAME * 3) {
+            nextFrameDeadline = now + NANOS_PER_FRAME;
+        }
+    }
+
+    private void sleepUntil(long deadline) {
+        while (true) {
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) {
+                return;
+            }
+            if (remaining > 2_000_000L) {
+                sleepNanos(remaining - 1_000_000L);
+            } else if (remaining > 200_000L) {
+                Thread.yield();
+            }
         }
     }
 
