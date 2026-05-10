@@ -106,7 +106,7 @@ class PulseChannel extends SoundChannel {
         if (!envelopeDacEnabled(envelopeAddress)) {
             return 0;
         }
-        return 8 - digitalOutput();
+        return dacOutput(digitalOutput());
     }
 
     @Override

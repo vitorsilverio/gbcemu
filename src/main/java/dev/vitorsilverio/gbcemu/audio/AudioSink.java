@@ -5,4 +5,8 @@ interface AudioSink {
 
     default void close() {
     }
+
+    default String debugDescription() {
+        return "Muted";
+    }
 }

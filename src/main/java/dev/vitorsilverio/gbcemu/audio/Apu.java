@@ -153,6 +153,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 registers.read(ApuAddress.NR50_MASTER_VOLUME) & 0xFF,
                 registers.read(ApuAddress.NR51_SOUND_PANNING) & 0xFF,
                 nr52,
+                output.lowPassAlpha(),
+                output.sinkDebugDescription(),
                 channel1.debugSnapshot(1),
                 channel2.debugSnapshot(2),
                 channel3.debugSnapshot(),
@@ -335,6 +337,14 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     public void setDebugRightVolume(int volume) {
         debugRightVolume = clampPercent(volume);
+    }
+
+    public int debugLowPassAlpha() {
+        return output.lowPassAlpha();
+    }
+
+    public void setDebugLowPassAlpha(int lowPassAlpha) {
+        output.setLowPassAlpha(lowPassAlpha);
     }
 
     public void applyDebugVolumes(int masterVolume, int leftVolume, int rightVolume, int[] channelVolumes, boolean[] channelMuted) {

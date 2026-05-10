@@ -99,6 +99,11 @@ final class SourceDataLineSink implements AudioSink {
         notifyAll();
     }
 
+    @Override
+    public String debugDescription() {
+        return line.getFormat() + " nativeBuffer=" + line.getBufferSize();
+    }
+
     private void run() {
         byte[] chunk = new byte[WRITE_CHUNK_SIZE];
         while (true) {

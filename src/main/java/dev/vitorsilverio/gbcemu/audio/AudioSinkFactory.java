@@ -21,6 +21,7 @@ final class AudioSinkFactory {
             SourceDataLine line = AudioSystem.getSourceDataLine(format);
             line.open(format, SOURCE_LINE_BUFFER_BYTES);
             line.start();
+            logger.info("Audio output opened: requestedFormat={} actualFormat={} nativeBuffer={}", format, line.getFormat(), line.getBufferSize());
             return new SourceDataLineSink(line);
         } catch (LineUnavailableException | IllegalArgumentException e) {
             logger.warn("Audio output unavailable, running APU muted", e);

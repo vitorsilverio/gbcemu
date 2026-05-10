@@ -3,8 +3,8 @@ package dev.vitorsilverio.gbcemu.audio;
 final class AudioOutput {
     private static final int CGB_HIGH_PASS_FACTOR = 912;
     private static final int HIGH_PASS_DIVISOR = 1000;
-    private static final int LOW_PASS_SHIFT = 1;
-    private static final int PCM_SCALE = 96;
+    private static final int FILTER_DIVISOR = 1000;
+    private static final int PCM_SCALE = 48;
 
     private final AudioSink sink;
     private final byte[] sampleBuffer = new byte[1024];
@@ -13,6 +13,7 @@ final class AudioOutput {
     private int rightCapacitor;
     private int previousLeftOutput;
     private int previousRightOutput;
+    private int lowPassAlpha = 350;
 
     AudioOutput(AudioSink sink) {
         this.sink = sink;
@@ -42,8 +43,8 @@ final class AudioOutput {
     void writeStereoSample(int left, int right) {
         int filteredLeft = highPassLeft(clampSample(left));
         int filteredRight = highPassRight(clampSample(right));
-        previousLeftOutput += (filteredLeft - previousLeftOutput) >> LOW_PASS_SHIFT;
-        previousRightOutput += (filteredRight - previousRightOutput) >> LOW_PASS_SHIFT;
+        previousLeftOutput += (filteredLeft - previousLeftOutput) * lowPassAlpha / FILTER_DIVISOR;
+        previousRightOutput += (filteredRight - previousRightOutput) * lowPassAlpha / FILTER_DIVISOR;
         putPcm16(clampPcm(previousLeftOutput));
         putPcm16(clampPcm(previousRightOutput));
     }
@@ -62,6 +63,18 @@ final class AudioOutput {
 
     int bufferedSampleBytes() {
         return sampleBufferPosition;
+    }
+
+    int lowPassAlpha() {
+        return lowPassAlpha;
+    }
+
+    void setLowPassAlpha(int lowPassAlpha) {
+        this.lowPassAlpha = Math.max(50, Math.min(1000, lowPassAlpha));
+    }
+
+    String sinkDebugDescription() {
+        return sink.debugDescription();
     }
 
     private int clampSample(int value) {

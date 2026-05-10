@@ -11,6 +11,8 @@ public record ApuDebugSnapshot(
         int nr50,
         int nr51,
         int nr52,
+        int lowPassAlpha,
+        String audioSink,
         ApuChannelDebugSnapshot channel1,
         ApuChannelDebugSnapshot channel2,
         ApuChannelDebugSnapshot channel3,

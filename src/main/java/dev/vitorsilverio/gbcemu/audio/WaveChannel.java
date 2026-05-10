@@ -60,7 +60,7 @@ class WaveChannel extends SoundChannel {
         if ((context.register(ApuAddress.NR30_CHANNEL_3_ON_OFF) & 0x80) == 0) {
             return 0;
         }
-        return 8 - digitalOutput();
+        return dacOutput(digitalOutput());
     }
 
     @Override

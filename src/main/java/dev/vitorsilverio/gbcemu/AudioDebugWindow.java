@@ -126,6 +126,7 @@ public class AudioDebugWindow {
         addVolumeSlider(panel, 0, "Master", apu.debugMasterVolume(), apu::setDebugMasterVolume);
         addVolumeSlider(panel, 1, "Left", apu.debugLeftVolume(), apu::setDebugLeftVolume);
         addVolumeSlider(panel, 2, "Right", apu.debugRightVolume(), apu::setDebugRightVolume);
+        addFilterSlider(panel, 3, "Low-pass", apu.debugLowPassAlpha(), apu::setDebugLowPassAlpha);
         return panel;
     }
 
@@ -191,6 +192,36 @@ public class AudioDebugWindow {
         });
     }
 
+    private void addFilterSlider(JPanel panel, int row, String name, int initialValue, VolumeSetter setter) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridy = row;
+        constraints.insets = new Insets(4, 4, 4, 4);
+        constraints.anchor = GridBagConstraints.WEST;
+
+        constraints.gridx = 0;
+        panel.add(new JLabel(name), constraints);
+
+        JSlider slider = new JSlider(50, 1000, initialValue);
+        slider.setMajorTickSpacing(250);
+        slider.setMinorTickSpacing(50);
+        slider.setPaintTicks(true);
+        constraints.gridx = 1;
+        constraints.weightx = 1;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(slider, constraints);
+
+        JLabel value = new JLabel(String.valueOf(initialValue));
+        constraints.gridx = 2;
+        constraints.weightx = 0;
+        constraints.fill = GridBagConstraints.NONE;
+        panel.add(value, constraints);
+
+        slider.addChangeListener(event -> {
+            setter.set(slider.getValue());
+            value.setText(String.valueOf(slider.getValue()));
+        });
+    }
+
     private JSlider createSlider(int initialValue) {
         JSlider slider = new JSlider(0, 100, initialValue);
         slider.setMajorTickSpacing(50);
@@ -212,15 +243,17 @@ public class AudioDebugWindow {
     private void refreshDebugState() {
         ApuDebugSnapshot snapshot = apu.debugSnapshot();
         masterState.setText(String.format(
-                "NR50=%02X  NR51=%02X  NR52=%02X  FS=%d  sampleRate=%d  sampleAcc=%d  buffered=%d bytes",
+                "NR50=%02X  NR51=%02X  NR52=%02X  FS=%d  sampleRate=%d  sampleAcc=%d  buffered=%d bytes  lowPass=%d",
                 snapshot.nr50(),
                 snapshot.nr51(),
                 snapshot.nr52(),
                 snapshot.frameSequencerStep(),
                 snapshot.sampleRate(),
                 snapshot.sampleAccumulator(),
-                snapshot.bufferedSampleBytes()
+                snapshot.bufferedSampleBytes(),
+                snapshot.lowPassAlpha()
         ));
+        masterState.setToolTipText(snapshot.audioSink() + " lowPass=" + snapshot.lowPassAlpha());
         refreshChannelRows(snapshot);
         refreshWriteRows(snapshot.recentWrites());
     }

@@ -105,6 +105,10 @@ abstract class SoundChannel {
 
     abstract int digitalOutput();
 
+    protected int dacOutput(int digitalOutput) {
+        return 15 - (digitalOutput * 2);
+    }
+
     protected ApuChannelDebugSnapshot debugSnapshot(
             int channel,
             String name,

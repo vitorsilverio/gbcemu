@@ -59,7 +59,7 @@ class NoiseChannel extends SoundChannel {
         if (!envelopeDacEnabled(ApuAddress.NR42_CHANNEL_4_VOLUME)) {
             return 0;
         }
-        return 8 - digitalOutput();
+        return dacOutput(digitalOutput());
     }
 
     @Override
