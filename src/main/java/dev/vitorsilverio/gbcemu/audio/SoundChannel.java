@@ -104,4 +104,33 @@ abstract class SoundChannel {
     abstract int output();
 
     abstract int digitalOutput();
+
+    protected ApuChannelDebugSnapshot debugSnapshot(
+            int channel,
+            String name,
+            boolean dacEnabled,
+            int period,
+            double frequencyHz,
+            int sequencerPosition,
+            int extra,
+            String detail
+    ) {
+        return new ApuChannelDebugSnapshot(
+                channel,
+                name,
+                enabled,
+                dacEnabled,
+                period,
+                frequencyHz,
+                lengthTimer,
+                currentVolume,
+                envelopeTimer,
+                timer,
+                digitalOutput(),
+                output(),
+                sequencerPosition,
+                extra,
+                detail
+        );
+    }
 }

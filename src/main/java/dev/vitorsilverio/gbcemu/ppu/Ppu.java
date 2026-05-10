@@ -11,8 +11,6 @@ import org.slf4j.Logger;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, Stateful<PpuState> {
@@ -62,6 +60,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final int[][] frameBuffer; // 160x144 pixels
     private final int[][] bgColorIndexes; // 160x144 pixels
     private final boolean[][] bgPriorities; // 160x144 pixels
+    private final BufferedImage frameImage;
     private boolean cgbMode;
 
     private int cycles;
@@ -79,6 +78,14 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     private boolean previousStatSignal;
     private volatile boolean frameReady;
+    private final ObjectAtribute[] spriteCandidates = new ObjectAtribute[10];
+    private final int[] spriteCandidateIndexes = new int[10];
+    private ObjectAtribute foundSpriteAttribute;
+    private int foundSpriteColorIndex;
+    private int bgPixelColorIndex;
+    private int bgPixelColor;
+    private boolean bgPixelPriority;
+    private int resolvedPixelColor;
 
 
 
@@ -93,6 +100,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         this.frameBuffer = new int[160][144];
         this.bgColorIndexes = new int[160][144];
         this.bgPriorities = new boolean[160][144];
+        this.frameImage = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
         if (!cgbMode) {
             objectPriorityMode = ObjectPriorityMode.DMG;
         }
@@ -162,11 +170,12 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             // The 12 extra dots of penalty come from two tile fetches at the beginning of Mode 3. One is the first tile in the scanline (the one that gets shifted by SCX % 8 pixels), the other is simply discarded.
             return;
         }
-        Pixel bgPixel = getBackgroundOrWindowPixel(currentColumn, currentLine);
-        bgColorIndexes[currentColumn][currentLine] = bgPixel.colorIndex();
-        bgPriorities[currentColumn][currentLine] = bgPixel.priority();
-        Pixel pixel = getSpritePixel(currentColumn, currentLine, bgPixel);
-        frameBuffer[currentColumn][currentLine] = pixel.color();
+        loadBackgroundOrWindowPixel(currentColumn, currentLine);
+        bgColorIndexes[currentColumn][currentLine] = bgPixelColorIndex;
+        bgPriorities[currentColumn][currentLine] = bgPixelPriority;
+        resolveSpritePixel(currentColumn, currentLine);
+        frameBuffer[currentColumn][currentLine] = resolvedPixelColor;
+        frameImage.setRGB(currentColumn, currentLine, resolvedPixelColor);
 
         currentColumn++;
         // when line finished then go to HBLANK
@@ -179,7 +188,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     }
 
-    private Pixel getBackgroundOrWindowPixel(int x, int y) {
+    private void loadBackgroundOrWindowPixel(int x, int y) {
         TileMapArea tileMapArea = control.getBgTileArea();
         int pixelX = (x + scrollX) & 0xFF;
         int pixelY = (y + scrollY) & 0xFF;
@@ -206,11 +215,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             tileY = 7 - tileY;
         }
 
-        int colorIndex = tile.getPixel(tileX, tileY);
+        bgPixelColorIndex = tile.getPixel(tileX, tileY);
         int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
-        int mappedColorIndex = cgbMode ? colorIndex : bgPaletteDmg.getColor(colorIndex);
-        int color = bgPalette.getColor(paletteIndex, mappedColorIndex);
-        return new Pixel(colorIndex, color, cgbMode && map.isPriority());
+        int mappedColorIndex = cgbMode ? bgPixelColorIndex : bgPaletteDmg.getColor(bgPixelColorIndex);
+        bgPixelColor = bgPalette.getColor(paletteIndex, mappedColorIndex);
+        bgPixelPriority = cgbMode && map.isPriority();
     }
 
     private boolean isWindowVisibleAt(int x, int y) {
@@ -221,49 +230,48 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 windowY <= 143;
     }
 
-    private Pixel getSpritePixel(int x, int y, Pixel bgPixel) {
+    private void resolveSpritePixel(int x, int y) {
+        resolvedPixelColor = bgPixelColor;
         if (!control.isSpriteEnabled()) {
-            return bgPixel;
+            return;
         }
 
-        SpritePixel spritePixel = findSpritePixel(x, y);
-        if (spritePixel == null) {
-            return bgPixel;
+        if (!findSpritePixel(x, y)) {
+            return;
         }
 
-        if (isBackgroundAboveSprite(bgPixel, spritePixel.attribute())) {
-            return bgPixel;
+        if (isBackgroundAboveSprite(foundSpriteAttribute)) {
+            return;
         }
 
-        int paletteIndex = cgbMode ? spritePixel.attribute().getCgbPalette() : spritePixel.attribute().getDmgPalette();
-        int colorIndex = spritePixel.colorIndex();
-        int mappedColorIndex = cgbMode ? colorIndex : getDmgObjectPalette(spritePixel.attribute()).getColor(colorIndex);
-        int color = objPalette.getColor(paletteIndex, mappedColorIndex);
-        return new Pixel(colorIndex, color, false);
+        int paletteIndex = cgbMode ? foundSpriteAttribute.getCgbPalette() : foundSpriteAttribute.getDmgPalette();
+        int colorIndex = foundSpriteColorIndex;
+        int mappedColorIndex = cgbMode ? colorIndex : getDmgObjectPalette(foundSpriteAttribute).getColor(colorIndex);
+        resolvedPixelColor = objPalette.getColor(paletteIndex, mappedColorIndex);
     }
 
-    private SpritePixel findSpritePixel(int x, int y) {
+    private boolean findSpritePixel(int x, int y) {
         int spriteHeight = control.getSpriteSize() == 0 ? 8 : 16;
-        List<SpriteCandidate> candidates = new ArrayList<>();
+        int candidateCount = 0;
         for (int i = 0; i < 40; i++) {
             ObjectAtribute object = oam.getObjectAtribute(i);
             int spriteY = object.getScreenY();
             if (y >= spriteY && y < spriteY + spriteHeight) {
-                candidates.add(new SpriteCandidate(i, object));
-                if (candidates.size() == 10) {
+                spriteCandidates[candidateCount] = object;
+                spriteCandidateIndexes[candidateCount] = i;
+                candidateCount++;
+                if (candidateCount == 10) {
                     break;
                 }
             }
         }
 
         if (objectPriorityMode == ObjectPriorityMode.DMG) {
-            candidates.sort(Comparator
-                    .comparingInt((SpriteCandidate sprite) -> sprite.attribute().getScreenX())
-                    .thenComparingInt(SpriteCandidate::index));
+            sortSpriteCandidatesForDmg(candidateCount);
         }
 
-        for (SpriteCandidate candidate : candidates) {
-            ObjectAtribute object = candidate.attribute();
+        for (int i = 0; i < candidateCount; i++) {
+            ObjectAtribute object = spriteCandidates[i];
             int spriteX = object.getScreenX();
             if (x < spriteX || x >= spriteX + 8) {
                 continue;
@@ -291,20 +299,45 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             Tile tile = videoRam.getTile(TileArea.METHOD_8000, bank, tileIndex);
             int colorIndex = tile.getPixel(tileX, tileY);
             if (colorIndex != 0) {
-                return new SpritePixel(colorIndex, object);
+                foundSpriteAttribute = object;
+                foundSpriteColorIndex = colorIndex;
+                return true;
             }
         }
-        return null;
+        foundSpriteAttribute = null;
+        foundSpriteColorIndex = 0;
+        return false;
     }
 
-    private boolean isBackgroundAboveSprite(Pixel bgPixel, ObjectAtribute object) {
-        if (bgPixel.colorIndex() == 0) {
+    private void sortSpriteCandidatesForDmg(int candidateCount) {
+        for (int i = 1; i < candidateCount; i++) {
+            ObjectAtribute object = spriteCandidates[i];
+            int index = spriteCandidateIndexes[i];
+            int j = i - 1;
+            while (j >= 0 && isSpriteCandidateAfter(spriteCandidates[j], spriteCandidateIndexes[j], object, index)) {
+                spriteCandidates[j + 1] = spriteCandidates[j];
+                spriteCandidateIndexes[j + 1] = spriteCandidateIndexes[j];
+                j--;
+            }
+            spriteCandidates[j + 1] = object;
+            spriteCandidateIndexes[j + 1] = index;
+        }
+    }
+
+    private boolean isSpriteCandidateAfter(ObjectAtribute left, int leftIndex, ObjectAtribute right, int rightIndex) {
+        int leftX = left.getScreenX();
+        int rightX = right.getScreenX();
+        return leftX > rightX || (leftX == rightX && leftIndex > rightIndex);
+    }
+
+    private boolean isBackgroundAboveSprite(ObjectAtribute object) {
+        if (bgPixelColorIndex == 0) {
             return false;
         }
         if (!control.isBgOrWindowPriority()) {
             return false;
         }
-        return bgPixel.priority() || object.isPriority();
+        return bgPixelPriority || object.isPriority();
     }
 
     private DmgPalette getDmgObjectPalette(ObjectAtribute object) {
@@ -536,14 +569,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     }
 
     public BufferedImage getFrameBuffer() {
-        var image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < 144; y++) {
-            for (int x = 0; x < 160; x++) {
-                int color = frameBuffer[x][y];
-                image.setRGB(x, y, color);
-            }
-        }
-        return image;
+        return frameImage;
     }
 
     public boolean consumeFrameReady() {
@@ -601,6 +627,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         obj0PaletteDmg.setData(state.obj0PaletteDmg());
         obj1PaletteDmg.setData(state.obj1PaletteDmg());
         restoreIntMatrix(state.frameBuffer(), frameBuffer);
+        restoreFrameImage();
         restoreIntMatrix(state.bgColorIndexes(), bgColorIndexes);
         restoreBooleanMatrix(state.bgPriorities(), bgPriorities);
         cgbMode = state.cgbMode();
@@ -640,6 +667,14 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private void restoreIntMatrix(int[][] matrix, int[][] destination) {
         for (int i = 0; i < Math.min(matrix.length, destination.length); i++) {
             System.arraycopy(matrix[i], 0, destination[i], 0, Math.min(matrix[i].length, destination[i].length));
+        }
+    }
+
+    private void restoreFrameImage() {
+        for (int y = 0; y < 144; y++) {
+            for (int x = 0; x < 160; x++) {
+                frameImage.setRGB(x, y, frameBuffer[x][y]);
+            }
         }
     }
 
@@ -885,12 +920,4 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     ) {
     }
 
-    private record Pixel(int colorIndex, int color, boolean priority) {
-    }
-
-    private record SpritePixel(int colorIndex, ObjectAtribute attribute) {
-    }
-
-    private record SpriteCandidate(int index, ObjectAtribute attribute) {
-    }
 }

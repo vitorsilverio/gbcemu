@@ -78,6 +78,30 @@ class NoiseChannel extends SoundChannel {
         return Math.max(8, divisor << shift);
     }
 
+    ApuChannelDebugSnapshot debugSnapshot() {
+        int nr43 = context.register(ApuAddress.NR43_CHANNEL_4_FREQUENCY) & 0xFF;
+        int divisorCode = nr43 & 0x07;
+        int divisor = divisorCode == 0 ? 8 : divisorCode * 16;
+        int shift = (nr43 >> 4) & 0x0F;
+        int width = (nr43 & 0x08) != 0 ? 7 : 15;
+        int period = noiseTimerPeriod();
+        double shiftRateHz = 4_194_304.0 / period;
+        return debugSnapshot(
+                4,
+                "CH4 Noise",
+                envelopeDacEnabled(ApuAddress.NR42_CHANNEL_4_VOLUME),
+                period,
+                shiftRateHz,
+                lfsr,
+                nr43,
+                "NR43=" + hex(nr43) + " div=" + divisor + " shift=" + shift + " width=" + width + "-bit"
+        );
+    }
+
+    private static String hex(int value) {
+        return String.format("%02X", value & 0xFF);
+    }
+
     void tickLength() {
         tickLength(ApuAddress.NR44_CHANNEL_4_CONTROL);
     }

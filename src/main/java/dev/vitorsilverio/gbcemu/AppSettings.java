@@ -35,7 +35,7 @@ public record AppSettings(
                 4,
                 false,
                 false,
-                15,
+                0,
                 30,
                 100,
                 100,
@@ -62,7 +62,7 @@ public record AppSettings(
                 clamp(preferences.getInt(SCREEN_SCALE, defaults.screenScale), 1, 8),
                 preferences.getBoolean(SMOOTH_SCALING, defaults.smoothScaling),
                 preferences.getBoolean(FULLSCREEN, defaults.fullscreen),
-                clamp(preferences.getInt(REWIND_SECONDS, defaults.rewindSeconds), 1, 120),
+                clamp(preferences.getInt(REWIND_SECONDS, defaults.rewindSeconds), 0, 120),
                 clamp(preferences.getInt(REWIND_CAPTURE_INTERVAL_FRAMES, defaults.rewindCaptureIntervalFrames), 1, 60),
                 clampPercent(preferences.getInt(AUDIO_MASTER_VOLUME, defaults.audioMasterVolume)),
                 clampPercent(preferences.getInt(AUDIO_LEFT_VOLUME, defaults.audioLeftVolume)),
@@ -92,6 +92,9 @@ public record AppSettings(
     }
 
     public int rewindCapacity() {
+        if (rewindSeconds <= 0) {
+            return 0;
+        }
         return Math.max(1, (int) Math.ceil(60.0 / rewindCaptureIntervalFrames) * rewindSeconds);
     }
 
@@ -142,7 +145,7 @@ public record AppSettings(
                 clamp(screenScale, 1, 8),
                 smoothScaling,
                 fullscreen,
-                clamp(rewindSeconds, 1, 120),
+                clamp(rewindSeconds, 0, 120),
                 clamp(rewindCaptureIntervalFrames, 1, 60),
                 clampPercent(audioMasterVolume),
                 clampPercent(audioLeftVolume),

@@ -1,14 +1,18 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 final class AudioOutput {
-    private static final int CGB_HIGH_PASS_FACTOR = 996;
+    private static final int CGB_HIGH_PASS_FACTOR = 912;
     private static final int HIGH_PASS_DIVISOR = 1000;
+    private static final int LOW_PASS_SHIFT = 1;
+    private static final int PCM_SCALE = 96;
 
     private final AudioSink sink;
     private final byte[] sampleBuffer = new byte[1024];
     private int sampleBufferPosition;
     private int leftCapacitor;
     private int rightCapacitor;
+    private int previousLeftOutput;
+    private int previousRightOutput;
 
     AudioOutput(AudioSink sink) {
         this.sink = sink;
@@ -18,19 +22,34 @@ final class AudioOutput {
         this.leftCapacitor = leftCapacitor;
         this.rightCapacitor = rightCapacitor;
         sampleBufferPosition = 0;
+        previousLeftOutput = 0;
+        previousRightOutput = 0;
     }
 
     void reset() {
         sampleBufferPosition = 0;
         leftCapacitor = 0;
         rightCapacitor = 0;
+        previousLeftOutput = 0;
+        previousRightOutput = 0;
+    }
+
+    void close() {
+        sampleBufferPosition = 0;
+        sink.close();
     }
 
     void writeStereoSample(int left, int right) {
         int filteredLeft = highPassLeft(clampSample(left));
         int filteredRight = highPassRight(clampSample(right));
-        putPcm16(clampPcm(filteredLeft));
-        putPcm16(clampPcm(filteredRight));
+        previousLeftOutput += (filteredLeft - previousLeftOutput) >> LOW_PASS_SHIFT;
+        previousRightOutput += (filteredRight - previousRightOutput) >> LOW_PASS_SHIFT;
+        putPcm16(clampPcm(previousLeftOutput));
+        putPcm16(clampPcm(previousRightOutput));
+    }
+
+    void writeSilentSample() {
+        writeStereoSample(0, 0);
     }
 
     int previousLeftSample() {
@@ -46,7 +65,7 @@ final class AudioOutput {
     }
 
     private int clampSample(int value) {
-        int scaled = value * 128;
+        int scaled = value * PCM_SCALE;
         return clampPcm(scaled);
     }
 

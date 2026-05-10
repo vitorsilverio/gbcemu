@@ -4,10 +4,14 @@ import dev.vitorsilverio.gbcemu.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuContext {
 
     private static final int CPU_CLOCK_HZ = 4_194_304;
-    private static final int SAMPLE_RATE = 44_100;
+    private static final int SAMPLE_RATE = 48_000;
+    private static final int REGISTER_WRITE_HISTORY_SIZE = 8192;
 
     private final ApuRegisters registers = new ApuRegisters();
     private final AudioOutput output;
@@ -26,6 +30,11 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private int debugMasterVolume = 100;
     private int debugLeftVolume = 100;
     private int debugRightVolume = 100;
+    private final ApuRegisterWrite[] recentWrites = new ApuRegisterWrite[REGISTER_WRITE_HISTORY_SIZE];
+    private int recentWriteIndex;
+    private long recentWriteSequence;
+    private boolean debugWriteTraceEnabled;
+    private final int[] lastRecordedRegisterValues = new int[ApuAddress.REGISTER_END - ApuAddress.REGISTER_START + 1];
 
     public Apu() {
         this(AudioSinkFactory.createDefault(SAMPLE_RATE));
@@ -39,6 +48,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     Apu(AudioSink sink) {
         this.output = new AudioOutput(sink);
         this.mixer = new ApuMixer(output);
+        for (int i = 0; i < lastRecordedRegisterValues.length; i++) {
+            lastRecordedRegisterValues[i] = -1;
+        }
     }
 
     @Override
@@ -74,19 +86,21 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     @Override
     public void tick() {
-        if (!audioEnabled) {
-            return;
+        if (audioEnabled) {
+            channel1.tick();
+            channel2.tick();
+            channel3.tick();
+            channel4.tick();
         }
-
-        channel1.tick();
-        channel2.tick();
-        channel3.tick();
-        channel4.tick();
 
         sampleAccumulator += SAMPLE_RATE;
         if (sampleAccumulator >= CPU_CLOCK_HZ) {
             sampleAccumulator -= CPU_CLOCK_HZ;
-            writeSample();
+            if (audioEnabled) {
+                writeSample();
+            } else {
+                output.writeSilentSample();
+            }
         }
     }
 
@@ -125,10 +139,38 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 channel3,
                 channel4
         );
+        recordRegisterWrite(address, value);
+    }
+
+    public ApuDebugSnapshot debugSnapshot() {
+        int nr52 = readNr52() & 0xFF;
+        return new ApuDebugSnapshot(
+                audioEnabled,
+                frameSequencer.step(),
+                SAMPLE_RATE,
+                sampleAccumulator,
+                bufferedSampleBytes(),
+                registers.read(ApuAddress.NR50_MASTER_VOLUME) & 0xFF,
+                registers.read(ApuAddress.NR51_SOUND_PANNING) & 0xFF,
+                nr52,
+                channel1.debugSnapshot(1),
+                channel2.debugSnapshot(2),
+                channel3.debugSnapshot(),
+                channel4.debugSnapshot(),
+                recentWritesSnapshot()
+        );
+    }
+
+    public void setDebugWriteTraceEnabled(boolean enabled) {
+        debugWriteTraceEnabled = enabled;
     }
 
     int bufferedSampleBytes() {
         return output.bufferedSampleBytes();
+    }
+
+    public void close() {
+        output.close();
     }
 
     private void writeSample() {
@@ -152,6 +194,107 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             return 0;
         }
         return output * debugChannelVolumes[channel] / 100;
+    }
+
+    private void recordRegisterWrite(int address, byte value) {
+        if (!debugWriteTraceEnabled) {
+            return;
+        }
+        if (!registers.contains(address)) {
+            return;
+        }
+        int unsignedValue = value & 0xFF;
+        if (isDuplicateMixerWrite(address, unsignedValue)) {
+            return;
+        }
+        recentWrites[recentWriteIndex] = new ApuRegisterWrite(
+                ++recentWriteSequence,
+                address,
+                unsignedValue,
+                describeRegisterWrite(address, unsignedValue)
+        );
+        recentWriteIndex = (recentWriteIndex + 1) % recentWrites.length;
+    }
+
+    private boolean isDuplicateMixerWrite(int address, int value) {
+        if (address != ApuAddress.NR50_MASTER_VOLUME && address != ApuAddress.NR51_SOUND_PANNING) {
+            return false;
+        }
+        int index = Apu.index(address);
+        if (lastRecordedRegisterValues[index] == value) {
+            return true;
+        }
+        lastRecordedRegisterValues[index] = value;
+        return false;
+    }
+
+    private String describeRegisterWrite(int address, int value) {
+        return switch (address) {
+            case ApuAddress.NR10_CHANNEL_1_SWEEP -> "pace=" + ((value >> 4) & 0x07)
+                    + " dir=" + ((value & 0x08) == 0 ? "up" : "down")
+                    + " step=" + (value & 0x07);
+            case ApuAddress.NR11_CHANNEL_1_DUTY, ApuAddress.NR21_CHANNEL_2_DUTY ->
+                    "duty=" + ((value >> 6) & 0x03) + " lengthLoad=" + (value & 0x3F);
+            case ApuAddress.NR12_CHANNEL_1_VOLUME, ApuAddress.NR22_CHANNEL_2_VOLUME,
+                 ApuAddress.NR42_CHANNEL_4_VOLUME ->
+                    "volume=" + ((value >> 4) & 0x0F)
+                            + " env=" + ((value & 0x08) == 0 ? "down" : "up")
+                            + " pace=" + (value & 0x07);
+            case ApuAddress.NR13_CHANNEL_1_FREQUENCY_LO, ApuAddress.NR14_CHANNEL_1_FREQUENCY_HI ->
+                    describePulseFrequency("CH1",
+                            registers.period(ApuAddress.NR13_CHANNEL_1_FREQUENCY_LO, ApuAddress.NR14_CHANNEL_1_FREQUENCY_HI),
+                            address == ApuAddress.NR14_CHANNEL_1_FREQUENCY_HI && (value & 0x80) != 0);
+            case ApuAddress.NR23_CHANNEL_2_FREQUENCY_LO, ApuAddress.NR24_CHANNEL_2_FREQUENCY_HI ->
+                    describePulseFrequency("CH2",
+                            registers.period(ApuAddress.NR23_CHANNEL_2_FREQUENCY_LO, ApuAddress.NR24_CHANNEL_2_FREQUENCY_HI),
+                            address == ApuAddress.NR24_CHANNEL_2_FREQUENCY_HI && (value & 0x80) != 0);
+            case ApuAddress.NR30_CHANNEL_3_ON_OFF -> (value & 0x80) == 0 ? "DAC off" : "DAC on";
+            case ApuAddress.NR32_CHANNEL_3_VOLUME -> "volumeCode=" + ((value >> 5) & 0x03);
+            case ApuAddress.NR33_CHANNEL_3_FREQUENCY_LO, ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI ->
+                    describeWaveFrequency(
+                            registers.period(ApuAddress.NR33_CHANNEL_3_FREQUENCY_LO, ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI),
+                            address == ApuAddress.NR34_CHANNEL_3_FREQUENCY_HI && (value & 0x80) != 0);
+            case ApuAddress.NR43_CHANNEL_4_FREQUENCY -> describeNoiseFrequency(value);
+            case ApuAddress.NR44_CHANNEL_4_CONTROL -> (value & 0x80) == 0 ? "" : "trigger";
+            case ApuAddress.NR50_MASTER_VOLUME -> "leftVol=" + (((value >> 4) & 0x07) + 1)
+                    + " rightVol=" + ((value & 0x07) + 1);
+            case ApuAddress.NR51_SOUND_PANNING -> "panning=" + String.format("%8s", Integer.toBinaryString(value)).replace(' ', '0');
+            case ApuAddress.NR52_AUDIO_MASTER_CONTROL -> (value & 0x80) == 0 ? "APU off" : "APU on";
+            default -> "";
+        };
+    }
+
+    private String describePulseFrequency(String channel, int period, boolean trigger) {
+        int distance = 2048 - period;
+        double frequency = distance <= 0 ? 0 : 131_072.0 / distance;
+        return channel + " period=" + period + " hz=" + String.format("%.2f", frequency) + (trigger ? " trigger" : "");
+    }
+
+    private String describeWaveFrequency(int period, boolean trigger) {
+        int distance = 2048 - period;
+        double frequency = distance <= 0 ? 0 : 65_536.0 / distance;
+        return "CH3 period=" + period + " hz=" + String.format("%.2f", frequency) + (trigger ? " trigger" : "");
+    }
+
+    private String describeNoiseFrequency(int value) {
+        int divisorCode = value & 0x07;
+        int divisor = divisorCode == 0 ? 8 : divisorCode * 16;
+        int shift = (value >> 4) & 0x0F;
+        int width = (value & 0x08) == 0 ? 15 : 7;
+        double frequency = shift >= 14 ? 0 : 4_194_304.0 / (divisor << shift);
+        return "div=" + divisor + " shift=" + shift + " width=" + width + "-bit hz=" + String.format("%.2f", frequency);
+    }
+
+    private List<ApuRegisterWrite> recentWritesSnapshot() {
+        List<ApuRegisterWrite> writes = new ArrayList<>(recentWrites.length);
+        for (int i = 0; i < recentWrites.length; i++) {
+            int index = (recentWriteIndex + i) % recentWrites.length;
+            ApuRegisterWrite write = recentWrites[index];
+            if (write != null) {
+                writes.add(write);
+            }
+        }
+        return List.copyOf(writes);
     }
 
     public int debugChannelVolume(int channel) {
@@ -240,7 +383,6 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             channel3.disable();
             channel4.disable();
             frameSequencer.reset();
-            output.reset();
         }
     }
 

@@ -28,6 +28,7 @@ public class Emulator {
 
     private static final int DOTS_PER_FRAME = 70224;
     private static final long NANOS_PER_FRAME = 16_742_706L;
+    private static final double TARGET_FPS = 1_000_000_000.0 / NANOS_PER_FRAME;
     private final Cpu cpu;
     private final Timer timer;
     private final Ppu ppu;
@@ -58,6 +59,8 @@ public class Emulator {
     private int dots;
     private long frameNumber;
     private long frameStart = System.nanoTime();
+    private long performanceStatsStart = System.nanoTime();
+    private int performanceStatsFrames;
 
 
     public Emulator(File biosFile, File romFile, File saveFile) {
@@ -166,11 +169,14 @@ public class Emulator {
         debugController.ignorePcBreakpointOnce(cpu.getPc());
         paused = false;
         frameStart = System.nanoTime();
+        performanceStatsStart = frameStart;
+        performanceStatsFrames = 0;
     }
 
     public void stop() {
         stopped = true;
         paused = false;
+        apu.close();
     }
 
     public void openCheats() {
@@ -234,26 +240,50 @@ public class Emulator {
         }
         dots++;
         if (throttled && dots >= DOTS_PER_FRAME) {
+            dots = 0;
+            frameNumber++;
+            recordRewindSnapshot();
+            updatePerformanceStats();
             long elapsed = System.nanoTime() - frameStart;
             if (elapsed < NANOS_PER_FRAME) {
                 sleepNanos(NANOS_PER_FRAME - elapsed);
             }
-            dots = 0;
-            frameNumber++;
-            recordRewindSnapshot();
             frameStart = System.nanoTime();
         } else if (dots >= DOTS_PER_FRAME) {
             dots = 0;
             frameNumber++;
             recordRewindSnapshot();
+            updatePerformanceStats();
+        }
+    }
+
+    private void updatePerformanceStats() {
+        performanceStatsFrames++;
+        long now = System.nanoTime();
+        long elapsed = now - performanceStatsStart;
+        if (elapsed < 1_000_000_000L) {
+            return;
+        }
+        double fps = performanceStatsFrames * 1_000_000_000.0 / elapsed;
+        double speedPercent = fps * 100.0 / TARGET_FPS;
+        performanceStatsFrames = 0;
+        performanceStatsStart = now;
+        if (window != null) {
+            window.updatePerformanceStats(fps, speedPercent);
         }
     }
 
     private void recordRewindSnapshot() {
+        if (settings.rewindCapacity() == 0) {
+            return;
+        }
         if (frameNumber % settings.rewindCaptureIntervalFrames() != 0) {
             return;
         }
-        rewindBuffer.add(createSaveStateFile());
+        if (throttled && System.nanoTime() - frameStart >= NANOS_PER_FRAME) {
+            return;
+        }
+        rewindBuffer.add(createRewindSaveStateFile());
     }
 
     private void sleepNanos(long nanos) {
@@ -283,20 +313,34 @@ public class Emulator {
         synchronized (stateLock) {
             return new SaveStateFile(
                     SaveStateFile.CURRENT_FORMAT_VERSION,
-                    new SaveStateMetadata(
-                            Instant.now(),
-                            cart.getHeader().getTitle(),
-                            romFile == null ? "" : romFile.getAbsolutePath(),
-                            cart.getHeader().getCartridgeType().name(),
-                            frameNumber,
-                            cpu.getPc(),
-                            ppu.copyFrameBufferArgb(),
-                            160,
-                            144
-                    ),
+                    createSaveStateMetadata(true),
                     createEmulatorState()
             );
         }
+    }
+
+    private SaveStateFile createRewindSaveStateFile() {
+        synchronized (stateLock) {
+            return new SaveStateFile(
+                    SaveStateFile.CURRENT_FORMAT_VERSION,
+                    createSaveStateMetadata(false),
+                    createEmulatorState()
+            );
+        }
+    }
+
+    private SaveStateMetadata createSaveStateMetadata(boolean includePreview) {
+        return new SaveStateMetadata(
+                Instant.now(),
+                cart.getHeader().getTitle(),
+                romFile == null ? "" : romFile.getAbsolutePath(),
+                cart.getHeader().getCartridgeType().name(),
+                frameNumber,
+                cpu.getPc(),
+                includePreview ? ppu.copyFrameBufferArgb() : new int[0],
+                includePreview ? 160 : 0,
+                includePreview ? 144 : 0
+        );
     }
 
     public EmulatorState createEmulatorState() {

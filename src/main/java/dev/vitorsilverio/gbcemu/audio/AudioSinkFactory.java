@@ -10,6 +10,7 @@ import javax.sound.sampled.SourceDataLine;
 
 final class AudioSinkFactory {
     private static final Logger logger = LoggerFactory.getLogger(AudioSinkFactory.class);
+    private static final int SOURCE_LINE_BUFFER_BYTES = 64 * 1024;
 
     private AudioSinkFactory() {
     }
@@ -18,7 +19,7 @@ final class AudioSinkFactory {
         try {
             AudioFormat format = new AudioFormat(sampleRate, 16, 2, true, false);
             SourceDataLine line = AudioSystem.getSourceDataLine(format);
-            line.open(format, 32 * 1024);
+            line.open(format, SOURCE_LINE_BUFFER_BYTES);
             line.start();
             return new SourceDataLineSink(line);
         } catch (LineUnavailableException | IllegalArgumentException e) {

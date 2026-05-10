@@ -10,14 +10,14 @@ public class RewindBuffer {
     private final Deque<SaveStateFile> states = new ArrayDeque<>();
 
     public RewindBuffer(int capacity) {
-        if (capacity < 1) {
-            throw new IllegalArgumentException("capacity must be positive");
+        if (capacity < 0) {
+            throw new IllegalArgumentException("capacity must not be negative");
         }
         this.capacity = capacity;
     }
 
     public synchronized void add(SaveStateFile state) {
-        if (state == null) {
+        if (capacity == 0 || state == null) {
             return;
         }
         while (states.size() >= capacity) {

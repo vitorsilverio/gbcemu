@@ -38,7 +38,7 @@ public class SettingsDialog extends JDialog {
         this.screenScale = spinner(settings.screenScale(), 1, 8, 1);
         this.smoothScaling = new JCheckBox("Smooth scaling", settings.smoothScaling());
         this.fullscreen = new JCheckBox("Fullscreen", settings.fullscreen());
-        this.rewindSeconds = spinner(settings.rewindSeconds(), 1, 120, 1);
+        this.rewindSeconds = spinner(settings.rewindSeconds(), 0, 120, 1);
         this.rewindInterval = spinner(settings.rewindCaptureIntervalFrames(), 1, 60, 1);
         this.masterVolume = slider(settings.audioMasterVolume());
         this.leftVolume = slider(settings.audioLeftVolume());

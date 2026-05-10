@@ -75,6 +75,17 @@ class ApuTest {
     }
 
     @Test
+    void disabledMasterAudioKeepsProducingSilentSamples() {
+        Apu apu = new Apu((buffer, length) -> {
+        });
+
+        apu.write(0xFF26, (byte) 0x00);
+        tickUntilSamplesAreBuffered(apu);
+
+        assertTrue(apu.bufferedSampleBytes() > 0);
+    }
+
+    @Test
     void noiseChannelTriggerSetsNr52StatusBit() {
         Apu apu = new Apu((buffer, length) -> {
         });

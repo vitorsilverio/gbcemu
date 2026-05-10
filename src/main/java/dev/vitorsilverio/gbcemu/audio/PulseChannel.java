@@ -123,6 +123,24 @@ class PulseChannel extends SoundChannel {
         return Math.max(4, (2048 - period) * 4);
     }
 
+    ApuChannelDebugSnapshot debugSnapshot(int channelNumber) {
+        int envelopeAddress = channel == 0 ? ApuAddress.NR12_CHANNEL_1_VOLUME : ApuAddress.NR22_CHANNEL_2_VOLUME;
+        int dutyAddress = channel == 0 ? ApuAddress.NR11_CHANNEL_1_DUTY : ApuAddress.NR21_CHANNEL_2_DUTY;
+        int periodDistance = 2048 - period;
+        double frequencyHz = periodDistance <= 0 ? 0 : 131_072.0 / periodDistance;
+        int duty = (context.register(dutyAddress) >> 6) & 0x03;
+        return debugSnapshot(
+                channelNumber,
+                channel == 0 ? "CH1 Pulse" : "CH2 Pulse",
+                envelopeDacEnabled(envelopeAddress),
+                period,
+                frequencyHz,
+                dutyStep,
+                duty,
+                "duty=" + duty + " sweepTimer=" + sweepTimer
+        );
+    }
+
     void tickLength() {
         tickLength(channel == 0 ? ApuAddress.NR14_CHANNEL_1_FREQUENCY_HI : ApuAddress.NR24_CHANNEL_2_FREQUENCY_HI);
     }

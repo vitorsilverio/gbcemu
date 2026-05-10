@@ -110,7 +110,6 @@ public class EmulatorWindow {
             if (keyListener != null) {
                 screen.addKeyListener(keyListener);
             }
-            repaintTimer.start();
             screen.repaint();
         });
     }
@@ -143,6 +142,12 @@ public class EmulatorWindow {
             overlayTimer.restart();
             screen.repaint();
         });
+    }
+
+    public void updatePerformanceStats(double fps, double speedPercent) {
+        SwingUtilities.invokeLater(() ->
+                window.setTitle(String.format("GBC EMU - %.1f FPS (%.0f%%)", fps, speedPercent))
+        );
     }
 
     private void detachKeyListener() {
