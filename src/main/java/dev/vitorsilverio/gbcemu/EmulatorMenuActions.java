@@ -16,6 +16,8 @@ public record EmulatorMenuActions(
         Runnable memoryDebugger,
         Runnable ppuDebugger,
         Runnable cpuDebugger,
-        Runnable cartDebugger
+        Runnable cartDebugger,
+        Runnable dumpDebugBundle,
+        Runnable dumpMemoryBanks
 ) {
 }

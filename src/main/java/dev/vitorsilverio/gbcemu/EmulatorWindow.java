@@ -213,6 +213,17 @@ public class EmulatorWindow {
         JMenuItem openCartDebugger = new JMenuItem("Cart / MBC...");
         openCartDebugger.addActionListener(event -> menuActions.cartDebugger().run());
         debugMenu.add(openCartDebugger);
+
+        debugMenu.addSeparator();
+
+        JMenuItem dumpDebugBundle = new JMenuItem("Dump debug bundle");
+        dumpDebugBundle.addActionListener(event -> menuActions.dumpDebugBundle().run());
+        dumpDebugBundle.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx() | KeyEvent.SHIFT_DOWN_MASK));
+        debugMenu.add(dumpDebugBundle);
+
+        JMenuItem dumpMemoryBanks = new JMenuItem("Dump memory banks");
+        dumpMemoryBanks.addActionListener(event -> menuActions.dumpMemoryBanks().run());
+        debugMenu.add(dumpMemoryBanks);
         menuBar.add(debugMenu);
 
         JMenu snapshotMenu = new JMenu("Save states");

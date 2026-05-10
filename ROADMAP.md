@@ -1,145 +1,196 @@
 # GBC EMU Roadmap
 
-Este documento organiza as melhorias e metas do emulador. A ideia é manter uma lista viva, marcar progresso aos poucos e evitar perder contexto entre sessões de debug.
+Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas de tarefas pequenas e mantem o foco em funcionalidades maiores, compatibilidade real e ferramentas de debug que ajudam tanto o uso manual quanto a investigacao via Codex.
 
-## Objetivos Gerais
+## Direcao
 
-- Priorizar Game Boy Color, sem complicar demais com detalhes que so importam para DMG quando isso atrapalhar a evolucao principal.
-- Melhorar a usabilidade para testar jogos reais sem depender do IntelliJ.
-- Criar ferramentas internas de debug que sejam uteis tanto para uso manual quanto para analise via Codex.
-- Aumentar compatibilidade gradualmente, validando com test ROMs e jogos reais.
+- Priorizar Game Boy Color.
+- Manter o emulador utilizavel fora do IntelliJ.
+- Evitar features de debug que deixem o runtime lento quando fechadas.
+- Tratar save state, rewind e debug como infraestrutura central.
+- Validar compatibilidade com test ROMs e jogos reais, nao apenas por impressao visual.
 
-## Funcionalidades De Usabilidade
+## Concluido / Base Atual
 
-- [ ] Unificar a experiencia em uma unica janela.
-  - O emulador nao deve abrir uma janela separada apenas para iniciar ROM.
-  - `Open ROM` nao deve relancar a aplicacao inteira.
-  - O ideal e permitir carregar/trocar ROM recriando o runtime internamente.
+- Janela unica de emulador sem launcher separado.
+- Menu para abrir ROM, configurar BIOS padrao, pausar, retomar e parar.
+- Argumentos de linha de comando: `--rom`, `--bios`, `--save-file`, `--headless`, `--skip-bios`, `--no-save`, `--no-bios`.
+- Configuracoes persistentes para tela, som, rewind e teclado.
+- Remapeamento de teclado.
+- Overlay visual para `PLAY`, `PAUSE`, `STOP` e `REW`.
+- Save states por jogo e por slot (`.sa0`, `.sa1`, `.saN`) com metadata, frame, PC e preview.
+- Rewind inicial em memoria por snapshots intervalados.
+- GameShark com UI para colar listas grandes de codigos.
+- Debug separado por area:
+  - CPU/disassembly.
+  - Memoria e bancos.
+  - PPU/tiles/tile maps/paletas.
+  - Audio/canais.
+  - Cart/MBC.
+- Disassembler em tabela com cache por memoria/banco e breakpoints por PC.
+- Debug de audio por canal, com mute/volume individual, master/stereo e trace opcional de writes da APU.
+- Throttle por deadline acumulado, corrigindo starvation de audio em Windows.
+- Otimizacoes de hot path da PPU:
+  - framebuffer cacheado;
+  - escrita direta no buffer da imagem;
+  - candidatos de sprite preparados por scanline;
+  - reducao de alocacoes por pixel.
+- Save state refatorado para estados tipados, sem `@Savable`, `Snapshot(Map)` ou restauracao por reflexao.
+- Cart RAM separada da ROM e exposta como `MemoryBank`.
+- APU separada em componentes menores com estado explicito.
 
-- [ ] Save state.
-  - Capturar estado completo de CPU, bus, RAM, VRAM, OAM, IO, PPU, Timer, APU, cart/MBC e periféricos.
-  - Salvar/carregar snapshots manualmente.
-  - Garantir que snapshots nao compartilhem referencias vivas com o estado em execucao.
+## Usabilidade
 
-- [ ] Rewind.
-  - Guardar os ultimos 15 segundos por padrao.
-  - Tornar a duracao configuravel.
-  - Usar ring buffer de snapshots por frame ou intervalos fixos.
-  - Restaurar snapshots enquanto o usuario segura uma tecla/botao.
-  - [x] Primeira versao do ring buffer em memoria com restauracao manual por F6.
+- [ ] Gamepad.
+  - Detectar controles.
+  - Mapear botoes.
+  - Persistir perfil por controle quando possivel.
 
-- [ ] GameShark / cheats.
-  - Suportar codigos GameShark/Game Genie relevantes para GB/GBC.
-  - UI para adicionar, remover, ativar e desativar cheats.
-  - Aplicar patches de memoria de forma rastreavel para debug.
+- [ ] Configuracao de audio mais completa.
+  - Latencia/buffer.
+  - Device de audio.
+  - Perfil de filtro de saida.
 
-- [ ] Serial com link cable.
-  - Implementar cabo serial entre duas instancias do emulador.
-  - Avaliar backend por socket local.
-  - Criar UI para conectar/desconectar.
+- [ ] Rewind continuo.
+  - Restaurar enquanto o usuario segura uma tecla/botao.
+  - Evitar custo quando rewind estiver desativado.
+  - Avaliar snapshots menores ou delta compression.
+
+- [ ] Link cable.
+  - Suportar TCP sockets para conexao via rede.
+  - Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
+  - UI para conectar/desconectar.
+  - Sincronizacao suficiente para trocas e batalhas.
 
 - [ ] Infrared com hardware real.
-  - Conectar com dispositivo real de infrared via Arduino.
-  - Permitir comunicacao com um Game Boy Color real.
-  - Criar uma camada de transporte para manter o emulador independente do hardware especifico.
+  - Criar camada de transporte.
+  - Integrar Arduino/dispositivo serial.
+  - Testar comunicacao com Game Boy Color real.
 
-- [ ] Menu de configuracoes.
-  - Som: volume, mute, latencia/buffer, device.
-  - Controle: teclado, gamepad, remapeamento.
-  - Tela: escala, filtros, aspect ratio, cores, fullscreen.
+## Debug
 
-- [ ] Suporte a controle.
-  - Detectar gamepads.
-  - Mapear botoes.
-  - Persistir configuracao.
-
-## Funcionalidades De Debug
-
-- [x] Janela inicial de debugger.
-  - CPU/PPU snapshot.
-  - Lista de instrucoes ao redor do PC.
-  - Runtime memory map por componente.
-  - Tiles, tile maps e paletas.
-  - Dump para `target/debug-*`.
-
-- [x] Visualizador de memoria.
-  - Tabela com 16 bytes por linha.
-  - Selecionar regioes comuns: ROM, VRAM, WRAM, OAM, IO, HRAM.
-  - Dump textual para `target/debug-memory.txt`.
-
-- [ ] Breakpoints.
-  - [x] Breakpoint por PC.
-  - Breakpoint por leitura/escrita de endereco.
-  - Breakpoint por valor/condicao simples.
-  - Integrar com pause/resume/step.
+- [x] Watchpoints.
+  - [x] Breakpoint por leitura/escrita de endereco.
+  - [x] Breakpoint por valor simples opcional.
+  - [x] Desenhar para custo zero quando nenhum watchpoint estiver ativo.
 
 - [ ] Step/debug controls.
   - Step instruction.
   - Step frame.
   - Step scanline.
   - Run until VBlank/HBlank.
+  - Exige arquitetura leve para nao repetir a lentidao da tentativa inicial.
 
-- [ ] Edicao de memoria.
-  - Permitir editar celulas da tabela de memoria.
-  - Escrever via `bus.write`.
-  - Inicialmente permitir edicao apenas quando pausado.
-  - Indicar regioes bloqueadas ou com efeitos colaterais.
+- [ ] Memory editor seguro.
+  - Nao usar apenas `bus.write` como padrao, porque dispara efeitos colaterais e falha em ROM/areas bloqueadas.
+  - Modo `hardware write`: via bus, explicitamente com efeitos colaterais.
+  - Modo `raw bank edit`: via `MemoryBank.writeBank`, limitado a memorias editaveis como WRAM, VRAM, HRAM e cart RAM.
+  - Permitir inicialmente apenas quando pausado.
 
-- [ ] Melhorar disassembler.
-  - [x] Substituir texto puro por tabela na UI.
-  - [x] Destacar a instrucao atual do PC.
-  - [x] Mostrar nomes reais das familias principais e opcodes CB.
-  - Decodificar operandos corretamente.
-  - Mostrar bytes e destino de jumps/calls.
+- [ ] Export de debug para Codex.
+  - [x] JSON inicial da janela de CPU em `target/debug-cpu-window.json`.
+  - [x] Incluir CPU, PPU basica, motivo de breakpoint e tabela atual do disassembler.
+  - [x] Incluir interrupcoes, timer, cart/MBC e resumo dos bancos selecionados.
+  - [x] Incluir serial.
+  - [x] Incluir amostra pequena do banco atual de cada `MemoryBank`.
+  - [x] Export JSON da janela de memoria com mapa, regiao visivel e amostras maiores dos bancos atuais.
+  - [x] Export JSON da janela de PPU com registradores, frame stats, paletas, VRAM e OAM.
+  - [x] Export JSON da janela de Cart/MBC com propriedades, mapper state e amostras de ROM/RAM.
+  - [x] Utilitario comum para JSON de debug.
+  - [x] Dump bundle pelo menu `Debug`, sem precisar abrir janelas individuais.
+  - [x] Incluir disassembly forward no dump bundle.
+  - [x] Incluir DMA, HDMA, registradores CGB e memory map no dump bundle.
+  - [x] Incluir metadata de execucao no dump bundle.
+  - [x] Exportar dumps completos de memoria por regiao/banco quando solicitado.
 
-- [ ] Debug snapshots para Codex.
-  - Exportar estado em JSON alem de TXT/PNG.
-  - Incluir registradores, memoria selecionada, PPU, cart/MBC, timer e interrupcoes.
+- [ ] Disassembler avancado.
+  - Decodificar operandos e destinos de jumps/calls de forma mais rica.
+  - Invalidar cache quando memoria executavel ou banco relevante mudar.
 
-- [ ] Debug de audio.
-  - Mostrar estado dos canais 1, 2, 3 e 4.
-  - Permitir alterar volume/mute individual dos canais em tempo de execucao para testes.
-  - Essas alteracoes sao ferramentas de debug e nao devem entrar no save state.
+## Compatibilidade CGB
 
-## Funcionalidades De Compatibilidade
+### Ja Existe Base
 
-- [ ] Implementar o resto dos memory mappers.
-  - Revisar suporte atual: ROM only, MBC1, MBC3, MBC5.
-  - Implementar mappers faltantes conforme prioridade de jogos reais.
-  - Validar RAM externa, rumble, RTC e bancos grandes.
+- KEY0/KEY1 e troca de velocidade via `STOP`.
+- Timer e serial com consideracao inicial de double speed.
+- VRAM bank (`VBK`) e WRAM bank (`SVBK`).
+- CGB palettes (`BGPI/BGPD`, `OBPI/OBPD`).
+- Atributos CGB de tile map: banco, paleta, flip e prioridade.
+- OAM com atributos CGB: banco, paleta, flip e prioridade.
+- HDMA/GDMA inicial.
+- Infrared register (`FF56`) inicial.
+- Object priority mode (`OPRI`).
+- PCM registers (`FF76/FF77`) para saida digital da APU.
+- MBC1, MBC3 com RTC, MBC5 e RAM externa.
 
-- [ ] Passar no teste de som do CGB.
-  - Continuar a partir dos testes individuais do `cgb_sound`.
-  - Corrigir comportamento de frame sequencer, wave channel e detalhes de power.
-  - Evitar mexer em audio output/buffer enquanto a meta for compatibilidade de registradores.
+### Faltante / Incerto
 
-- [ ] Completar funcionalidades faltantes do CGB.
-  - Revisar HDMA/GDMA.
-  - Revisar double speed e efeitos no timer/serial/APU.
-  - Revisar VRAM bank, WRAM bank e registradores CGB.
-  - Revisar prioridades de BG/window/sprites.
-  - Revisar comportamento de paletas durante modos bloqueados.
+- [ ] `cgb_sound`.
+  - Passar nos testes individuais.
+  - Revisar frame sequencer, power on/off da APU, wave channel, DAC e mascaras de leitura.
+  - Separar compatibilidade de registradores de qualidade do output para host.
 
-- [ ] Melhorar testes automatizados.
-  - Manter test ROMs conhecidas como diagnostico.
-  - Separar testes headless rapidos de testes visuais longos.
-  - Automatizar leitura de serial quando disponivel.
-  - Gerar screenshots de falha para PPU/debug.
+- [ ] Timing CGB.
+  - Revisar `cgb_timing`.
+  - Confirmar double speed em CPU, timer, serial, PPU, DMA, HDMA e APU.
+  - Garantir que componentes que nao dobram no CGB continuem no clock correto.
 
-## Ordem Sugerida
+- [ ] HDMA/GDMA completo.
+  - Confirmar bloqueios de bus e timing por bloco.
+  - Confirmar comportamento de cancelamento de HBlank HDMA.
+  - Validar origem/destino, mascaras e leitura de `HDMA5`.
 
-1. Consolidar a janela unica e runtime recarregavel.
-2. Adicionar pause/resume/stop mais robustos e step instruction.
-3. Implementar breakpoints simples por PC.
-4. Permitir edicao de memoria quando pausado.
-5. Implementar save state basico.
-6. Evoluir save state para rewind dos ultimos 15 segundos.
-7. Retomar compatibilidade CGB: `cgb_sound`, CGB timing e funcionalidades faltantes.
-8. Expandir usabilidade: configuracoes, controle, cheats e link cable.
+- [ ] Bloqueios de acesso CGB.
+  - VRAM durante mode 3.
+  - OAM durante mode 2/3.
+  - Paletas durante modos bloqueados.
+  - Wave RAM durante CH3 ativo.
 
-## Notas De Implementacao
+- [ ] PPU CGB edge cases.
+  - Prioridade BG/window/sprite em CGB e modo compatibilidade DMG.
+  - Window edge cases (`WX`, `WY`, reinicio por linha).
+  - Penalidades de fetch e impacto de sprites/window.
+  - OAM bug apenas se afetar CGB real ou jogos CGB.
 
-- Save state e rewind devem ser tratados como infraestrutura central, nao como recurso superficial de UI.
-- Breakpoints e edicao de memoria devem funcionar sem deixar o emulador lento quando o debugger estiver fechado.
-- Dumps do debugger devem continuar sendo legiveis por humanos e por ferramentas externas.
-- O emulador deve continuar utilizavel mesmo quando nenhuma ROM estiver carregada.
+- [ ] Paletas e boot behavior.
+  - Confirmar estado pos-BIOS.
+  - Confirmar mapeamento RGB555/BGR555 e conversao para RGB host.
+  - Confirmar comportamento de jogos DMG rodando em modo CGB.
+
+- [ ] Infrared real.
+  - Registro existe, mas falta comportamento fisico e transporte externo.
+
+- [ ] Mappers faltantes.
+  - Priorizar conforme jogos reais.
+  - Possiveis proximos: MBC2, MMM01, HuC1/HuC3, Pocket Camera, rumble nuances.
+
+## Testes
+
+- [x] `cpu_instrs`.
+- [x] `instr_timing`.
+- [x] `mem_timing`.
+- [x] `mem_timing-2`.
+- [ ] `halt_bug`.
+- [ ] `oam_bug` apenas no que afetar CGB real.
+- [ ] `interrupt_time`.
+- [ ] `cgb_timing`.
+- [ ] `cgb_sound`.
+- [ ] Automatizar execucao headless de test ROMs com leitura de serial.
+- [ ] Gerar screenshot/dump em falhas visuais.
+
+## Arquitetura De Estado
+
+- Save state salva hardware emulado, nao objetos vivos da aplicacao.
+- Cheats/GameShark nao entram no save state; pertencem a configuracao da sessao ou arquivo proprio.
+- `AudioSink`, threads, janelas, callbacks e arquivos abertos nunca entram no snapshot.
+- Estados devem ser tipados e versionados.
+- Componentes com bancos devem expor `MemoryBank` quando isso ajudar debugger e ferramentas.
+
+## Proximas Prioridades Sugeridas
+
+1. Consolidar `cgb_sound` e diferenciar bug de registrador de preferencia/filtro de output.
+2. Revisar `cgb_timing` e double speed de forma sistematica.
+3. Implementar watchpoints sem custo quando inativos.
+4. Implementar gamepad.
+5. Evoluir rewind continuo.
+6. Implementar link cable local.

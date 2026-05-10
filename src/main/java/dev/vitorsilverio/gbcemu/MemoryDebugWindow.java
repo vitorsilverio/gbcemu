@@ -1,6 +1,8 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -67,6 +69,8 @@ public class MemoryDebugWindow {
         refresh.addActionListener(event -> refresh());
         JButton dump = new JButton("Dump");
         dump.addActionListener(event -> dumpMemory());
+        JButton dumpJson = new JButton("Dump JSON");
+        dumpJson.addActionListener(event -> dumpMemoryJson());
 
         controls.add(new JLabel("Region"));
         controls.add(memoryRegion);
@@ -76,6 +80,7 @@ public class MemoryDebugWindow {
         controls.add(memoryLength);
         controls.add(refresh);
         controls.add(dump);
+        controls.add(dumpJson);
         return controls;
     }
 
@@ -197,6 +202,89 @@ public class MemoryDebugWindow {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to dump memory debugger file", e);
         }
+    }
+
+    private void dumpMemoryJson() {
+        DebugJson.writeTargetFile("debug-memory-window.json", memoryJsonText(), "Failed to dump memory debugger JSON file");
+    }
+
+    private String memoryJsonText() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("{\n");
+        builder.append("  \"region\": {\n");
+        DebugJson.appendString(builder, "name", String.valueOf(memoryRegion.getSelectedItem()), true, 4);
+        DebugJson.appendString(builder, "start", String.format("%04X", parseHex(memoryStart.getText(), 0xC000) & 0xFFFF), true, 4);
+        DebugJson.appendNumber(builder, "length", Math.max(16, Math.min(parseHex(memoryLength.getText(), 0x0100), 0x10000)), false, 4);
+        builder.append("  },\n");
+        appendMemoryMapJson(builder);
+        appendMemoryBanksJson(builder);
+        appendVisibleMemoryJson(builder);
+        builder.append("}\n");
+        return builder.toString();
+    }
+
+    private void appendMemoryMapJson(StringBuilder builder) {
+        builder.append("  \"memoryMap\": [\n");
+        java.util.List<Bus.MemoryMapEntry> entries = bus.memoryMap();
+        for (int index = 0; index < entries.size(); index++) {
+            Bus.MemoryMapEntry entry = entries.get(index);
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "start", String.format("%04X", entry.start()), true, 6);
+            DebugJson.appendString(builder, "end", String.format("%04X", entry.end()), true, 6);
+            DebugJson.appendString(builder, "owner", entry.owner(), false, 6);
+            builder.append("    }");
+            if (index < entries.size() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ],\n");
+    }
+
+    private void appendMemoryBanksJson(StringBuilder builder) {
+        builder.append("  \"memoryBanks\": [\n");
+        java.util.List<MemoryBank> banks = bus.memoryBanks();
+        for (int index = 0; index < banks.size(); index++) {
+            MemoryBank bank = banks.get(index);
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "name", bank.bankName(), true, 6);
+            DebugJson.appendNumber(builder, "bankCount", bank.bankCount(), true, 6);
+            DebugJson.appendNumber(builder, "bankSize", bank.bankSize(), true, 6);
+            DebugJson.appendNumber(builder, "currentBank", bank.currentBank(), true, 6);
+            DebugJson.appendString(builder, "currentBankSample", DebugJson.memoryBankSample(bank, 256), false, 6);
+            builder.append("    }");
+            if (index < banks.size() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ],\n");
+    }
+
+    private void appendVisibleMemoryJson(StringBuilder builder) {
+        builder.append("  \"visibleMemory\": [\n");
+        for (int row = 0; row < memoryModel.getRowCount(); row++) {
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "address", String.valueOf(memoryModel.getValueAt(row, 0)), true, 6);
+            DebugJson.appendString(builder, "bytes", visibleRowBytes(row), false, 6);
+            builder.append("    }");
+            if (row < memoryModel.getRowCount() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ]\n");
+    }
+
+    private String visibleRowBytes(int row) {
+        StringBuilder builder = new StringBuilder();
+        for (int column = 1; column < memoryModel.getColumnCount(); column++) {
+            if (column > 1) {
+                builder.append(' ');
+            }
+            builder.append(memoryModel.getValueAt(row, column));
+        }
+        return builder.toString();
     }
 
     private int parseHex(String text, int fallback) {

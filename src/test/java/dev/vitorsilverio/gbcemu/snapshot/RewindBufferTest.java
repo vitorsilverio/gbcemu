@@ -36,7 +36,17 @@ class RewindBufferTest {
 
     @Test
     void rejectsInvalidCapacity() {
-        assertThrows(IllegalArgumentException.class, () -> new RewindBuffer(0));
+        assertThrows(IllegalArgumentException.class, () -> new RewindBuffer(-1));
+    }
+
+    @Test
+    void zeroCapacityDisablesCapture() {
+        RewindBuffer buffer = new RewindBuffer(0);
+
+        buffer.add(saveState(1));
+
+        assertEquals(0, buffer.size());
+        assertFalse(buffer.popLatest().isPresent());
     }
 
     @Test

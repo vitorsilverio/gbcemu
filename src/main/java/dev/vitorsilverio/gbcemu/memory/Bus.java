@@ -14,6 +14,7 @@ public class Bus {
 
     private final List<MemorySpace> memorySpaces;
     private final InterruptManager interruptManager;
+    private volatile MemoryAccessListener memoryAccessListener;
 
     public Bus() {
         this.memorySpaces = new ArrayList<>();
@@ -82,13 +83,22 @@ public class Bus {
                 .findFirst();
     }
 
+    public void setMemoryAccessListener(MemoryAccessListener memoryAccessListener) {
+        this.memoryAccessListener = memoryAccessListener;
+    }
+
 
     public byte read(int address) {
         address = address & 0xFFFF; // Ensure address is within 16-bit range
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {
                 try {
-                    return memorySpace.read(address);
+                    byte value = memorySpace.read(address);
+                    MemoryAccessListener listener = memoryAccessListener;
+                    if (listener != null) {
+                        listener.onRead(address, value);
+                    }
+                    return value;
                 } catch (Exception e) {
                     logger.error(String.format("""
                                 Error reading from address %s
@@ -108,6 +118,10 @@ public class Bus {
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {
                 memorySpace.write(address, value);
+                MemoryAccessListener listener = memoryAccessListener;
+                if (listener != null) {
+                    listener.onWrite(address, value);
+                }
                 return;
             }
         }

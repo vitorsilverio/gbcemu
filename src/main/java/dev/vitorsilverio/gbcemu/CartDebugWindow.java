@@ -1,7 +1,9 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
+import dev.vitorsilverio.gbcemu.cartridge.CartState;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -44,8 +46,11 @@ public class CartDebugWindow {
         refresh.addActionListener(event -> refresh());
         JButton dump = new JButton("Dump");
         dump.addActionListener(event -> dump());
+        JButton dumpJson = new JButton("Dump JSON");
+        dumpJson.addActionListener(event -> dumpJson());
         toolbar.add(refresh);
         toolbar.add(dump);
+        toolbar.add(dumpJson);
         frame.add(toolbar, BorderLayout.NORTH);
 
         headerText.setEditable(false);
@@ -102,6 +107,10 @@ public class CartDebugWindow {
         }
     }
 
+    private void dumpJson() {
+        DebugJson.writeTargetFile("debug-cart-window.json", dumpJsonText(), "Failed to dump cart debugger JSON");
+    }
+
     private String dumpText() {
         StringBuilder builder = new StringBuilder("Cart / MBC\n");
         for (int row = 0; row < propertiesModel.getRowCount(); row++) {
@@ -123,6 +132,42 @@ public class CartDebugWindow {
         }
         builder.append("\nHeader\n").append(headerText.getText());
         return builder.toString();
+    }
+
+    private String dumpJsonText() {
+        CartState state = cart.saveState();
+        StringBuilder builder = new StringBuilder();
+        builder.append("{\n");
+        DebugJson.appendObject(builder, "properties", cart.debugProperties(), true, 2);
+        builder.append("  \"externalRam\": {\n");
+        DebugJson.appendNumber(builder, "size", state.externalRam().data().length, true, 4);
+        DebugJson.appendNumber(builder, "currentBank", state.externalRam().currentBank(), false, 4);
+        builder.append("  },\n");
+        DebugJson.appendObject(builder, "mapperState", state.mapperState(), true, 2);
+        appendBanksJson(builder);
+        DebugJson.appendString(builder, "headerText", headerText.getText(), false, 2);
+        builder.append("}\n");
+        return builder.toString();
+    }
+
+    private void appendBanksJson(StringBuilder builder) {
+        builder.append("  \"banks\": [\n");
+        java.util.List<MemoryBank> banks = cart.memoryBanks();
+        for (int index = 0; index < banks.size(); index++) {
+            MemoryBank bank = banks.get(index);
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "name", bank.bankName(), true, 6);
+            DebugJson.appendNumber(builder, "currentBank", bank.currentBank(), true, 6);
+            DebugJson.appendNumber(builder, "bankCount", bank.bankCount(), true, 6);
+            DebugJson.appendNumber(builder, "bankSize", bank.bankSize(), true, 6);
+            DebugJson.appendString(builder, "currentBankSample", DebugJson.memoryBankSample(bank, 256), false, 6);
+            builder.append("    }");
+            if (index < banks.size() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ],\n");
     }
 
     private static DefaultTableModel tableModel(String... columns) {

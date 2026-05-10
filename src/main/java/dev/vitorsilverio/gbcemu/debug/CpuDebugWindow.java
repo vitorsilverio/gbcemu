@@ -1,9 +1,18 @@
 package dev.vitorsilverio.gbcemu.debug;
 
+import dev.vitorsilverio.gbcemu.cartridge.Cart;
+import dev.vitorsilverio.gbcemu.cartridge.CartState;
+import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
+import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.cpu.CpuState;
 import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.peripherals.Serial;
+import dev.vitorsilverio.gbcemu.peripherals.SerialState;
+import dev.vitorsilverio.gbcemu.peripherals.TimerState;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -29,6 +38,7 @@ import java.util.Map;
 public class CpuDebugWindow {
 
     private final Cpu cpu;
+    private final Bus bus;
     private final Ppu ppu;
     private final DebugController debugController;
     private final DisassemblyCache disassemblyCache;
@@ -41,9 +51,12 @@ public class CpuDebugWindow {
         }
     };
     private final JTable instructionTable = new JTable(instructionModel);
+    private final JTextField watchAddress = new JTextField(4);
+    private final JTextField watchValue = new JTextField(2);
 
     public CpuDebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController) {
         this.cpu = cpu;
+        this.bus = bus;
         this.ppu = ppu;
         this.debugController = debugController;
         this.disassemblyCache = new DisassemblyCache(bus);
@@ -64,9 +77,27 @@ public class CpuDebugWindow {
         toggleBreakpoint.addActionListener(event -> toggleSelectedInstructionBreakpoint());
         JButton dump = new JButton("Dump");
         dump.addActionListener(event -> dump());
+        JButton dumpJson = new JButton("Dump JSON");
+        dumpJson.addActionListener(event -> dumpJson());
         toolbar.add(refresh);
         toolbar.add(toggleBreakpoint);
+        toolbar.add(new JLabel("Watch"));
+        watchAddress.setToolTipText("Address, for example C000");
+        watchValue.setToolTipText("Optional byte value, for example FF");
+        toolbar.add(watchAddress);
+        toolbar.add(new JLabel("="));
+        toolbar.add(watchValue);
+        JButton watchRead = new JButton("Read");
+        watchRead.addActionListener(event -> addWatchpoint(DebugController.AccessType.READ));
+        JButton watchWrite = new JButton("Write");
+        watchWrite.addActionListener(event -> addWatchpoint(DebugController.AccessType.WRITE));
+        JButton clearWatch = new JButton("Clear Watch");
+        clearWatch.addActionListener(event -> clearWatchpoints());
+        toolbar.add(watchRead);
+        toolbar.add(watchWrite);
+        toolbar.add(clearWatch);
         toolbar.add(dump);
+        toolbar.add(dumpJson);
 
         window.add(toolbar, BorderLayout.NORTH);
         window.add(statePanel(), BorderLayout.WEST);
@@ -102,6 +133,7 @@ public class CpuDebugWindow {
         addStateField(panel, "Stopped");
         addStateField(panel, "Speed");
         addStateField(panel, "Break");
+        addStateField(panel, "Watch");
         addStateField(panel, "LCDC");
         addStateField(panel, "STAT");
         addStateField(panel, "Mode");
@@ -176,6 +208,7 @@ public class CpuDebugWindow {
         setState("Stopped", "%s", cpuState.stopped());
         setState("Speed", "%dx", cpuState.speedRate());
         stateFields.get("Break").setText(debugController.breakReason());
+        stateFields.get("Watch").setText(watchpointsText());
         setState("LCDC", "%02X", ppuSnapshot.lcdc());
         setState("STAT", "%02X", ppuSnapshot.stat());
         stateFields.get("Mode").setText(String.valueOf(ppuSnapshot.mode()));
@@ -228,6 +261,39 @@ public class CpuDebugWindow {
         refreshInstructionTable();
     }
 
+    private void addWatchpoint(DebugController.AccessType accessType) {
+        int address = parseHex(watchAddress.getText(), -1);
+        if (address < 0 || address > 0xFFFF) {
+            return;
+        }
+        int value = watchValue.getText().isBlank() ? -1 : parseHex(watchValue.getText(), -1);
+        if (value > 0xFF) {
+            return;
+        }
+        debugController.addWatchpoint(accessType, address, value < 0 ? null : value);
+        refreshStateFields();
+    }
+
+    private void clearWatchpoints() {
+        debugController.clearWatchpoints();
+        refreshStateFields();
+    }
+
+    private String watchpointsText() {
+        java.util.List<DebugController.Watchpoint> watchpoints = debugController.watchpoints();
+        if (watchpoints.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < watchpoints.size(); index++) {
+            if (index > 0) {
+                builder.append(", ");
+            }
+            builder.append(watchpoints.get(index).description());
+        }
+        return builder.toString();
+    }
+
     private int parseHex(String text, int fallback) {
         try {
             String normalized = text.trim().replace("0x", "").replace("$", "");
@@ -249,6 +315,10 @@ public class CpuDebugWindow {
         }
     }
 
+    private void dumpJson() {
+        DebugJson.writeTargetFile("debug-cpu-window.json", dumpJsonText(), "Failed to dump CPU debugger JSON");
+    }
+
     private String dumpText() {
         StringBuilder builder = new StringBuilder();
         for (Map.Entry<String, JTextField> entry : stateFields.entrySet()) {
@@ -263,6 +333,161 @@ public class CpuDebugWindow {
                     .append(instructionModel.getValueAt(row, 4)).append('\n');
         }
         return builder.toString();
+    }
+
+    private String dumpJsonText() {
+        CpuState cpuState = cpu.saveState();
+        Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
+        InterruptState interruptState = bus.findMemorySpace(InterruptManager.class)
+                .map(InterruptManager::saveState)
+                .orElse(new InterruptState((byte) 0, (byte) 0));
+        TimerState timerState = bus.findMemorySpace(dev.vitorsilverio.gbcemu.peripherals.Timer.class)
+                .map(dev.vitorsilverio.gbcemu.peripherals.Timer::saveState)
+                .orElse(new TimerState(0, (byte) 0, (byte) 0, (byte) 0, 0));
+        SerialState serialState = bus.findMemorySpace(Serial.class)
+                .map(Serial::saveState)
+                .orElse(new SerialState(0, 0, 0, 0, ""));
+        Cart cart = bus.findMemorySpace(Cart.class).orElse(null);
+        StringBuilder builder = new StringBuilder();
+        builder.append("{\n");
+        builder.append("  \"cpu\": {\n");
+        DebugJson.appendHex(builder, "pc", cpuState.pc(), true, 4, 4);
+        DebugJson.appendHex(builder, "sp", cpuState.sp(), true, 4, 4);
+        DebugJson.appendHex(builder, "af", cpuState.af(), true, 4, 4);
+        DebugJson.appendHex(builder, "bc", cpuState.bc(), true, 4, 4);
+        DebugJson.appendHex(builder, "de", cpuState.de(), true, 4, 4);
+        DebugJson.appendHex(builder, "hl", cpuState.hl(), true, 4, 4);
+        DebugJson.appendHex(builder, "a", cpuState.aUnsigned(), true, 4, 2);
+        DebugJson.appendHex(builder, "b", cpuState.bUnsigned(), true, 4, 2);
+        DebugJson.appendHex(builder, "c", cpuState.cUnsigned(), true, 4, 2);
+        DebugJson.appendHex(builder, "d", cpuState.dUnsigned(), true, 4, 2);
+        DebugJson.appendHex(builder, "e", cpuState.eUnsigned(), true, 4, 2);
+        DebugJson.appendHex(builder, "h", cpuState.hUnsigned(), true, 4, 2);
+        DebugJson.appendHex(builder, "l", cpuState.lUnsigned(), true, 4, 2);
+        DebugJson.appendBoolean(builder, "zeroFlag", cpuState.zeroFlag(), true, 4);
+        DebugJson.appendBoolean(builder, "negativeFlag", cpuState.negativeFlag(), true, 4);
+        DebugJson.appendBoolean(builder, "halfCarryFlag", cpuState.halfCarryFlag(), true, 4);
+        DebugJson.appendBoolean(builder, "carryFlag", cpuState.carryFlag(), true, 4);
+        DebugJson.appendBoolean(builder, "ime", cpuState.ime(), true, 4);
+        DebugJson.appendBoolean(builder, "halted", cpuState.halted(), true, 4);
+        DebugJson.appendBoolean(builder, "stopped", cpuState.stopped(), true, 4);
+        DebugJson.appendNumber(builder, "speedRate", cpuState.speedRate(), false, 4);
+        builder.append("  },\n");
+        builder.append("  \"ppu\": {\n");
+        DebugJson.appendBoolean(builder, "cgbMode", ppuSnapshot.cgbMode(), true, 4);
+        DebugJson.appendHex(builder, "lcdc", ppuSnapshot.lcdc(), true, 4, 2);
+        DebugJson.appendHex(builder, "stat", ppuSnapshot.stat(), true, 4, 2);
+        DebugJson.appendString(builder, "mode", String.valueOf(ppuSnapshot.mode()), true, 4);
+        DebugJson.appendNumber(builder, "line", ppuSnapshot.line(), true, 4);
+        DebugJson.appendNumber(builder, "column", ppuSnapshot.column(), true, 4);
+        DebugJson.appendNumber(builder, "cycles", ppuSnapshot.cycles(), true, 4);
+        DebugJson.appendNumber(builder, "scrollX", ppuSnapshot.scrollX(), true, 4);
+        DebugJson.appendNumber(builder, "scrollY", ppuSnapshot.scrollY(), true, 4);
+        DebugJson.appendNumber(builder, "windowX", ppuSnapshot.windowX(), true, 4);
+        DebugJson.appendNumber(builder, "windowY", ppuSnapshot.windowY(), true, 4);
+        DebugJson.appendHex(builder, "lineCompare", ppuSnapshot.lineCompare(), false, 4, 2);
+        builder.append("  },\n");
+        builder.append("  \"interrupts\": {\n");
+        DebugJson.appendHex(builder, "ie", interruptState.ieReg() & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "if", interruptState.ifReg() & 0xFF, true, 4, 2);
+        DebugJson.appendString(builder, "pending", bus.getPendingInterrupt().map(Enum::name).orElse(""), false, 4);
+        builder.append("  },\n");
+        builder.append("  \"timer\": {\n");
+        DebugJson.appendNumber(builder, "systemCounter", timerState.systemCounter(), true, 4);
+        DebugJson.appendHex(builder, "div", (timerState.systemCounter() >> 8) & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "tima", timerState.timerCounter() & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "tma", timerState.timerModulo() & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "tac", timerState.timerControl() & 0xFF, true, 4, 2);
+        DebugJson.appendNumber(builder, "overflowDelay", timerState.overflowDelay(), false, 4);
+        builder.append("  },\n");
+        builder.append("  \"serial\": {\n");
+        DebugJson.appendHex(builder, "sb", serialState.sb(), true, 4, 2);
+        DebugJson.appendHex(builder, "sc", serialState.sc(), true, 4, 2);
+        DebugJson.appendBoolean(builder, "transferActive", serialState.transferCyclesRemaining() > 0, true, 4);
+        DebugJson.appendNumber(builder, "transferCyclesRemaining", serialState.transferCyclesRemaining(), true, 4);
+        DebugJson.appendHex(builder, "outgoingByte", serialState.outgoingByte(), true, 4, 2);
+        DebugJson.appendString(builder, "pendingText", serialState.pendingText(), false, 4);
+        builder.append("  },\n");
+        appendCartJson(builder, cart);
+        appendMemoryBanksJson(builder);
+        DebugJson.appendString(builder, "breakReason", debugController.breakReason(), true, 2);
+        appendWatchpointsJson(builder);
+        builder.append("  \"disassembly\": [\n");
+        for (int row = 0; row < instructionModel.getRowCount(); row++) {
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "address", String.valueOf(instructionModel.getValueAt(row, 0)), true, 6);
+            DebugJson.appendBoolean(builder, "breakpoint", "*".equals(String.valueOf(instructionModel.getValueAt(row, 1))), true, 6);
+            DebugJson.appendString(builder, "bank", String.valueOf(instructionModel.getValueAt(row, 2)), true, 6);
+            DebugJson.appendString(builder, "bytes", String.valueOf(instructionModel.getValueAt(row, 3)), true, 6);
+            DebugJson.appendString(builder, "instruction", String.valueOf(instructionModel.getValueAt(row, 4)), false, 6);
+            builder.append("    }");
+            if (row < instructionModel.getRowCount() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ]\n");
+        builder.append("}\n");
+        return builder.toString();
+    }
+
+    private void appendCartJson(StringBuilder builder, Cart cart) {
+        builder.append("  \"cart\": ");
+        if (cart == null) {
+            builder.append("null,\n");
+            return;
+        }
+        CartState cartState = cart.saveState();
+        builder.append("{\n");
+        DebugJson.appendObject(builder, "properties", cart.debugProperties(), true, 4);
+        builder.append("    \"externalRam\": {\n");
+        DebugJson.appendNumber(builder, "size", cartState.externalRam().data().length, true, 6);
+        DebugJson.appendNumber(builder, "currentBank", cartState.externalRam().currentBank(), false, 6);
+        builder.append("    },\n");
+        DebugJson.appendObject(builder, "mapperState", cartState.mapperState(), false, 4);
+        builder.append("  },\n");
+    }
+
+    private void appendMemoryBanksJson(StringBuilder builder) {
+        builder.append("  \"memoryBanks\": [\n");
+        java.util.List<MemoryBank> banks = bus.memoryBanks();
+        for (int index = 0; index < banks.size(); index++) {
+            MemoryBank bank = banks.get(index);
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "name", bank.bankName(), true, 6);
+            DebugJson.appendNumber(builder, "bankCount", bank.bankCount(), true, 6);
+            DebugJson.appendNumber(builder, "bankSize", bank.bankSize(), true, 6);
+            DebugJson.appendNumber(builder, "currentBank", bank.currentBank(), true, 6);
+            DebugJson.appendString(builder, "currentBankSample", DebugJson.memoryBankSample(bank, 32), false, 6);
+            builder.append("    }");
+            if (index < banks.size() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ],\n");
+    }
+
+    private void appendWatchpointsJson(StringBuilder builder) {
+        builder.append("  \"watchpoints\": [\n");
+        java.util.List<DebugController.Watchpoint> watchpoints = debugController.watchpoints();
+        for (int index = 0; index < watchpoints.size(); index++) {
+            DebugController.Watchpoint watchpoint = watchpoints.get(index);
+            builder.append("    {\n");
+            DebugJson.appendString(builder, "type", watchpoint.accessType().name(), true, 6);
+            DebugJson.appendHex(builder, "address", watchpoint.address(), true, 6, 4);
+            if (watchpoint.value() == null) {
+                DebugJson.appendString(builder, "value", "", false, 6);
+            } else {
+                DebugJson.appendHex(builder, "value", watchpoint.value(), false, 6, 2);
+            }
+            builder.append("    }");
+            if (index < watchpoints.size() - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        builder.append("  ],\n");
     }
 
     private class InstructionCellRenderer extends DefaultTableCellRenderer {

@@ -86,8 +86,54 @@ public class Main {
                 Main::openMemoryDebugger,
                 Main::openPpuDebugger,
                 Main::openCpuDebugger,
-                Main::openCartDebugger
+                Main::openCartDebugger,
+                Main::dumpDebugBundle,
+                Main::dumpMemoryBanks
         );
+    }
+
+    private static void dumpMemoryBanks() {
+        if (activeEmulator == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Load a ROM before dumping memory banks.",
+                    "Memory dump",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        try {
+            File dumpDirectory = activeEmulator.dumpMemoryBanks();
+            JOptionPane.showMessageDialog(null,
+                    "Memory banks written to:\n" + dumpDirectory.getAbsolutePath(),
+                    "Memory dump",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null,
+                    "Failed to dump memory banks: " + e.getMessage(),
+                    "Memory dump",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static void dumpDebugBundle() {
+        if (activeEmulator == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Load a ROM before dumping debug data.",
+                    "Debug dump",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        try {
+            File dumpFile = activeEmulator.dumpDebugBundle();
+            JOptionPane.showMessageDialog(null,
+                    "Debug dump written to:\n" + dumpFile.getAbsolutePath(),
+                    "Debug dump",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null,
+                    "Failed to dump debug data: " + e.getMessage(),
+                    "Debug dump",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private static void configureCheats() {
