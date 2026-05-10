@@ -72,6 +72,13 @@ public class Main {
                   --no-save           Disable save file persistence.
                   --skip-bios         Start directly at 0x0100 using default DMG registers.
                   --headless          Run without window or audio output, unthrottled.
+                  --max-frames <n>    Stop automatically after n rendered frames.
+                  --dump-debug-on-exit
+                                      Write a debug bundle when the emulator stops.
+                  --expect-serial <text>
+                                      Exit with code 2 if serial transcript does not contain text.
+                  --fail-serial <text>
+                                      Exit with code 3 if serial transcript contains text.
                   --help              Show this help.
                 """);
     }
@@ -87,6 +94,7 @@ public class Main {
                 Main::saveSnapshot,
                 Main::restoreSnapshot,
                 Main::rewindSnapshot,
+                Main::rewindSnapshotSilent,
                 Main::openSaveStateDialog,
                 Main::configureCheats,
                 Main::openAudioDebugger,
@@ -210,14 +218,24 @@ public class Main {
     }
 
     private static void rewindSnapshot() {
+        rewindSnapshot(true);
+    }
+
+    private static void rewindSnapshotSilent() {
+        rewindSnapshot(false);
+    }
+
+    private static void rewindSnapshot(boolean notifyWhenUnavailable) {
         if (activeEmulator == null) {
             return;
         }
         if (!activeEmulator.rewindOneSnapshot()) {
-            JOptionPane.showMessageDialog(null,
-                    "No rewind snapshot is available yet.",
-                    "Rewind",
-                    JOptionPane.INFORMATION_MESSAGE);
+            if (notifyWhenUnavailable) {
+                JOptionPane.showMessageDialog(null,
+                        "No rewind snapshot is available yet.",
+                        "Rewind",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
             return;
         }
         showOverlay(EmulatorWindow.OverlayIcon.REWIND);
@@ -338,14 +356,44 @@ public class Main {
         if (options.skipBios()) {
             emulator.skipBios();
         }
+        emulator.stopAfterFrames(options.maxFrames());
         activeEmulator = emulator;
         if (options.headless()) {
             emulator.start();
+            dumpDebugOnExit(options, emulator);
+            exitFromSerialExpectations(options, emulator);
             return;
         }
         Thread thread = new Thread(emulator::start, "gbcemu-runtime");
         thread.setDaemon(false);
         thread.start();
+    }
+
+    private static void dumpDebugOnExit(Options options, Emulator emulator) {
+        if (!options.dumpDebugOnExit()) {
+            return;
+        }
+        File dumpFile = emulator.dumpDebugBundle();
+        System.out.println("Debug dump written to: " + dumpFile.getAbsolutePath());
+    }
+
+    private static void exitFromSerialExpectations(Options options, Emulator emulator) {
+        int exitCode = serialExpectationExitCode(options, emulator.serialTranscript());
+        if (exitCode != 0) {
+            System.exit(exitCode);
+        }
+    }
+
+    private static int serialExpectationExitCode(Options options, String transcript) {
+        if (!options.failSerial().isBlank() && transcript.contains(options.failSerial())) {
+            System.err.println("Serial transcript contains fail marker: " + options.failSerial());
+            return 3;
+        }
+        if (!options.expectSerial().isBlank() && !transcript.contains(options.expectSerial())) {
+            System.err.println("Serial transcript did not contain expected marker: " + options.expectSerial());
+            return 2;
+        }
+        return 0;
     }
 
     private static File defaultBiosFile() {
@@ -365,10 +413,14 @@ public class Main {
             boolean skipBios,
             boolean help,
             boolean noSave,
-            boolean noBios
+            boolean noBios,
+            long maxFrames,
+            boolean dumpDebugOnExit,
+            String expectSerial,
+            String failSerial
     ) {
         static Options empty() {
-            return new Options(null, defaultBiosFile(), null, false, false, false, false, false);
+            return new Options(null, defaultBiosFile(), null, false, false, false, false, false, -1, false, "", "");
         }
 
         static Options parse(String[] args) {
@@ -381,6 +433,10 @@ public class Main {
             boolean skipBios = false;
             boolean noBios = false;
             boolean help = false;
+            long maxFrames = -1;
+            boolean dumpDebugOnExit = false;
+            String expectSerial = "";
+            String failSerial = "";
 
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -394,13 +450,17 @@ public class Main {
                     case "--no-save" -> noSave = true;
                     case "--headless" -> headless = true;
                     case "--skip-bios" -> skipBios = true;
+                    case "--max-frames" -> maxFrames = parsePositiveLong(requireValue(args, ++i, "--max-frames"), "--max-frames");
+                    case "--dump-debug-on-exit" -> dumpDebugOnExit = true;
+                    case "--expect-serial" -> expectSerial = requireValue(args, ++i, "--expect-serial");
+                    case "--fail-serial" -> failSerial = requireValue(args, ++i, "--fail-serial");
                     case "--help", "-h" -> help = true;
                     default -> throw new IllegalArgumentException("Unknown argument: " + args[i] + ". Args: " + Arrays.toString(args));
                 }
             }
 
             if (help) {
-                return new Options(romFile, biosFile, saveFile, headless, skipBios, true, noSave, noBios);
+                return new Options(romFile, biosFile, saveFile, headless, skipBios, true, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
             }
             if (noBios && !skipBios) {
                 throw new IllegalArgumentException("--no-bios requires --skip-bios");
@@ -414,7 +474,7 @@ public class Main {
             if (noBios) {
                 biosFile = null;
             }
-            return new Options(romFile, biosFile, noSave ? null : saveFile, headless, skipBios, false, noSave, noBios);
+            return new Options(romFile, biosFile, noSave ? null : saveFile, headless, skipBios, false, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
         }
 
         private static String requireValue(String[] args, int index, String option) {
@@ -422,6 +482,18 @@ public class Main {
                 throw new IllegalArgumentException(option + " requires a value");
             }
             return args[index];
+        }
+
+        private static long parsePositiveLong(String value, String option) {
+            try {
+                long parsed = Long.parseLong(value);
+                if (parsed <= 0) {
+                    throw new NumberFormatException();
+                }
+                return parsed;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(option + " requires a positive integer");
+            }
         }
 
         private static File defaultSaveFile(File romFile) {
@@ -437,7 +509,7 @@ public class Main {
 
         private Options withRomFile(File romFile) {
             File resolvedSaveFile = noSave ? null : defaultSaveFile(romFile);
-            return new Options(romFile, biosFile, resolvedSaveFile, headless, skipBios, help, noSave, noBios);
+            return new Options(romFile, biosFile, resolvedSaveFile, headless, skipBios, help, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
         }
 
     }

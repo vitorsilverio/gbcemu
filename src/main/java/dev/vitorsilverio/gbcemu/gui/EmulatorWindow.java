@@ -19,6 +19,7 @@ public class EmulatorWindow {
     private final JPanel screen;
     private final Timer repaintTimer;
     private final Timer overlayTimer;
+    private Timer rewindHoldTimer;
     private int scale;
     private boolean smoothScaling;
     private boolean fullscreen;
@@ -50,6 +51,8 @@ public class EmulatorWindow {
         window.setContentPane(screen);
         window.setResizable(false);
         installMenu(menuActions);
+        installRewindHoldKey(menuActions);
+        installWindowLifecycle(menuActions);
         applyWindowMode();
     }
 
@@ -126,6 +129,7 @@ public class EmulatorWindow {
             }
             detachKeyListener();
             repaintTimer.stop();
+            rewindHoldTimer.stop();
             screen.repaint();
         });
     }
@@ -241,7 +245,6 @@ public class EmulatorWindow {
         snapshotMenu.addSeparator();
 
         JMenuItem rewindSnapshot = new JMenuItem("Rewind one snapshot");
-        rewindSnapshot.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0));
         rewindSnapshot.addActionListener(event -> menuActions.rewindSnapshot().run());
         snapshotMenu.add(rewindSnapshot);
 
@@ -263,6 +266,45 @@ public class EmulatorWindow {
 
 
 
+    }
+
+    private void installRewindHoldKey(EmulatorMenuActions menuActions) {
+        rewindHoldTimer = new Timer(90, event -> menuActions.rewindSnapshotSilent().run());
+        rewindHoldTimer.setRepeats(true);
+        InputMap inputMap = screen.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = screen.getActionMap();
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0, false), "rewind-pressed");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F6, 0, true), "rewind-released");
+        actionMap.put("rewind-pressed", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                if (!rewindHoldTimer.isRunning()) {
+                    menuActions.rewindSnapshotSilent().run();
+                    rewindHoldTimer.start();
+                }
+            }
+        });
+        actionMap.put("rewind-released", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                rewindHoldTimer.stop();
+            }
+        });
+    }
+
+    private void installWindowLifecycle(EmulatorMenuActions menuActions) {
+        window.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                rewindHoldTimer.stop();
+                menuActions.stop().run();
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent event) {
+                rewindHoldTimer.stop();
+            }
+        });
     }
 
     private void drawFrame(Graphics g) {

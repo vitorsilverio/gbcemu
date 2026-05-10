@@ -10,6 +10,7 @@ public record EmulatorMenuActions(
         Runnable saveSnapshoot,
         Runnable restoreSnapshot,
         Runnable rewindSnapshot,
+        Runnable rewindSnapshotSilent,
         Runnable manageSnapshots,
         Runnable cheats,
         Runnable audioDebugger,

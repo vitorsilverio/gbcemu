@@ -52,9 +52,15 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Perfil de filtro de saida.
 
 - [ ] Rewind continuo.
-  - Restaurar enquanto o usuario segura uma tecla/botao.
-  - Evitar custo quando rewind estiver desativado.
+  - [x] Restaurar enquanto o usuario segura uma tecla/botao.
+  - [x] Evitar custo quando rewind estiver desativado.
   - Avaliar snapshots menores ou delta compression.
+
+- [ ] Turbo temporario.
+  - [x] Acelerar enquanto uma tecla configuravel estiver pressionada.
+  - [x] Multiplicador configuravel.
+  - [x] Evitar que o sink de audio limite a velocidade durante turbo.
+  - [ ] Avaliar alternativa futura para audio em pitch acelerado durante turbo.
 
 - [ ] Link cable.
   - Suportar TCP sockets para conexao via rede.
@@ -74,20 +80,20 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Breakpoint por valor simples opcional.
   - [x] Desenhar para custo zero quando nenhum watchpoint estiver ativo.
 
-- [ ] Step/debug controls.
+- [x] Step/debug controls.
   - [x] Step instruction.
   - [x] Step frame.
   - [x] Step scanline.
-  - Run until VBlank/HBlank.
+  - [x] Run until VBlank/HBlank.
   - Exige arquitetura leve para nao repetir a lentidao da tentativa inicial.
 
-- [ ] Memory editor seguro.
-  - Nao usar apenas `bus.write` como padrao, porque dispara efeitos colaterais e falha em ROM/areas bloqueadas.
-  - Modo `hardware write`: via bus, explicitamente com efeitos colaterais.
-  - Modo `raw bank edit`: via `MemoryBank.writeBank`, limitado a memorias editaveis como WRAM, VRAM, HRAM e cart RAM.
-  - Permitir inicialmente apenas quando pausado.
+- [x] Memory editor seguro.
+  - [x] Nao usar apenas `bus.write` como padrao, porque dispara efeitos colaterais e falha em ROM/areas bloqueadas.
+  - [x] Modo `hardware write`: via bus, explicitamente com efeitos colaterais.
+  - [x] Modo `raw bank edit`: via `MemoryBank.writeBank`, limitado a memorias editaveis como WRAM, VRAM, HRAM e cart RAM.
+  - [x] Permitir inicialmente apenas quando pausado.
 
-- [ ] Export de debug para Codex.
+- [x] Export de debug para Codex.
   - [x] JSON inicial da janela de CPU em `target/debug-cpu-window.json`.
   - [x] Incluir CPU, PPU basica, motivo de breakpoint e tabela atual do disassembler.
   - [x] Incluir interrupcoes, timer, cart/MBC e resumo dos bancos selecionados.
@@ -102,10 +108,11 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Incluir DMA, HDMA, registradores CGB e memory map no dump bundle.
   - [x] Incluir metadata de execucao no dump bundle.
   - [x] Exportar dumps completos de memoria por regiao/banco quando solicitado.
+  - [x] Incluir screenshot do frame atual no dump bundle.
 
-- [ ] Disassembler avancado.
-  - Decodificar operandos e destinos de jumps/calls de forma mais rica.
-  - Invalidar cache quando memoria executavel ou banco relevante mudar.
+- [x] Disassembler avancado.
+  - [x] Decodificar operandos e destinos de jumps/calls de forma mais rica.
+  - [x] Invalidar cache quando memoria executavel ou banco relevante mudar.
 
 ## Compatibilidade CGB
 
@@ -175,8 +182,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [ ] `interrupt_time`.
 - [ ] `cgb_timing`.
 - [ ] `cgb_sound`.
-- [ ] Automatizar execucao headless de test ROMs com leitura de serial.
-- [ ] Gerar screenshot/dump em falhas visuais.
+- [x] Automatizar execucao headless de test ROMs com leitura de serial.
+  - [x] `--max-frames` para limitar execucao headless.
+  - [x] `--dump-debug-on-exit` para gerar bundle final em execucoes automatizadas.
+  - [x] Incluir transcript serial completo no dump de debug.
+  - [x] Capturar e avaliar texto serial com status/exit code.
+- [x] Gerar screenshot/dump em falhas visuais.
 
 ## Arquitetura De Estado
 

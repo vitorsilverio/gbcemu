@@ -79,6 +79,10 @@ public class CpuDebugWindow {
         stepLine.addActionListener(event -> stepScanline());
         JButton stepFrame = new JButton("Step Frame");
         stepFrame.addActionListener(event -> stepFrame());
+        JButton runHBlank = new JButton("Run HBlank");
+        runHBlank.addActionListener(event -> runUntilHBlank());
+        JButton runVBlank = new JButton("Run VBlank");
+        runVBlank.addActionListener(event -> runUntilVBlank());
         JButton toggleBreakpoint = new JButton("Toggle BP");
         toggleBreakpoint.addActionListener(event -> toggleSelectedInstructionBreakpoint());
         JButton dump = new JButton("Dump");
@@ -89,6 +93,8 @@ public class CpuDebugWindow {
         toolbar.add(step);
         toolbar.add(stepLine);
         toolbar.add(stepFrame);
+        toolbar.add(runHBlank);
+        toolbar.add(runVBlank);
         toolbar.add(toggleBreakpoint);
         toolbar.add(new JLabel("Watch"));
         watchAddress.setToolTipText("Address, for example C000");
@@ -285,6 +291,16 @@ public class CpuDebugWindow {
         debugController.requestFrameStep();
     }
 
+    private void runUntilHBlank() {
+        debugController.ignorePcBreakpointOnce(cpu.getPc());
+        debugController.requestRunUntilHBlank();
+    }
+
+    private void runUntilVBlank() {
+        debugController.ignorePcBreakpointOnce(cpu.getPc());
+        debugController.requestRunUntilVBlank();
+    }
+
     private void addWatchpoint(DebugController.AccessType accessType) {
         int address = parseHex(watchAddress.getText(), -1);
         if (address < 0 || address > 0xFFFF) {
@@ -430,7 +446,8 @@ public class CpuDebugWindow {
         DebugJson.appendBoolean(builder, "transferActive", serialState.transferCyclesRemaining() > 0, true, 4);
         DebugJson.appendNumber(builder, "transferCyclesRemaining", serialState.transferCyclesRemaining(), true, 4);
         DebugJson.appendHex(builder, "outgoingByte", serialState.outgoingByte(), true, 4, 2);
-        DebugJson.appendString(builder, "pendingText", serialState.pendingText(), false, 4);
+        DebugJson.appendString(builder, "pendingText", serialState.pendingText(), true, 4);
+        DebugJson.appendString(builder, "transcript", bus.findMemorySpace(Serial.class).map(Serial::transcript).orElse(""), false, 4);
         builder.append("  },\n");
         appendCartJson(builder, cart);
         appendMemoryBanksJson(builder);

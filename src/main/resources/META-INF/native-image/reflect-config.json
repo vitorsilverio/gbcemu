@@ -3,7 +3,7 @@
   "name":"[Ljava.awt.event.MouseMotionListener;"
 },
 {
-  "name":"dev.vitorsilverio.gbcemu.EmulatorWindow$1",
+  "name":"dev.vitorsilverio.gbcemu.gui.EmulatorWindow$1",
   "methods":[{"name":"coalesceEvents","parameterTypes":["java.awt.AWTEvent","java.awt.AWTEvent"] }]
 },
 {

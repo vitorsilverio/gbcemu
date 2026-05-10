@@ -20,7 +20,24 @@ class DisassemblyCache {
 
     Disassembler.Decoded decode(int address) {
         Key key = key(address);
-        return decoded.computeIfAbsent(key, ignored -> Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF));
+        Disassembler.Decoded cached = decoded.get(key);
+        if (cached != null && bytesMatch(cached)) {
+            return cached;
+        }
+        Disassembler.Decoded fresh = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
+        decoded.put(key, fresh);
+        return fresh;
+    }
+
+    private boolean bytesMatch(Disassembler.Decoded cached) {
+        StringBuilder current = new StringBuilder();
+        for (int offset = 0; offset < cached.length(); offset++) {
+            if (offset > 0) {
+                current.append(' ');
+            }
+            current.append(String.format("%02X", bus.read(cached.address() + offset) & 0xFF));
+        }
+        return cached.bytes().contentEquals(current);
     }
 
     List<Disassembler.Decoded> previousInstructions(int pc, int limit) {

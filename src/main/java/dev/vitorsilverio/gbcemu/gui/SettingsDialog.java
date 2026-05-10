@@ -27,6 +27,8 @@ public class SettingsDialog extends JDialog {
     private final JCheckBox fullscreen;
     private final JSpinner rewindSeconds;
     private final JSpinner rewindInterval;
+    private final JSpinner turboMultiplier;
+    private final KeyCaptureButton turboKey;
     private final JSlider masterVolume;
     private final JSlider leftVolume;
     private final JSlider rightVolume;
@@ -42,6 +44,8 @@ public class SettingsDialog extends JDialog {
         this.fullscreen = new JCheckBox("Fullscreen", settings.fullscreen());
         this.rewindSeconds = spinner(settings.rewindSeconds(), 0, 120, 1);
         this.rewindInterval = spinner(settings.rewindCaptureIntervalFrames(), 1, 60, 1);
+        this.turboMultiplier = spinner(settings.turboMultiplier(), 1, 10, 1);
+        this.turboKey = new KeyCaptureButton(settings.turboKeyCode());
         this.masterVolume = slider(settings.audioMasterVolume());
         this.leftVolume = slider(settings.audioLeftVolume());
         this.rightVolume = slider(settings.audioRightVolume());
@@ -64,17 +68,19 @@ public class SettingsDialog extends JDialog {
         addRow(fields, 2, "Fullscreen", fullscreen);
         addRow(fields, 3, "Rewind seconds", rewindSeconds);
         addRow(fields, 4, "Rewind interval frames", rewindInterval);
-        addRow(fields, 5, "Master volume", masterVolume);
-        addRow(fields, 6, "Left volume", leftVolume);
-        addRow(fields, 7, "Right volume", rightVolume);
+        addRow(fields, 5, "Turbo multiplier", turboMultiplier);
+        addRow(fields, 6, "Turbo key", turboKey);
+        addRow(fields, 7, "Master volume", masterVolume);
+        addRow(fields, 8, "Left volume", leftVolume);
+        addRow(fields, 9, "Right volume", rightVolume);
         for (int i = 0; i < channelVolumes.length; i++) {
             JPanel channel = new JPanel(new BorderLayout(6, 0));
             channel.add(channelVolumes[i], BorderLayout.CENTER);
             channel.add(channelMuted[i], BorderLayout.EAST);
-            addRow(fields, i + 8, "Channel " + (i + 1) + " volume", channel);
+            addRow(fields, i + 10, "Channel " + (i + 1) + " volume", channel);
         }
         for (int i = 0; i < controllerKeys.length; i++) {
-            addRow(fields, i + 12, "Button " + AppSettings.CONTROLLER_BUTTON_NAMES[i], controllerKeys[i]);
+            addRow(fields, i + 14, "Button " + AppSettings.CONTROLLER_BUTTON_NAMES[i], controllerKeys[i]);
         }
         add(fields, BorderLayout.CENTER);
 
@@ -125,7 +131,9 @@ public class SettingsDialog extends JDialog {
                 rightVolume.getValue(),
                 channelValues,
                 mutedValues,
-                keyValues
+                keyValues,
+                (int) turboMultiplier.getValue(),
+                turboKey.keyCode()
         ).normalized());
         dispose();
     }

@@ -27,6 +27,8 @@ public class DebugController {
     private int requestedInstructionSteps;
     private int requestedFrameSteps;
     private int requestedScanlineSteps;
+    private int requestedRunUntilHBlank;
+    private int requestedRunUntilVBlank;
     private Runnable watchpointsChanged = () -> {
     };
 
@@ -140,6 +142,32 @@ public class DebugController {
             return false;
         }
         requestedScanlineSteps--;
+        return true;
+    }
+
+    public synchronized void requestRunUntilHBlank() {
+        requestedRunUntilHBlank++;
+        breakReason = "Run until HBlank";
+    }
+
+    public synchronized boolean consumeRunUntilHBlank() {
+        if (requestedRunUntilHBlank <= 0) {
+            return false;
+        }
+        requestedRunUntilHBlank--;
+        return true;
+    }
+
+    public synchronized void requestRunUntilVBlank() {
+        requestedRunUntilVBlank++;
+        breakReason = "Run until VBlank";
+    }
+
+    public synchronized boolean consumeRunUntilVBlank() {
+        if (requestedRunUntilVBlank <= 0) {
+            return false;
+        }
+        requestedRunUntilVBlank--;
         return true;
     }
 

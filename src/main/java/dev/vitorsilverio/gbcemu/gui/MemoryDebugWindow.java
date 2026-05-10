@@ -9,6 +9,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
@@ -21,26 +22,37 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.io.File;
 import java.io.IOException;
+import java.util.function.BooleanSupplier;
 
 public class MemoryDebugWindow {
 
     private final Bus bus;
+    private final BooleanSupplier pausedSupplier;
     private final JFrame frame = new JFrame("Memory Debug");
     private final JTextArea memoryMapText = new JTextArea();
     private final JTextField memoryStart = new JTextField("C000", 6);
     private final JTextField memoryLength = new JTextField("0100", 6);
     private final JComboBox<MemoryRegion> memoryRegion = new JComboBox<>(MemoryRegion.values());
+    private final JComboBox<EditMode> editMode = new JComboBox<>(EditMode.values());
     private final DefaultTableModel memoryModel = new DefaultTableModel() {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column > 0;
+            if (column <= 0 || !pausedSupplier.getAsBoolean()) {
+                return false;
+            }
+            EditMode mode = (EditMode) editMode.getSelectedItem();
+            if (mode == EditMode.HARDWARE_WRITE) {
+                return true;
+            }
+            return mode == EditMode.RAW_BANK_WRITE && rawMemoryTarget(row, column) != null;
         }
     };
     private final JTable memoryTable = new JTable(memoryModel);
     private boolean updatingMemoryTable;
 
-    public MemoryDebugWindow(Bus bus) {
+    public MemoryDebugWindow(Bus bus, BooleanSupplier pausedSupplier) {
         this.bus = bus;
+        this.pausedSupplier = pausedSupplier;
         initializeWindow();
     }
 
@@ -71,6 +83,7 @@ public class MemoryDebugWindow {
         dump.addActionListener(event -> dumpMemory());
         JButton dumpJson = new JButton("Dump JSON");
         dumpJson.addActionListener(event -> dumpMemoryJson());
+        editMode.addActionListener(event -> memoryModel.fireTableDataChanged());
 
         controls.add(new JLabel("Region"));
         controls.add(memoryRegion);
@@ -78,6 +91,8 @@ public class MemoryDebugWindow {
         controls.add(memoryStart);
         controls.add(new JLabel("Length"));
         controls.add(memoryLength);
+        controls.add(new JLabel("Edit"));
+        controls.add(editMode);
         controls.add(refresh);
         controls.add(dump);
         controls.add(dumpJson);
@@ -147,6 +162,11 @@ public class MemoryDebugWindow {
     }
 
     private void writeMemoryCell(int row, int column) {
+        EditMode mode = (EditMode) editMode.getSelectedItem();
+        if (mode == EditMode.VIEW_ONLY || !pausedSupplier.getAsBoolean()) {
+            refreshMemoryTable();
+            return;
+        }
         int rowAddress = parseHex(String.valueOf(memoryModel.getValueAt(row, 0)), 0);
         int address = (rowAddress + column - 1) & 0xFFFF;
         int byteValue = parseHex(String.valueOf(memoryModel.getValueAt(row, column)), -1);
@@ -154,10 +174,103 @@ public class MemoryDebugWindow {
             refreshMemoryTable();
             return;
         }
+        if (mode == EditMode.RAW_BANK_WRITE) {
+            writeRawMemoryCell(row, column, address, byteValue);
+            return;
+        }
+        int confirmation = JOptionPane.showConfirmDialog(
+                frame,
+                String.format("Hardware write %02X to %04X?", byteValue, address),
+                "Memory write",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirmation != JOptionPane.OK_OPTION) {
+            refreshMemoryTable();
+            return;
+        }
         bus.write(address, (byte) byteValue);
         updatingMemoryTable = true;
         memoryModel.setValueAt(String.format("%02X", byteValue), row, column);
         updatingMemoryTable = false;
+    }
+
+    private void writeRawMemoryCell(int row, int column, int address, int byteValue) {
+        RawMemoryTarget target = rawMemoryTarget(row, column);
+        if (target == null) {
+            refreshMemoryTable();
+            return;
+        }
+        int confirmation = JOptionPane.showConfirmDialog(
+                frame,
+                String.format(
+                        "Raw write %02X to %s bank %d offset %04X?",
+                        byteValue,
+                        target.bank().bankName(),
+                        target.bankIndex(),
+                        target.offset()
+                ),
+                "Memory write",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirmation != JOptionPane.OK_OPTION) {
+            refreshMemoryTable();
+            return;
+        }
+        target.bank().writeBank(target.bankIndex(), target.offset(), (byte) byteValue);
+        updatingMemoryTable = true;
+        memoryModel.setValueAt(String.format("%02X", bus.read(address) & 0xFF), row, column);
+        updatingMemoryTable = false;
+    }
+
+    private RawMemoryTarget rawMemoryTarget(int row, int column) {
+        if (row < 0 || column <= 0 || row >= memoryModel.getRowCount()) {
+            return null;
+        }
+        int rowAddress = parseHex(String.valueOf(memoryModel.getValueAt(row, 0)), 0);
+        int address = (rowAddress + column - 1) & 0xFFFF;
+        if (address >= 0x8000 && address <= 0x9FFF) {
+            return rawMemoryTarget("VRAM", address - 0x8000);
+        }
+        if (address >= 0xA000 && address <= 0xBFFF) {
+            return rawMemoryTarget("Cartridge RAM", address - 0xA000);
+        }
+        if (address >= 0xC000 && address <= 0xCFFF) {
+            return rawMemoryTarget("WRAM", 0, address - 0xC000);
+        }
+        if (address >= 0xD000 && address <= 0xDFFF) {
+            return rawMemoryTarget("WRAM", address - 0xD000);
+        }
+        if (address >= 0xFF80 && address <= 0xFFFE) {
+            return rawMemoryTarget("HRAM", 0, address - 0xFF80);
+        }
+        return null;
+    }
+
+    private RawMemoryTarget rawMemoryTarget(String bankName, int offset) {
+        MemoryBank bank = findMemoryBank(bankName);
+        if (bank == null || bank.bankCount() <= 0 || bank.bankSize() <= 0) {
+            return null;
+        }
+        return new RawMemoryTarget(bank, Math.floorMod(bank.currentBank(), bank.bankCount()), Math.floorMod(offset, bank.bankSize()));
+    }
+
+    private RawMemoryTarget rawMemoryTarget(String bankName, int bankIndex, int offset) {
+        MemoryBank bank = findMemoryBank(bankName);
+        if (bank == null || bank.bankCount() <= 0 || bank.bankSize() <= 0) {
+            return null;
+        }
+        return new RawMemoryTarget(bank, Math.floorMod(bankIndex, bank.bankCount()), Math.floorMod(offset, bank.bankSize()));
+    }
+
+    private MemoryBank findMemoryBank(String bankName) {
+        for (MemoryBank bank : bus.memoryBanks()) {
+            if (bank.bankName().equals(bankName)) {
+                return bank;
+            }
+        }
+        return null;
     }
 
     private String memoryMapText() {
@@ -314,5 +427,25 @@ public class MemoryDebugWindow {
             this.start = start;
             this.length = length;
         }
+    }
+
+    private enum EditMode {
+        VIEW_ONLY("View only"),
+        HARDWARE_WRITE("Hardware write"),
+        RAW_BANK_WRITE("Raw bank write");
+
+        private final String label;
+
+        EditMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private record RawMemoryTarget(MemoryBank bank, int bankIndex, int offset) {
     }
 }

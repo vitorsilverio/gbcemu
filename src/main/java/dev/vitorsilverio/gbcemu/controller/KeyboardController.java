@@ -18,17 +18,20 @@ public class KeyboardController implements Controller, KeyListener {
     private boolean buttonDown_Pressed = false;
     private boolean buttonLeft_Pressed = false;
     private boolean buttonRight_Pressed = false;
+    private boolean turboPressed = false;
 
     public KeyboardController(AppSettings settings) {
         applySettings(settings);
     }
 
     public void applySettings(AppSettings settings) {
-        int[] updated = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length];
-        for (int i = 0; i < updated.length; i++) {
+        int[] updated = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length + 1];
+        for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {
             updated[i] = settings.controllerKeyCode(i);
         }
+        updated[AppSettings.CONTROLLER_BUTTON_NAMES.length] = settings.turboKeyCode();
         keyCodes = updated;
+        turboPressed = false;
         releaseAll();
     }
 
@@ -86,6 +89,9 @@ public class KeyboardController implements Controller, KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
+        if (keyCode == settingsTurboKey()) {
+            turboPressed = true;
+        }
         if (keyCode == keyCodes[0]) {
                 buttonA_Pressed = true;
                 emit(ButtonType.ACTION);
@@ -116,6 +122,9 @@ public class KeyboardController implements Controller, KeyListener {
     @Override
     public void keyReleased(KeyEvent e) {
         int keyCode = e.getKeyCode();
+        if (keyCode == settingsTurboKey()) {
+            turboPressed = false;
+        }
         if (keyCode == keyCodes[0]) {
             buttonA_Pressed = false;
         } else if (keyCode == keyCodes[1]) {
@@ -144,6 +153,17 @@ public class KeyboardController implements Controller, KeyListener {
         buttonDown_Pressed = false;
         buttonLeft_Pressed = false;
         buttonRight_Pressed = false;
+        turboPressed = false;
+    }
+
+    public boolean isTurboPressed() {
+        return turboPressed;
+    }
+
+    private int settingsTurboKey() {
+        return keyCodes.length > AppSettings.CONTROLLER_BUTTON_NAMES.length
+                ? keyCodes[AppSettings.CONTROLLER_BUTTON_NAMES.length]
+                : KeyEvent.VK_TAB;
     }
 
     private void emit(ButtonType buttonType) {

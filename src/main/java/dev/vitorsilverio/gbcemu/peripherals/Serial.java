@@ -26,6 +26,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private final List<Integer> registers = List.of(SB_REGISTER, SC_REGISTER);
     private final Bus bus;
     private final StringBuilder text = new StringBuilder();
+    private final StringBuilder transcript = new StringBuilder();
     private int SB = 0;
     private int SC = 0;
     private int transferCyclesRemaining;
@@ -48,6 +49,8 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         outgoingByte = state.outgoingByte() & 0xFF;
         text.setLength(0);
         text.append(state.pendingText() == null ? "" : state.pendingText());
+        transcript.setLength(0);
+        transcript.append(text);
     }
 
     @Override
@@ -117,10 +120,17 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private void appendText(byte value) {
         int unsignedValue = value & 0xFF;
         if (unsignedValue == '\n') {
+            transcript.append('\n');
             logger.info("Serial text: {}", text);
             text.setLength(0);
         } else if (unsignedValue >= 0x20 && unsignedValue <= 0x7E) {
-            text.append((char) unsignedValue);
+            char character = (char) unsignedValue;
+            text.append(character);
+            transcript.append(character);
         }
+    }
+
+    public String transcript() {
+        return transcript.toString();
     }
 }

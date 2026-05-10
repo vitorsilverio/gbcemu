@@ -14,6 +14,7 @@ final class AudioOutput {
     private int previousLeftOutput;
     private int previousRightOutput;
     private int lowPassAlpha = 350;
+    private boolean sinkMuted;
 
     AudioOutput(AudioSink sink) {
         this.sink = sink;
@@ -73,6 +74,14 @@ final class AudioOutput {
         this.lowPassAlpha = Math.max(50, Math.min(1000, lowPassAlpha));
     }
 
+    void setSinkMuted(boolean sinkMuted) {
+        if (this.sinkMuted == sinkMuted) {
+            return;
+        }
+        this.sinkMuted = sinkMuted;
+        sampleBufferPosition = 0;
+    }
+
     String sinkDebugDescription() {
         return sink.debugDescription();
     }
@@ -99,6 +108,9 @@ final class AudioOutput {
     }
 
     private void putPcm16(int sample) {
+        if (sinkMuted) {
+            return;
+        }
         sampleBuffer[sampleBufferPosition++] = (byte) (sample & 0xFF);
         sampleBuffer[sampleBufferPosition++] = (byte) ((sample >> 8) & 0xFF);
         if (sampleBufferPosition == sampleBuffer.length) {

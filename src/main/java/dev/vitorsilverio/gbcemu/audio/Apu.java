@@ -175,6 +175,10 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         output.close();
     }
 
+    public void setFastForwardAudioMuted(boolean muted) {
+        output.setSinkMuted(muted);
+    }
+
     private void writeSample() {
         int nr50 = registers.read(ApuAddress.NR50_MASTER_VOLUME) & 0xFF;
         int nr51 = registers.read(ApuAddress.NR51_SOUND_PANNING) & 0xFF;

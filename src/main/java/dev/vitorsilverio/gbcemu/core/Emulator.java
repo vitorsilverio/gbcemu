@@ -29,12 +29,15 @@ import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.ppu.PpuMode;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
 import dev.vitorsilverio.gbcemu.snapshot.RewindBuffer;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -85,6 +88,8 @@ public class Emulator {
     private DebugStepMode debugStepMode = DebugStepMode.NONE;
     private long debugStepTargetFrame;
     private int debugStepStartLine;
+    private long stopAfterFrames = -1;
+    private boolean fastForwardAudioMuted;
     private static final DateTimeFormatter DEBUG_DUMP_TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
 
@@ -215,6 +220,16 @@ public class Emulator {
             debugStepMode = DebugStepMode.SCANLINE;
             debugStepStartLine = ppu.debugSnapshot().line();
             paused = false;
+            return;
+        }
+        if (debugController.consumeRunUntilHBlank()) {
+            debugStepMode = DebugStepMode.HBLANK;
+            paused = false;
+            return;
+        }
+        if (debugController.consumeRunUntilVBlank()) {
+            debugStepMode = DebugStepMode.VBLANK;
+            paused = false;
         }
     }
 
@@ -227,11 +242,26 @@ public class Emulator {
         if (debugStepMode == DebugStepMode.SCANLINE && ppu.debugSnapshot().line() != debugStepStartLine) {
             paused = true;
             debugStepMode = DebugStepMode.NONE;
+            return;
+        }
+        PpuMode mode = ppu.debugSnapshot().mode();
+        if (debugStepMode == DebugStepMode.HBLANK && mode == PpuMode.HBLANK) {
+            paused = true;
+            debugStepMode = DebugStepMode.NONE;
+            return;
+        }
+        if (debugStepMode == DebugStepMode.VBLANK && mode == PpuMode.VBLANK) {
+            paused = true;
+            debugStepMode = DebugStepMode.NONE;
         }
     }
 
     public void pause() {
         paused = true;
+    }
+
+    public boolean isPaused() {
+        return paused;
     }
 
     public void resume() {
@@ -249,12 +279,20 @@ public class Emulator {
         apu.close();
     }
 
+    public void stopAfterFrames(long frames) {
+        stopAfterFrames = frames <= 0 ? -1 : frames;
+    }
+
     public void openCheats() {
         new CheatsWindow(gameSharkDevice);
     }
 
     public void openAudioDebugger() {
         new AudioDebugWindow(apu);
+    }
+
+    public String serialTranscript() {
+        return serial.transcript();
     }
 
     public void applySettings(AppSettings settings) {
@@ -273,7 +311,7 @@ public class Emulator {
     }
 
     public void openMemoryDebugger() {
-        new MemoryDebugWindow(bus);
+        new MemoryDebugWindow(bus, this::isPaused);
     }
 
     public void openPpuDebugger() {
@@ -294,9 +332,30 @@ public class Emulator {
 
     public File dumpDebugBundle() {
         synchronized (stateLock) {
-            String filename = "debug-bundle-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now()) + ".json";
-            return DebugJson.writeTargetFile(filename, debugBundleJson(), "Failed to dump debug bundle");
+            String baseName = "debug-bundle-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now());
+            String frameFilename = baseName + "-frame.png";
+            writeDebugFramePng(frameFilename);
+            return DebugJson.writeTargetFile(baseName + ".json", debugBundleJson(frameFilename), "Failed to dump debug bundle");
         }
+    }
+
+    private void writeDebugFramePng(String filename) {
+        File target = new File("target");
+        if (!target.exists()) {
+            target.mkdirs();
+        }
+        try {
+            ImageIO.write(debugFrameImage(), "png", new File(target, filename));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to dump debug frame", e);
+        }
+    }
+
+    private BufferedImage debugFrameImage() {
+        int[] pixels = ppu.copyFrameBufferArgb();
+        BufferedImage image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0, 0, 160, 144, pixels, 0, 160);
+        return image;
     }
 
     public File dumpMemoryBanks() {
@@ -374,7 +433,7 @@ public class Emulator {
         );
     }
 
-    private String debugBundleJson() {
+    private String debugBundleJson(String frameFilename) {
         CpuState cpuState = cpu.saveState();
         Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
         Ppu.FrameDebugStats frameStats = ppu.frameDebugStats();
@@ -399,7 +458,8 @@ public class Emulator {
         DebugJson.appendBoolean(builder, "cartridgeCgbCompatible", cartridgeCgbCompatible, true, 4);
         DebugJson.appendBoolean(builder, "throttled", throttled, true, 4);
         DebugJson.appendBoolean(builder, "paused", paused, true, 4);
-        DebugJson.appendBoolean(builder, "stopped", stopped, false, 4);
+        DebugJson.appendBoolean(builder, "stopped", stopped, true, 4);
+        DebugJson.appendString(builder, "framePng", frameFilename, false, 4);
         builder.append("  },\n");
         builder.append("  \"cpu\": {\n");
         DebugJson.appendHex(builder, "pc", cpuState.pc(), true, 4, 4);
@@ -443,7 +503,8 @@ public class Emulator {
         DebugJson.appendBoolean(builder, "transferActive", serialState.transferCyclesRemaining() > 0, true, 4);
         DebugJson.appendNumber(builder, "transferCyclesRemaining", serialState.transferCyclesRemaining(), true, 4);
         DebugJson.appendHex(builder, "outgoingByte", serialState.outgoingByte(), true, 4, 2);
-        DebugJson.appendString(builder, "pendingText", serialState.pendingText(), false, 4);
+        DebugJson.appendString(builder, "pendingText", serialState.pendingText(), true, 4);
+        DebugJson.appendString(builder, "transcript", serial.transcript(), false, 4);
         builder.append("  },\n");
         appendDmaDebugJson(builder, dmaState, hdmaState);
         appendCgbRegistersDebugJson(builder, key0State, key1State, infraredState);
@@ -615,6 +676,7 @@ public class Emulator {
         timer.tick();
         serial.tick();
         ppu.tick();
+        updateFastForwardAudioMode();
         apu.tick();
         if (window != null && ppu.consumeFrameReady()) {
             window.renderFrame(ppu);
@@ -625,6 +687,10 @@ public class Emulator {
             frameNumber++;
             recordRewindSnapshot();
             updatePerformanceStats();
+            if (stopAfterFrames > 0 && frameNumber >= stopAfterFrames) {
+                stop();
+                return;
+            }
             if (throttled) {
                 throttleFrame();
             }
@@ -648,16 +714,37 @@ public class Emulator {
     }
 
     private void throttleFrame() {
+        long targetFrameNanos = targetFrameNanos();
         long now = System.nanoTime();
         if (now < nextFrameDeadline) {
             sleepUntil(nextFrameDeadline);
             now = System.nanoTime();
         }
         frameStart = now;
-        nextFrameDeadline += NANOS_PER_FRAME;
-        if (now - nextFrameDeadline > NANOS_PER_FRAME * 3) {
-            nextFrameDeadline = now + NANOS_PER_FRAME;
+        nextFrameDeadline += targetFrameNanos;
+        if (now - nextFrameDeadline > targetFrameNanos * 3) {
+            nextFrameDeadline = now + targetFrameNanos;
         }
+    }
+
+    private long targetFrameNanos() {
+        if (!isFastForwardActive()) {
+            return NANOS_PER_FRAME;
+        }
+        return Math.max(1L, NANOS_PER_FRAME / Math.max(1, settings.turboMultiplier()));
+    }
+
+    private boolean isFastForwardActive() {
+        return keyboardController != null && keyboardController.isTurboPressed();
+    }
+
+    private void updateFastForwardAudioMode() {
+        boolean active = isFastForwardActive();
+        if (fastForwardAudioMuted == active) {
+            return;
+        }
+        fastForwardAudioMuted = active;
+        apu.setFastForwardAudioMuted(active);
     }
 
     private void sleepUntil(long deadline) {
@@ -813,7 +900,9 @@ public class Emulator {
     private enum DebugStepMode {
         NONE,
         FRAME,
-        SCANLINE
+        SCANLINE,
+        HBLANK,
+        VBLANK
     }
 
 }

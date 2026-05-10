@@ -2,7 +2,7 @@ package dev.vitorsilverio.gbcemu.memory;
 
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
-public class ZeroPage implements MemorySpace, Stateful<ZeroPageState> {
+public class ZeroPage implements MemorySpace, MemoryBank, Stateful<ZeroPageState> {
 
     private final byte[] memory = new byte[0x7F];
 
@@ -29,5 +29,35 @@ public class ZeroPage implements MemorySpace, Stateful<ZeroPageState> {
     @Override
     public void write(int address, byte value) {
         memory[address - 0xff80] = value;
+    }
+
+    @Override
+    public String bankName() {
+        return "HRAM";
+    }
+
+    @Override
+    public int bankCount() {
+        return 1;
+    }
+
+    @Override
+    public int bankSize() {
+        return memory.length;
+    }
+
+    @Override
+    public int currentBank() {
+        return 0;
+    }
+
+    @Override
+    public byte readBank(int bank, int offset) {
+        return memory[Math.floorMod(offset, memory.length)];
+    }
+
+    @Override
+    public void writeBank(int bank, int offset, byte value) {
+        memory[Math.floorMod(offset, memory.length)] = value;
     }
 }

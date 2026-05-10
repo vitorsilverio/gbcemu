@@ -26,7 +26,7 @@ public class Disassembler {
             case 3 -> String.format("%02X %02X %02X", opcode, b1, b2);
             default -> String.format("%02X", opcode);
         };
-        return new Decoded(address, length, bytes, decodeBase(opcode, b1, b2));
+        return new Decoded(address, length, bytes, decodeBase(address, opcode, b1, b2));
     }
 
     public static int length(int opcode) {
@@ -42,7 +42,7 @@ public class Disassembler {
         };
     }
 
-    private static String decodeBase(int opcode, int b1, int b2) {
+    private static String decodeBase(int address, int opcode, int b1, int b2) {
         opcode &= 0xFF;
         if (opcode >= 0x40 && opcode <= 0x7F) {
             if (opcode == 0x76) {
@@ -84,29 +84,29 @@ public class Disassembler {
             return "RET " + CC[(opcode >> 3) & 0x03];
         }
         if ((opcode & 0xE7) == 0xC2) {
-            return String.format("JP %s,$%04X", CC[(opcode >> 3) & 0x03], word(b1, b2));
+            return String.format("JP %s,$%04X", CC[(opcode >> 3) & 0x03], absolute(b1, b2));
         }
         if ((opcode & 0xE7) == 0xC4) {
-            return String.format("CALL %s,$%04X", CC[(opcode >> 3) & 0x03], word(b1, b2));
+            return String.format("CALL %s,$%04X", CC[(opcode >> 3) & 0x03], absolute(b1, b2));
         }
         if ((opcode & 0xC7) == 0xC7) {
-            return String.format("RST $%02X", opcode & 0x38);
+            return String.format("RST $%04X", opcode & 0x38);
         }
         if ((opcode & 0xE7) == 0x20) {
-            return String.format("JR %s,%+d", CC[(opcode >> 3) & 0x03], (byte) b1);
+            return String.format("JR %s,$%04X ; %+d", CC[(opcode >> 3) & 0x03], relativeTarget(address, b1), (byte) b1);
         }
 
         return switch (opcode) {
             case 0x00 -> "NOP";
             case 0x02 -> "LD (BC),A";
             case 0x07 -> "RLCA";
-            case 0x08 -> String.format("LD ($%04X),SP", word(b1, b2));
+            case 0x08 -> String.format("LD ($%04X),SP", absolute(b1, b2));
             case 0x0A -> "LD A,(BC)";
             case 0x0F -> "RRCA";
             case 0x10 -> String.format("STOP $%02X", b1);
             case 0x12 -> "LD (DE),A";
             case 0x17 -> "RLA";
-            case 0x18 -> String.format("JR %+d", (byte) b1);
+            case 0x18 -> String.format("JR $%04X ; %+d", relativeTarget(address, b1), (byte) b1);
             case 0x1A -> "LD A,(DE)";
             case 0x1F -> "RRA";
             case 0x22 -> "LD (HL+),A";
@@ -117,10 +117,10 @@ public class Disassembler {
             case 0x37 -> "SCF";
             case 0x3A -> "LD A,(HL-)";
             case 0x3F -> "CCF";
-            case 0xC3 -> String.format("JP $%04X", word(b1, b2));
+            case 0xC3 -> String.format("JP $%04X", absolute(b1, b2));
             case 0xC6 -> String.format("ADD A,$%02X", b1);
             case 0xC9 -> "RET";
-            case 0xCD -> String.format("CALL $%04X", word(b1, b2));
+            case 0xCD -> String.format("CALL $%04X", absolute(b1, b2));
             case 0xCE -> String.format("ADC A,$%02X", b1);
             case 0xD6 -> String.format("SUB $%02X", b1);
             case 0xD9 -> "RETI";
@@ -130,7 +130,7 @@ public class Disassembler {
             case 0xE6 -> String.format("AND $%02X", b1);
             case 0xE8 -> String.format("ADD SP,%+d", (byte) b1);
             case 0xE9 -> "JP HL";
-            case 0xEA -> String.format("LD ($%04X),A", word(b1, b2));
+            case 0xEA -> String.format("LD ($%04X),A", absolute(b1, b2));
             case 0xEE -> String.format("XOR $%02X", b1);
             case 0xF0 -> String.format("LDH A,($FF%02X)", b1);
             case 0xF2 -> "LD A,(C)";
@@ -138,7 +138,7 @@ public class Disassembler {
             case 0xF6 -> String.format("OR $%02X", b1);
             case 0xF8 -> String.format("LD HL,SP%+d", (byte) b1);
             case 0xF9 -> "LD SP,HL";
-            case 0xFA -> String.format("LD A,($%04X)", word(b1, b2));
+            case 0xFA -> String.format("LD A,($%04X)", absolute(b1, b2));
             case 0xFB -> "EI";
             case 0xFE -> String.format("CP $%02X", b1);
             case 0xD3, 0xDB, 0xDD, 0xE3, 0xE4, 0xEB, 0xEC, 0xED, 0xF4, 0xFC, 0xFD -> "ILLEGAL";
@@ -162,6 +162,14 @@ public class Disassembler {
 
     private static int word(int low, int high) {
         return (low & 0xFF) | ((high & 0xFF) << 8);
+    }
+
+    private static int absolute(int low, int high) {
+        return word(low, high) & 0xFFFF;
+    }
+
+    private static int relativeTarget(int address, int offset) {
+        return (address + 2 + (byte) offset) & 0xFFFF;
     }
 
     public interface MemoryReader {

@@ -39,14 +39,22 @@ class MainTest {
                 "--skip-bios",
                 "--rom", "test-roms/instr_timing.gb",
                 "--bios", "dmg_bios.bin",
-                "--save-file", "debug.sav"
+                "--save-file", "debug.sav",
+                "--max-frames", "120",
+                "--dump-debug-on-exit",
+                "--expect-serial", "Passed",
+                "--fail-serial", "Failed"
         });
 
         assertTrue(options.headless());
         assertTrue(options.skipBios());
+        assertTrue(options.dumpDebugOnExit());
         assertEquals(new File("test-roms/instr_timing.gb"), options.romFile());
         assertEquals(new File("dmg_bios.bin"), options.biosFile());
         assertEquals(new File("debug.sav"), options.saveFile());
+        assertEquals(120, options.maxFrames());
+        assertEquals("Passed", options.expectSerial());
+        assertEquals("Failed", options.failSerial());
     }
 
     @Test
@@ -61,6 +69,14 @@ class MainTest {
         assertNull(options.biosFile());
         assertThrows(IllegalArgumentException.class, () ->
                 Main.Options.parse(new String[]{"--no-bios", "--rom", "test-roms/instr_timing.gb"}));
+    }
+
+    @Test
+    void maxFramesRequiresPositiveInteger() {
+        assertThrows(IllegalArgumentException.class, () ->
+                Main.Options.parse(new String[]{"--rom", "test-roms/instr_timing.gb", "--max-frames", "0"}));
+        assertThrows(IllegalArgumentException.class, () ->
+                Main.Options.parse(new String[]{"--rom", "test-roms/instr_timing.gb", "--max-frames", "abc"}));
     }
 
     @Test

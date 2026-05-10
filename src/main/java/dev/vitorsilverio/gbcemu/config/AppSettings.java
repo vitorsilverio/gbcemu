@@ -15,7 +15,9 @@ public record AppSettings(
         int audioRightVolume,
         int[] audioChannelVolumes,
         boolean[] audioChannelMuted,
-        int[] controllerKeyCodes
+        int[] controllerKeyCodes,
+        int turboMultiplier,
+        int turboKeyCode
 ) {
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
     private static final String SCREEN_SCALE = "screenScale";
@@ -29,6 +31,8 @@ public record AppSettings(
     private static final String AUDIO_CHANNEL_VOLUME_PREFIX = "audioChannelVolume";
     private static final String AUDIO_CHANNEL_MUTED_PREFIX = "audioChannelMuted";
     private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
+    private static final String TURBO_MULTIPLIER = "turboMultiplier";
+    private static final String TURBO_KEY = "turboKey";
 
     public static AppSettings defaults() {
         return new AppSettings(
@@ -42,7 +46,9 @@ public record AppSettings(
                 100,
                 new int[]{100, 100, 100, 100},
                 new boolean[4],
-                defaultControllerKeyCodes()
+                defaultControllerKeyCodes(),
+                3,
+                KeyEvent.VK_TAB
         );
     }
 
@@ -69,7 +75,9 @@ public record AppSettings(
                 clampPercent(preferences.getInt(AUDIO_RIGHT_VOLUME, defaults.audioRightVolume)),
                 channelVolumes,
                 channelMuted,
-                controllerKeyCodes
+                controllerKeyCodes,
+                clamp(preferences.getInt(TURBO_MULTIPLIER, defaults.turboMultiplier), 1, 10),
+                preferences.getInt(TURBO_KEY, defaults.turboKeyCode)
         );
     }
 
@@ -89,6 +97,8 @@ public record AppSettings(
         for (int i = 0; i < controllerKeyCodes.length; i++) {
             preferences.putInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], controllerKeyCodes[i]);
         }
+        preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
+        preferences.putInt(TURBO_KEY, turboKeyCode);
     }
 
     public int rewindCapacity() {
@@ -111,21 +121,21 @@ public record AppSettings(
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode);
     }
 
     public AppSettings normalized() {
@@ -152,7 +162,9 @@ public record AppSettings(
                 clampPercent(audioRightVolume),
                 volumes,
                 muted,
-                keys
+                keys,
+                clamp(turboMultiplier, 1, 10),
+                turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode
         );
     }
 
