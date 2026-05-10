@@ -1,4 +1,4 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
 import dev.vitorsilverio.gbcemu.audio.ApuChannelDebugSnapshot;

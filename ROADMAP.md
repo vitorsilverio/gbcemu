@@ -75,9 +75,9 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Desenhar para custo zero quando nenhum watchpoint estiver ativo.
 
 - [ ] Step/debug controls.
-  - Step instruction.
-  - Step frame.
-  - Step scanline.
+  - [x] Step instruction.
+  - [x] Step frame.
+  - [x] Step scanline.
   - Run until VBlank/HBlank.
   - Exige arquitetura leve para nao repetir a lentidao da tentativa inicial.
 

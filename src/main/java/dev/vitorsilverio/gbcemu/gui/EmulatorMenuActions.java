@@ -1,4 +1,4 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.gui;
 
 public record EmulatorMenuActions(
         Runnable openRom,

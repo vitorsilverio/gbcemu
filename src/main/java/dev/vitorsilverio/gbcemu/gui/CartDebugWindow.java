@@ -1,4 +1,4 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;

@@ -1,4 +1,4 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-class SaveStateDialog extends JDialog {
+public class SaveStateDialog extends JDialog {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             .withZone(ZoneId.systemDefault());
 
@@ -50,7 +50,7 @@ class SaveStateDialog extends JDialog {
     private final JLabel pc = valueLabel();
     private final JLabel file = valueLabel();
 
-    SaveStateDialog(
+    public SaveStateDialog(
             File romFile,
             SaveStateStore store,
             Supplier<SaveStateFile> saveStateSupplier,

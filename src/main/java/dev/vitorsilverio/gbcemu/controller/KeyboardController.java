@@ -1,6 +1,6 @@
 package dev.vitorsilverio.gbcemu.controller;
 
-import dev.vitorsilverio.gbcemu.AppSettings;
+import dev.vitorsilverio.gbcemu.config.AppSettings;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;

@@ -1,6 +1,6 @@
 package dev.vitorsilverio.gbcemu.misc;
 
-import dev.vitorsilverio.gbcemu.MachineCycle;
+import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;

@@ -1,9 +1,10 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.core;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
+import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
@@ -14,6 +15,12 @@ import dev.vitorsilverio.gbcemu.debug.DebugController;
 import dev.vitorsilverio.gbcemu.debug.Disassembler;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
+import dev.vitorsilverio.gbcemu.gui.AudioDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.CartDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.CheatsWindow;
+import dev.vitorsilverio.gbcemu.gui.EmulatorWindow;
+import dev.vitorsilverio.gbcemu.gui.MemoryDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.PpuDebugWindow;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.*;
 import dev.vitorsilverio.gbcemu.peripherals.SerialState;
@@ -75,6 +82,9 @@ public class Emulator {
     private long nextFrameDeadline = frameStart + NANOS_PER_FRAME;
     private long performanceStatsStart = System.nanoTime();
     private int performanceStatsFrames;
+    private DebugStepMode debugStepMode = DebugStepMode.NONE;
+    private long debugStepTargetFrame;
+    private int debugStepStartLine;
     private static final DateTimeFormatter DEBUG_DUMP_TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
 
@@ -158,16 +168,20 @@ public class Emulator {
 
     public void start() {
         while (!stopped) {
-            if (paused) {
+            boolean stepInstruction = debugController.consumeInstructionStep();
+            startPendingDebugStep();
+            if (paused && !stepInstruction) {
                 sleepNanos(2_000_000);
                 continue;
             }
-            if (debugController.shouldBreakAtPc(cpu.getPc())) {
+            if (!stepInstruction && debugController.shouldBreakAtPc(cpu.getPc())) {
                 paused = true;
+                debugStepMode = DebugStepMode.NONE;
                 continue;
             }
-            if (debugController.shouldBreakOnMemoryAccess()) {
+            if (!stepInstruction && debugController.shouldBreakOnMemoryAccess()) {
                 paused = true;
+                debugStepMode = DebugStepMode.NONE;
                 continue;
             }
             synchronized (stateLock) {
@@ -177,9 +191,42 @@ public class Emulator {
                     tickSystemCycle();
                 }
             }
+            if (stepInstruction) {
+                paused = true;
+            }
+            completeDebugStepIfNeeded();
         }
         if (window != null) {
             window.detach(ppu);
+        }
+    }
+
+    private void startPendingDebugStep() {
+        if (!paused || debugStepMode != DebugStepMode.NONE) {
+            return;
+        }
+        if (debugController.consumeFrameStep()) {
+            debugStepMode = DebugStepMode.FRAME;
+            debugStepTargetFrame = frameNumber + 1;
+            paused = false;
+            return;
+        }
+        if (debugController.consumeScanlineStep()) {
+            debugStepMode = DebugStepMode.SCANLINE;
+            debugStepStartLine = ppu.debugSnapshot().line();
+            paused = false;
+        }
+    }
+
+    private void completeDebugStepIfNeeded() {
+        if (debugStepMode == DebugStepMode.FRAME && frameNumber >= debugStepTargetFrame) {
+            paused = true;
+            debugStepMode = DebugStepMode.NONE;
+            return;
+        }
+        if (debugStepMode == DebugStepMode.SCANLINE && ppu.debugSnapshot().line() != debugStepStartLine) {
+            paused = true;
+            debugStepMode = DebugStepMode.NONE;
         }
     }
 
@@ -761,6 +808,12 @@ public class Emulator {
 
     private InterruptManager interruptManager() {
         return bus.findMemorySpace(InterruptManager.class).orElseThrow();
+    }
+
+    private enum DebugStepMode {
+        NONE,
+        FRAME,
+        SCANLINE
     }
 
 }

@@ -1,5 +1,12 @@
+
 package dev.vitorsilverio.gbcemu;
 
+import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.core.Emulator;
+import dev.vitorsilverio.gbcemu.gui.EmulatorMenuActions;
+import dev.vitorsilverio.gbcemu.gui.EmulatorWindow;
+import dev.vitorsilverio.gbcemu.gui.SaveStateDialog;
+import dev.vitorsilverio.gbcemu.gui.SettingsDialog;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateStore;
 
 import javax.swing.*;

@@ -1,4 +1,6 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.gui;
+
+import dev.vitorsilverio.gbcemu.config.AppSettings;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;

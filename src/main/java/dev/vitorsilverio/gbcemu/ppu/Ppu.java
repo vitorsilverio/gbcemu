@@ -1,6 +1,6 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-import dev.vitorsilverio.gbcemu.MachineCycle;
+import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;

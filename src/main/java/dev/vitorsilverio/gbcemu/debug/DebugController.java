@@ -24,6 +24,9 @@ public class DebugController {
     private int ignoredBreakpointPc = -1;
     private String breakReason = "";
     private boolean memoryBreakPending;
+    private int requestedInstructionSteps;
+    private int requestedFrameSteps;
+    private int requestedScanlineSteps;
     private Runnable watchpointsChanged = () -> {
     };
 
@@ -98,6 +101,45 @@ public class DebugController {
             return false;
         }
         memoryBreakPending = false;
+        return true;
+    }
+
+    public synchronized void requestInstructionStep() {
+        requestedInstructionSteps++;
+        breakReason = "Step instruction";
+    }
+
+    public synchronized boolean consumeInstructionStep() {
+        if (requestedInstructionSteps <= 0) {
+            return false;
+        }
+        requestedInstructionSteps--;
+        return true;
+    }
+
+    public synchronized void requestFrameStep() {
+        requestedFrameSteps++;
+        breakReason = "Step frame";
+    }
+
+    public synchronized boolean consumeFrameStep() {
+        if (requestedFrameSteps <= 0) {
+            return false;
+        }
+        requestedFrameSteps--;
+        return true;
+    }
+
+    public synchronized void requestScanlineStep() {
+        requestedScanlineSteps++;
+        breakReason = "Step scanline";
+    }
+
+    public synchronized boolean consumeScanlineStep() {
+        if (requestedScanlineSteps <= 0) {
+            return false;
+        }
+        requestedScanlineSteps--;
         return true;
     }
 

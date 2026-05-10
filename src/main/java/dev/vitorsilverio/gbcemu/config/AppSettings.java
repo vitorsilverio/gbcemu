@@ -1,4 +1,4 @@
-package dev.vitorsilverio.gbcemu;
+package dev.vitorsilverio.gbcemu.config;
 
 import java.util.Arrays;
 import java.awt.event.KeyEvent;

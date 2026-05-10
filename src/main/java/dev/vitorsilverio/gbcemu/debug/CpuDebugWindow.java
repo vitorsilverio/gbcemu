@@ -73,6 +73,12 @@ public class CpuDebugWindow {
         JPanel toolbar = new JPanel();
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refresh());
+        JButton step = new JButton("Step");
+        step.addActionListener(event -> stepInstruction());
+        JButton stepLine = new JButton("Step Line");
+        stepLine.addActionListener(event -> stepScanline());
+        JButton stepFrame = new JButton("Step Frame");
+        stepFrame.addActionListener(event -> stepFrame());
         JButton toggleBreakpoint = new JButton("Toggle BP");
         toggleBreakpoint.addActionListener(event -> toggleSelectedInstructionBreakpoint());
         JButton dump = new JButton("Dump");
@@ -80,6 +86,9 @@ public class CpuDebugWindow {
         JButton dumpJson = new JButton("Dump JSON");
         dumpJson.addActionListener(event -> dumpJson());
         toolbar.add(refresh);
+        toolbar.add(step);
+        toolbar.add(stepLine);
+        toolbar.add(stepFrame);
         toolbar.add(toggleBreakpoint);
         toolbar.add(new JLabel("Watch"));
         watchAddress.setToolTipText("Address, for example C000");
@@ -259,6 +268,21 @@ public class CpuDebugWindow {
         }
         debugController.togglePcBreakpoint(address);
         refreshInstructionTable();
+    }
+
+    private void stepInstruction() {
+        debugController.ignorePcBreakpointOnce(cpu.getPc());
+        debugController.requestInstructionStep();
+    }
+
+    private void stepScanline() {
+        debugController.ignorePcBreakpointOnce(cpu.getPc());
+        debugController.requestScanlineStep();
+    }
+
+    private void stepFrame() {
+        debugController.ignorePcBreakpointOnce(cpu.getPc());
+        debugController.requestFrameStep();
     }
 
     private void addWatchpoint(DebugController.AccessType accessType) {
