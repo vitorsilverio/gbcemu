@@ -239,21 +239,18 @@ public class Emulator {
             window.renderFrame(ppu);
         }
         dots++;
-        if (throttled && dots >= DOTS_PER_FRAME) {
+        if (dots >= DOTS_PER_FRAME) {
             dots = 0;
             frameNumber++;
             recordRewindSnapshot();
             updatePerformanceStats();
-            long elapsed = System.nanoTime() - frameStart;
-            if (elapsed < NANOS_PER_FRAME) {
-                sleepNanos(NANOS_PER_FRAME - elapsed);
+            if (throttled) {
+                long elapsed = System.nanoTime() - frameStart;
+                if (elapsed < NANOS_PER_FRAME) {
+                    sleepNanos(NANOS_PER_FRAME - elapsed);
+                }
+                frameStart = System.nanoTime();
             }
-            frameStart = System.nanoTime();
-        } else if (dots >= DOTS_PER_FRAME) {
-            dots = 0;
-            frameNumber++;
-            recordRewindSnapshot();
-            updatePerformanceStats();
         }
     }
 
