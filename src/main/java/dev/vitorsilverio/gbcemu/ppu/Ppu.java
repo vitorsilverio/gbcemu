@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.util.List;
 
 public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, Stateful<PpuState> {
@@ -61,6 +62,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final int[][] bgColorIndexes; // 160x144 pixels
     private final boolean[][] bgPriorities; // 160x144 pixels
     private final BufferedImage frameImage;
+    private final int[] frameImagePixels;
     private boolean cgbMode;
 
     private int cycles;
@@ -80,6 +82,8 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private volatile boolean frameReady;
     private final ObjectAtribute[] spriteCandidates = new ObjectAtribute[10];
     private final int[] spriteCandidateIndexes = new int[10];
+    private int spriteCandidateCount;
+    private int currentSpriteHeight = 8;
     private ObjectAtribute foundSpriteAttribute;
     private int foundSpriteColorIndex;
     private int bgPixelColorIndex;
@@ -101,6 +105,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         this.bgColorIndexes = new int[160][144];
         this.bgPriorities = new boolean[160][144];
         this.frameImage = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
+        this.frameImagePixels = ((DataBufferInt) frameImage.getRaster().getDataBuffer()).getData();
         if (!cgbMode) {
             objectPriorityMode = ObjectPriorityMode.DMG;
         }
@@ -175,7 +180,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         bgPriorities[currentColumn][currentLine] = bgPixelPriority;
         resolveSpritePixel(currentColumn, currentLine);
         frameBuffer[currentColumn][currentLine] = resolvedPixelColor;
-        frameImage.setRGB(currentColumn, currentLine, resolvedPixelColor);
+        frameImagePixels[currentLine * 160 + currentColumn] = resolvedPixelColor;
 
         currentColumn++;
         // when line finished then go to HBLANK
@@ -215,7 +220,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             tileY = 7 - tileY;
         }
 
-        bgPixelColorIndex = tile.getPixel(tileX, tileY);
+        bgPixelColorIndex = tile.getPixelUnchecked(tileX, tileY);
         int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
         int mappedColorIndex = cgbMode ? bgPixelColorIndex : bgPaletteDmg.getColor(bgPixelColorIndex);
         bgPixelColor = bgPalette.getColor(paletteIndex, mappedColorIndex);
@@ -251,26 +256,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     }
 
     private boolean findSpritePixel(int x, int y) {
-        int spriteHeight = control.getSpriteSize() == 0 ? 8 : 16;
-        int candidateCount = 0;
-        for (int i = 0; i < 40; i++) {
-            ObjectAtribute object = oam.getObjectAtribute(i);
-            int spriteY = object.getScreenY();
-            if (y >= spriteY && y < spriteY + spriteHeight) {
-                spriteCandidates[candidateCount] = object;
-                spriteCandidateIndexes[candidateCount] = i;
-                candidateCount++;
-                if (candidateCount == 10) {
-                    break;
-                }
-            }
-        }
-
-        if (objectPriorityMode == ObjectPriorityMode.DMG) {
-            sortSpriteCandidatesForDmg(candidateCount);
-        }
-
-        for (int i = 0; i < candidateCount; i++) {
+        for (int i = 0; i < spriteCandidateCount; i++) {
             ObjectAtribute object = spriteCandidates[i];
             int spriteX = object.getScreenX();
             if (x < spriteX || x >= spriteX + 8) {
@@ -283,11 +269,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 tileX = 7 - tileX;
             }
             if (object.isFlipY()) {
-                tileY = spriteHeight - 1 - tileY;
+                tileY = currentSpriteHeight - 1 - tileY;
             }
 
             int tileIndex = object.getTileIndexUnsigned();
-            if (spriteHeight == 16) {
+            if (currentSpriteHeight == 16) {
                 tileIndex &= 0xFE;
                 if (tileY >= 8) {
                     tileIndex++;
@@ -297,7 +283,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
             int bank = cgbMode ? object.getBank() : 0;
             Tile tile = videoRam.getTile(TileArea.METHOD_8000, bank, tileIndex);
-            int colorIndex = tile.getPixel(tileX, tileY);
+            int colorIndex = tile.getPixelUnchecked(tileX, tileY);
             if (colorIndex != 0) {
                 foundSpriteAttribute = object;
                 foundSpriteColorIndex = colorIndex;
@@ -307,6 +293,29 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         foundSpriteAttribute = null;
         foundSpriteColorIndex = 0;
         return false;
+    }
+
+    private void prepareSpriteCandidatesForLine() {
+        spriteCandidateCount = 0;
+        if (!control.isSpriteEnabled()) {
+            return;
+        }
+        currentSpriteHeight = control.getSpriteSize() == 0 ? 8 : 16;
+        for (int i = 0; i < 40; i++) {
+            ObjectAtribute object = oam.getObjectAtribute(i);
+            int spriteY = object.getScreenY();
+            if (currentLine >= spriteY && currentLine < spriteY + currentSpriteHeight) {
+                spriteCandidates[spriteCandidateCount] = object;
+                spriteCandidateIndexes[spriteCandidateCount] = i;
+                spriteCandidateCount++;
+                if (spriteCandidateCount == 10) {
+                    break;
+                }
+            }
+        }
+        if (objectPriorityMode == ObjectPriorityMode.DMG) {
+            sortSpriteCandidatesForDmg(spriteCandidateCount);
+        }
     }
 
     private void sortSpriteCandidatesForDmg(int candidateCount) {
@@ -348,6 +357,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         // Read from OAM
 
         if (cycles == OAM_SCANLINE_CYCLES - 1) {
+            prepareSpriteCandidatesForLine();
             mode = PpuMode.VRAM_READ;
             cycles = -1;
             currentColumn = 0;
@@ -673,7 +683,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private void restoreFrameImage() {
         for (int y = 0; y < 144; y++) {
             for (int x = 0; x < 160; x++) {
-                frameImage.setRGB(x, y, frameBuffer[x][y]);
+                frameImagePixels[y * 160 + x] = frameBuffer[x][y];
             }
         }
     }

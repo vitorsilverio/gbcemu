@@ -29,6 +29,10 @@ public class Tile extends BufferedImage implements Serializable {
             logger.error("Coordinates out of bounds: x={}, y={}", x, y);
             throw new IllegalArgumentException("Coordinates out of bounds");
         }
+        return getPixelUnchecked(x, y);
+    }
+
+    public int getPixelUnchecked(int x, int y) {
         int byteIndex = y * 2;
         int bitIndex = 7 - x;
         int lowBit = (data[byteIndex] >> bitIndex) & 1;
