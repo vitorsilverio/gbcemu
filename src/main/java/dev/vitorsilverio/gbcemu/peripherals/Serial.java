@@ -5,6 +5,7 @@ import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
+import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,9 +32,14 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private int SC = 0;
     private int transferCyclesRemaining;
     private int outgoingByte;
+    private Multiplayer multiplayerIntercace;
 
     public Serial(Bus bus) {
         this.bus = bus;
+    }
+
+    public void setMultiplayerIntercace(Multiplayer multiplayerIntercace) {
+        this.multiplayerIntercace = multiplayerIntercace;
     }
 
     @Override
@@ -112,7 +118,12 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         byte[] primitiveData = new byte[]{(byte) outgoingByte};
         logger.info("Serial data: " + HexFormat.of().formatHex(primitiveData));
         appendText((byte) outgoingByte);
-        SB = 0xFF;
+        if (multiplayerIntercace != null) {
+            multiplayerIntercace.send((byte) outgoingByte);
+            SB = multiplayerIntercace.read();
+        } else {
+            SB = 0xFF;
+        }
         SC &= ~TRANSFER_START;
         bus.requestInterrupt(Interrupt.SERIAL);
     }
