@@ -28,17 +28,15 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private final Bus bus;
     private final StringBuilder text = new StringBuilder();
     private final StringBuilder transcript = new StringBuilder();
+    private final Multiplayer multiplayer;
     private int SB = 0;
     private int SC = 0;
     private int transferCyclesRemaining;
     private int outgoingByte;
-    private Multiplayer multiplayer;
 
-    public Serial(Bus bus) {
+
+    public Serial(Bus bus, Multiplayer multiplayer) {
         this.bus = bus;
-    }
-
-    public void setMultiplayer(Multiplayer multiplayer) {
         this.multiplayer = multiplayer;
     }
 

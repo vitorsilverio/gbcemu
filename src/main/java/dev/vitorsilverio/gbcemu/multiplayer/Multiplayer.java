@@ -148,4 +148,8 @@ public class Multiplayer {
             e.printStackTrace();
         }
     }
+
+    public boolean isConnected() {
+        return connected;
+    }
 }

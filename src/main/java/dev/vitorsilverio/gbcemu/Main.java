@@ -103,8 +103,15 @@ public class Main {
                 Main::openCpuDebugger,
                 Main::openCartDebugger,
                 Main::dumpDebugBundle,
-                Main::dumpMemoryBanks
+                Main::dumpMemoryBanks,
+                Main::configureMultiplayer
         );
+    }
+
+    private static void configureMultiplayer() {
+        if (activeEmulator != null) {
+            activeEmulator.openMultiplayerDialog();
+        }
     }
 
     private static void dumpMemoryBanks() {

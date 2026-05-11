@@ -18,6 +18,7 @@ import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.*;
+import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import dev.vitorsilverio.gbcemu.peripherals.*;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.ppu.PpuMode;
@@ -83,6 +84,7 @@ public class Emulator {
     private boolean fastForwardAudioMuted;
     private static final DateTimeFormatter DEBUG_DUMP_TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
+    private final Multiplayer multiplayer;
 
 
     public Emulator(File biosFile, File romFile, File saveFile) {
@@ -156,7 +158,8 @@ public class Emulator {
         if (this.window != null) {
             this.window.attach(ppu, (KeyboardController) controller);
         }
-        this.serial = new Serial(bus);
+        this.multiplayer = new Multiplayer();
+        this.serial = new Serial(bus, multiplayer);
         bus.addMemorySpace(serial);
         cpu.setCycleCallback(this::tickSystemCycle);
     }
@@ -268,6 +271,9 @@ public class Emulator {
         stopped = true;
         paused = false;
         apu.close();
+        if(multiplayer != null && multiplayer.isConnected()) {
+            multiplayer.disconnect();
+        }
     }
 
     public void stopAfterFrames(long frames) {
@@ -886,6 +892,10 @@ public class Emulator {
 
     private InterruptManager interruptManager() {
         return bus.findMemorySpace(InterruptManager.class).orElseThrow();
+    }
+
+    public void openMultiplayerDialog() {
+        new MultiplayerDialog(multiplayer);
     }
 
     private enum DebugStepMode {

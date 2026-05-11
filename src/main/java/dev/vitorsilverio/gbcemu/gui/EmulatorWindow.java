@@ -262,6 +262,12 @@ public class EmulatorWindow {
         cheatMenu.add(openCheatsMenu);
         menuBar.add(cheatMenu);
 
+        JMenu multiplayerMenu = new JMenu("Multiplayer");
+        JMenuItem openMultiplayerMenu = new JMenuItem("Configure multiplayer");
+        openMultiplayerMenu.addActionListener(event -> menuActions.multiplayer().run());
+        multiplayerMenu.add(openMultiplayerMenu);
+        menuBar.add(multiplayerMenu);
+
         window.setJMenuBar(menuBar);
 
 
