@@ -111,11 +111,16 @@ public class MultiplayerDialog {
         panel.add(portField, gbc);
 
         // Buttons
-        JButton connectButton = new JButton("Connect");
+        JButton connectButton = new JButton(multiplayer.isConnected()?"Disconnect":"Connect");
         JButton cancelButton = new JButton("Cancel");
 
         connectButton.addActionListener(e -> {
             try {
+                if (multiplayer.isConnected()) {
+                    multiplayer.disconnect();
+                    frame.dispose();
+                    return;
+                }
                 if (localRadio.isSelected()) {
                     String path = pathField.getText();
                     if (hostRadio.isSelected()) {
