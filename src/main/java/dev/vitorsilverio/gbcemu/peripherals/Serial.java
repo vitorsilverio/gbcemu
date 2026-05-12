@@ -59,7 +59,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
             }
         } else {
             if (multiplayer != null && multiplayer.isConnected()) {
-                multiplayer.send((byte) SB);
+                multiplayer.send((byte) outgoingByte);
             }
             completeSlaveTransfer(received);
         }

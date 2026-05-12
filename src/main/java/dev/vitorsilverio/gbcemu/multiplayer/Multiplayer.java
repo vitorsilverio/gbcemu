@@ -13,6 +13,7 @@ import java.nio.file.Path;
 public class Multiplayer implements MachineCycle, AutoCloseable {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Multiplayer.class);
+    private static final int CHECK_INTERVAL = 4096;
 
     private boolean connected = false;
     private SocketChannel channel;
@@ -106,8 +107,9 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
 
         try {
             ticks++;
-            ticks %= 4;
-            if (ticks != 0) return;
+            if (ticks < CHECK_INTERVAL) return;
+            ticks = 0;
+
             receiveBuffer.clear();
             int bytesRead = channel.read(receiveBuffer);
             if (bytesRead > 0) {
@@ -115,13 +117,13 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
                 listener.onByteReceived(receiveBuffer.get());
             }
         } catch (IOException e) {
-            checkConnection();
+            checkConnection(e);
             e.printStackTrace();
         }
     }
 
-    private void checkConnection() {
-        if (channel == null || !channel.isConnected()) {
+    private void checkConnection(Exception e) {
+        if (channel == null || !channel.isConnected() || "Connection reset".equals(e.getMessage())) {
             logger.warn("Connection lost to {}", address);
             disconnect();
         }
