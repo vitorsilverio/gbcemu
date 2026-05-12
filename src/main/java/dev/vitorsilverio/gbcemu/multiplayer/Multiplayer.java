@@ -1,5 +1,6 @@
 package dev.vitorsilverio.gbcemu.multiplayer;
 
+import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 
-public class Multiplayer {
+public class Multiplayer implements MachineCycle, AutoCloseable {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Multiplayer.class);
 
@@ -19,25 +20,24 @@ public class Multiplayer {
     private final ByteBuffer receiveBuffer = ByteBuffer.allocate(1);
     private SocketAddress address;
     private ProtocolFamily protocolFamily;
+    private ByteReceivedListener listener;
+    private int ticks = 0;
 
-
-
-    private final Path path = Path.of("gbc.sock.path");
+    public void setListener(ByteReceivedListener listener) {
+        this.listener = listener;
+    }
 
     public void hostLocal(String pathStr) {
         this.protocolFamily = StandardProtocolFamily.UNIX;
         Path socketFile = Path.of(pathStr);
-        // Ensure the socket file does not already exist
         try {
             if (socketFile.toFile().exists()) {
                 socketFile.toFile().delete();
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         address = UnixDomainSocketAddress.of(socketFile);
-
-
         host();
     }
 
@@ -54,12 +54,11 @@ public class Multiplayer {
     public void joinLocal(String pathStr) {
         this.protocolFamily = StandardProtocolFamily.UNIX;
         Path socketFile = Path.of(pathStr);
-        // Ensure the socket file does already exist
         try {
             if (!socketFile.toFile().exists()) {
                 throw new IOException("Socket file does not exist: " + socketFile);
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Failed to join local socket", e);
         }
@@ -89,7 +88,7 @@ public class Multiplayer {
         }
     }
 
-    private void join(){
+    private void join() {
         try {
             channel = SocketChannel.open(protocolFamily);
             channel.connect(address);
@@ -101,6 +100,32 @@ public class Multiplayer {
         }
     }
 
+    @Override
+    public void tick() {
+        if (!connected || listener == null) return;
+
+        try {
+            ticks++;
+            ticks %= 4;
+            if (ticks != 0) return;
+            receiveBuffer.clear();
+            int bytesRead = channel.read(receiveBuffer);
+            if (bytesRead > 0) {
+                receiveBuffer.flip();
+                listener.onByteReceived(receiveBuffer.get());
+            }
+        } catch (IOException e) {
+            checkConnection();
+            e.printStackTrace();
+        }
+    }
+
+    private void checkConnection() {
+        if (channel == null || !channel.isConnected()) {
+            logger.warn("Connection lost to {}", address);
+            disconnect();
+        }
+    }
 
 
     public void send(byte data) {
@@ -117,27 +142,6 @@ public class Multiplayer {
     }
 
 
-
-    public byte read() {
-        if (!connected) return (byte) 0xFF;
-
-        byte lastReceivedByte = (byte) 0xFF;
-
-        try {
-            receiveBuffer.clear();
-            int bytesRead = channel.read(receiveBuffer);
-
-            if (bytesRead > 0) {
-                receiveBuffer.flip();
-                lastReceivedByte = receiveBuffer.get();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return lastReceivedByte;
-    }
-
     public void disconnect() {
         connected = false;
         try {
@@ -151,5 +155,10 @@ public class Multiplayer {
 
     public boolean isConnected() {
         return connected;
+    }
+
+    @Override
+    public void close() throws Exception {
+        disconnect();
     }
 }

@@ -670,6 +670,7 @@ public class Emulator {
             dma.tick();
         }
 
+        multiplayer.tick();
         timer.tick();
         serial.tick();
         ppu.tick();
