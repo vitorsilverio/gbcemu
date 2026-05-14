@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import io.github.stanio.xbrz.awt.AwtXbrz;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,6 +23,7 @@ public class EmulatorWindow {
     private Timer rewindHoldTimer;
     private int scale;
     private boolean smoothScaling;
+    private boolean xbrzFiltering;
     private boolean fullscreen;
     private Ppu ppu;
     private KeyListener keyListener;
@@ -31,6 +33,7 @@ public class EmulatorWindow {
         int scale = settings.screenScale();
         this.scale = Math.max(1, Math.min(8, scale));
         this.smoothScaling = settings.smoothScaling();
+        this.xbrzFiltering = settings.xBrzFiltering();
         this.fullscreen = settings.fullscreen();
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         screen = new JPanel() {
@@ -76,6 +79,7 @@ public class EmulatorWindow {
     public void applySettings(AppSettings settings) {
         this.scale = Math.max(1, Math.min(8, settings.screenScale()));
         this.smoothScaling = settings.smoothScaling();
+        this.xbrzFiltering = settings.xBrzFiltering();
         this.fullscreen = settings.fullscreen();
         SwingUtilities.invokeLater(() -> {
             screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
@@ -323,6 +327,9 @@ public class EmulatorWindow {
             Image frame = ppu.getFrameBuffer();
             int drawWidth = fullscreen ? screen.getWidth() : WIDTH * scale;
             int drawHeight = fullscreen ? screen.getHeight() : HEIGHT * scale;
+            if (xbrzFiltering) {
+                frame = AwtXbrz.scaleImage(frame, scale);
+            }
             graphics.drawImage(frame, 0, 0, drawWidth, drawHeight, null);
         }
         drawOverlay(g);

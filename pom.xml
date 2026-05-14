@@ -61,6 +61,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.github.stanio</groupId>
+            <artifactId>xbrz-awt</artifactId>
+            <version>1.8.2</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
     <build>
         <plugins>

@@ -24,6 +24,7 @@ public class SettingsDialog extends JDialog {
     private final Consumer<AppSettings> onSave;
     private final JSpinner screenScale;
     private final JCheckBox smoothScaling;
+    private final JCheckBox xBrzFiltering;
     private final JCheckBox fullscreen;
     private final JSpinner rewindSeconds;
     private final JSpinner rewindInterval;
@@ -41,6 +42,7 @@ public class SettingsDialog extends JDialog {
         this.onSave = onSave;
         this.screenScale = spinner(settings.screenScale(), 1, 8, 1);
         this.smoothScaling = new JCheckBox("Smooth scaling", settings.smoothScaling());
+        this.xBrzFiltering = new JCheckBox("xBrz filtering", settings.xBrzFiltering());
         this.fullscreen = new JCheckBox("Fullscreen", settings.fullscreen());
         this.rewindSeconds = spinner(settings.rewindSeconds(), 0, 120, 1);
         this.rewindInterval = spinner(settings.rewindCaptureIntervalFrames(), 1, 60, 1);
@@ -65,14 +67,15 @@ public class SettingsDialog extends JDialog {
         JPanel fields = new JPanel(new GridBagLayout());
         addRow(fields, 0, "Screen scale", screenScale);
         addRow(fields, 1, "Screen filter", smoothScaling);
-        addRow(fields, 2, "Fullscreen", fullscreen);
-        addRow(fields, 3, "Rewind seconds", rewindSeconds);
-        addRow(fields, 4, "Rewind interval frames", rewindInterval);
-        addRow(fields, 5, "Turbo multiplier", turboMultiplier);
-        addRow(fields, 6, "Turbo key", turboKey);
-        addRow(fields, 7, "Master volume", masterVolume);
-        addRow(fields, 8, "Left volume", leftVolume);
-        addRow(fields, 9, "Right volume", rightVolume);
+        addRow(fields, 2, "xBrz filter", xBrzFiltering);
+        addRow(fields, 3, "Fullscreen", fullscreen);
+        addRow(fields, 4, "Rewind seconds", rewindSeconds);
+        addRow(fields, 5, "Rewind interval frames", rewindInterval);
+        addRow(fields, 6, "Turbo multiplier", turboMultiplier);
+        addRow(fields, 7, "Turbo key", turboKey);
+        addRow(fields, 8, "Master volume", masterVolume);
+        addRow(fields, 9, "Left volume", leftVolume);
+        addRow(fields, 10, "Right volume", rightVolume);
         for (int i = 0; i < channelVolumes.length; i++) {
             JPanel channel = new JPanel(new BorderLayout(6, 0));
             channel.add(channelVolumes[i], BorderLayout.CENTER);
@@ -133,7 +136,8 @@ public class SettingsDialog extends JDialog {
                 mutedValues,
                 keyValues,
                 (int) turboMultiplier.getValue(),
-                turboKey.keyCode()
+                turboKey.keyCode(),
+                xBrzFiltering.isSelected()
         ).normalized());
         dispose();
     }
