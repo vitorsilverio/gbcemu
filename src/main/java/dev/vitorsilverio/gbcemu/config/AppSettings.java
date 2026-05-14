@@ -88,6 +88,7 @@ public record AppSettings(
     public void save(Preferences preferences) {
         preferences.putInt(SCREEN_SCALE, screenScale);
         preferences.putBoolean(SMOOTH_SCALING, smoothScaling);
+        preferences.putBoolean(XBRZ_FILTERING, xBrzFiltering);
         preferences.putBoolean(FULLSCREEN, fullscreen);
         preferences.putInt(REWIND_SECONDS, rewindSeconds);
         preferences.putInt(REWIND_CAPTURE_INTERVAL_FRAMES, rewindCaptureIntervalFrames);
