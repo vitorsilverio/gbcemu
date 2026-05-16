@@ -80,11 +80,17 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Melhorar UI para conectar/desconectar e indicar estado atual.
   - Sincronizacao suficiente para trocas e batalhas.
 
-- [ ] Saves `.sav` intercambiaveis.
-  - Passar a salvar RAM externa em formato bruto, igual outros emuladores.
-  - Manter leitura dos saves antigos com magic number, versao, tamanho e bytes extras.
-  - Ao carregar save antigo com sucesso, salvar novamente no formato bruto na proxima gravacao.
-  - Evitar perder progresso existente durante a migracao.
+- [x] Saves `.sav` intercambiaveis.
+  - [x] Passar a salvar RAM externa em formato bruto, igual outros emuladores.
+  - [x] Manter leitura dos saves antigos com magic number, versao, tamanho e bytes extras.
+  - [x] Ao carregar save antigo com sucesso, salvar novamente no formato bruto na proxima gravacao.
+  - [x] Evitar perder progresso existente durante a migracao.
+
+- [ ] Offset manual de RTC.
+  - Configurar offset de horas, minutos e segundos.
+  - Permitir testar eventos dependentes de horario sem alterar o relogio do sistema.
+  - Aplicar em cartuchos com RTC, especialmente MBC3.
+  - Persistir offset nas configuracoes, nao no save state nem no `.sav`.
 
 - [ ] Infrared com hardware real.
   - Criar camada de transporte.

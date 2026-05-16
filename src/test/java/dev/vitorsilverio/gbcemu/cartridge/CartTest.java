@@ -3,6 +3,8 @@ package dev.vitorsilverio.gbcemu.cartridge;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -123,6 +125,8 @@ class CartTest {
         cart.write(0xA123, (byte) 0x66);
         cart.flushSave();
 
+        assertEquals(0x8000, Files.size(save.toPath()));
+
         Cart loaded = CartFactory.fromFile(rom, save);
         loaded.write(0x0000, (byte) 0x0A);
         loaded.write(0x4000, (byte) 0x01);
@@ -161,6 +165,26 @@ class CartTest {
         loaded.write(0x0000, (byte) 0x0A);
 
         assertEquals(0x77, loaded.read(0xA000) & 0xFF);
+    }
+
+    @Test
+    void legacyHeaderedSaveStillLoadsAndMigratesToRawRamOnFlush() throws IOException {
+        File rom = writeRom(CartridgeType.MBC3_RAM_BATTERY, 0x02, 0x03);
+        File save = tempDir.resolve("legacy.sav").toFile();
+        byte[] ram = new byte[0x8000];
+        ram[0x2123] = 0x66;
+        Files.write(save.toPath(), legacySaveBytes(ram));
+
+        Cart loaded = CartFactory.fromFile(rom, save);
+        loaded.write(0x0000, (byte) 0x0A);
+        loaded.write(0x4000, (byte) 0x01);
+
+        assertEquals(0x66, loaded.read(0xA123) & 0xFF);
+
+        loaded.flushSave();
+
+        assertEquals(0x8000, Files.size(save.toPath()));
+        assertEquals(0x66, Files.readAllBytes(save.toPath())[0x2123] & 0xFF);
     }
 
     @Test
@@ -233,6 +257,8 @@ class CartTest {
         cart.write(0xA123, (byte) 0x66);
         cart.flushSave();
 
+        assertEquals(0x8000, Files.size(save.toPath()));
+
         Cart loaded = CartFactory.fromFile(rom, save);
         loaded.write(0x0000, (byte) 0x0A);
         loaded.write(0x4000, (byte) 0x01);
@@ -265,5 +291,26 @@ class CartTest {
         Path romFile = tempDir.resolve(cartridgeType.name() + romBanks + ".gb");
         Files.write(romFile, rom);
         return romFile.toFile();
+    }
+
+    private byte[] legacySaveBytes(byte[] ram) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream output = new DataOutputStream(bytes)) {
+            output.writeInt(0x47424353);
+            output.writeInt(1);
+            output.writeInt(ram.length);
+            output.write(ram);
+            output.writeInt(0);
+            output.writeInt(0);
+            output.writeInt(0);
+            output.writeInt(0);
+            output.writeBoolean(false);
+            output.writeBoolean(false);
+            output.writeLong(0L);
+            for (int i = 0; i < 5; i++) {
+                output.writeInt(0);
+            }
+        }
+        return bytes.toByteArray();
     }
 }

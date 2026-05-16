@@ -7,7 +7,7 @@ import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -153,23 +153,36 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
         if (saveFile == null || !saveFile.isFile()) {
             return;
         }
-        try (DataInputStream input = new DataInputStream(Files.newInputStream(saveFile.toPath()))) {
-            int magic = input.readInt();
-            if (magic != SAVE_MAGIC) {
-                loadRawRamSave();
+        try {
+            byte[] bytes = Files.readAllBytes(saveFile.toPath());
+            if (!hasLegacySaveHeader(bytes)) {
+                ram.restoreData(bytes);
                 return;
             }
-            int version = input.readInt();
-            if (version != SAVE_VERSION) {
-                return;
+            try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes))) {
+                input.readInt();
+                int version = input.readInt();
+                if (version != SAVE_VERSION) {
+                    ram.restoreData(bytes);
+                    return;
+                }
+                int ramLength = input.readInt();
+                if (ramLength < 0 || ramLength > input.available()) {
+                    ram.restoreData(bytes);
+                    return;
+                }
+                if (ramLength > 0) {
+                    byte[] savedRam = new byte[ramLength];
+                    input.readFully(savedRam);
+                    ram.restoreData(savedRam);
+                }
+                try {
+                    loadExtraSaveData(input);
+                } catch (IOException e) {
+                    logger.warn("Failed to load legacy cartridge save extra data", e);
+                }
+                saveDirty = header.getCartridgeType().hasBattery();
             }
-            int ramLength = input.readInt();
-            if (ramLength > 0) {
-                byte[] savedRam = new byte[ramLength];
-                input.readFully(savedRam);
-                ram.restoreData(savedRam);
-            }
-            loadExtraSaveData(input);
         } catch (IOException e) {
             logger.warn("Failed to load cartridge save", e);
         }
@@ -190,7 +203,7 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
             if (parent != null) {
                 Files.createDirectories(parent.toPath());
             }
-            Files.write(saveFile.toPath(), saveBytes());
+            Files.write(saveFile.toPath(), ram.copyData());
             saveDirty = false;
         } catch (IOException e) {
             logger.warn("Failed to persist cartridge save", e);
@@ -238,22 +251,19 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
         };
     }
 
-    private void loadRawRamSave() throws IOException {
-        byte[] bytes = Files.readAllBytes(saveFile.toPath());
-        ram.restoreData(bytes);
-    }
-
-    private byte[] saveBytes() throws IOException {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try (DataOutputStream output = new DataOutputStream(bytes)) {
-            output.writeInt(SAVE_MAGIC);
-            output.writeInt(SAVE_VERSION);
-            byte[] ramData = ram.copyData();
-            output.writeInt(ramData.length);
-            output.write(ramData);
-            writeExtraSaveData(output);
+    private boolean hasLegacySaveHeader(byte[] bytes) {
+        if (bytes.length < Integer.BYTES * 2) {
+            return false;
         }
-        return bytes.toByteArray();
+        int magic = ((bytes[0] & 0xFF) << 24)
+                | ((bytes[1] & 0xFF) << 16)
+                | ((bytes[2] & 0xFF) << 8)
+                | (bytes[3] & 0xFF);
+        int version = ((bytes[4] & 0xFF) << 24)
+                | ((bytes[5] & 0xFF) << 16)
+                | ((bytes[6] & 0xFF) << 8)
+                | (bytes[7] & 0xFF);
+        return magic == SAVE_MAGIC && version == SAVE_VERSION;
     }
 
     private class RomMemoryBank implements MemoryBank {
