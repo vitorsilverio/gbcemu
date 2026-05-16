@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import java.awt.image.BufferedImage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PpuTest {
 
@@ -287,6 +289,71 @@ class PpuTest {
         ppu.write(0xFE20, (byte) 0x99);
 
         assertOamRow(ppu, 2, 0xAAAA, 0xBBBB, 0xCCCC, 0xDDDD);
+    }
+
+    @Test
+    void cgbVramAccessDuringMode3IsBlockedWithoutChangingVram() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        ppu.write(0x8000, (byte) 0x12);
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 80);
+
+        assertEquals(0xFF, ppu.read(0x8000) & 0xFF);
+        ppu.write(0x8000, (byte) 0x34);
+
+        assertEquals(0x12, ppu.getVideoRam().readBank(0, 0) & 0xFF);
+    }
+
+    @Test
+    void vbkReadsUnusedBitsAsOneAndSelectedBankInBitZero() {
+        Ppu ppu = new Ppu(new Bus(), true);
+
+        assertEquals(0xFE, ppu.read(0xFF4F) & 0xFF);
+
+        ppu.write(0xFF4F, (byte) 0xFF);
+
+        assertEquals(0xFF, ppu.read(0xFF4F) & 0xFF);
+    }
+
+    @Test
+    void cgbPaletteDataAccessDuringMode3IsBlockedButStillAutoIncrements() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        setBgPaletteColor(ppu, 0, 0x001F);
+        setObjPaletteColor(ppu, 0, 0x03E0);
+        ppu.write(0xFF68, (byte) 0x80);
+        ppu.write(0xFF6A, (byte) 0x80);
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 80);
+
+        assertEquals(0xFF, ppu.read(0xFF69) & 0xFF);
+        assertEquals(0xFF, ppu.read(0xFF6B) & 0xFF);
+        ppu.write(0xFF69, (byte) 0x00);
+        ppu.write(0xFF6B, (byte) 0x00);
+
+        PpuState state = ppu.saveState();
+        assertEquals(0x81, ppu.read(0xFF68) & 0xFF);
+        assertEquals(0x81, ppu.read(0xFF6A) & 0xFF);
+        assertEquals(0x1F, state.bgPalette()[0] & 0xFF);
+        assertEquals(0x00, state.bgPalette()[1] & 0xFF);
+        assertEquals(0xE0, state.objPalette()[0] & 0xFF);
+        assertEquals(0x03, state.objPalette()[1] & 0xFF);
+    }
+
+    @Test
+    void hblankDmaRunsOnlyDuringVisibleHblankLines() {
+        Ppu ppu = new Ppu(new Bus());
+        ppu.write(0xFF40, (byte) 0x80);
+        tick(ppu, 80 + 172);
+
+        assertEquals(0, ppu.read(0xFF44) & 0xFF);
+        assertEquals(PpuMode.HBLANK.getValue(), ppu.read(0xFF41) & 0x03);
+        assertTrue(ppu.canRunHBlankDma());
+
+        tick(ppu, 456 * 144 - 80 - 172);
+
+        assertEquals(144, ppu.read(0xFF44) & 0xFF);
+        assertEquals(PpuMode.VBLANK.getValue(), ppu.read(0xFF41) & 0x03);
+        assertFalse(ppu.canRunHBlankDma());
     }
 
     private void setBgPaletteColor(Ppu ppu, int colorIndex, int rgb555) {

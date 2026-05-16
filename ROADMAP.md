@@ -153,6 +153,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - KEY0/KEY1 e troca de velocidade via `STOP`.
 - Timer e serial com consideracao inicial de double speed.
 - VRAM bank (`VBK`) e WRAM bank (`SVBK`).
+  - [x] `VBK` le bits nao usados como 1.
+  - [ ] Validar `SVBK` lendo bits nao usados como 1 e banco 0 mapeando banco 1.
 - CGB palettes (`BGPI/BGPD`, `OBPI/OBPD`).
 - Atributos CGB de tile map: banco, paleta, flip e prioridade.
 - OAM com atributos CGB: banco, paleta, flip e prioridade.
@@ -176,15 +178,16 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - [ ] HDMA/GDMA completo.
   - [x] HBlank HDMA transfere no maximo um bloco de `$10` bytes por HBlank.
+  - [x] HBlank HDMA nao transfere durante VBlank.
   - Confirmar bloqueios de bus e timing por bloco.
   - [x] Confirmar comportamento basico de cancelamento de HBlank HDMA e leitura de blocos restantes.
-  - Validar origem/destino, mascaras e leitura de `HDMA5`.
+  - [x] Validar origem/destino, mascaras e leitura de `HDMA5`.
 
 - [ ] Bloqueios de acesso CGB.
-  - VRAM durante mode 3.
-  - OAM durante mode 2/3.
-  - Paletas durante modos bloqueados.
-  - Wave RAM durante CH3 ativo.
+  - [x] VRAM durante mode 3.
+  - [x] OAM durante mode 2/3.
+  - [x] Paletas durante modos bloqueados.
+  - [x] Wave RAM durante CH3 ativo.
 
 - [ ] PPU CGB edge cases.
   - Prioridade BG/window/sprite em CGB e modo compatibilidade DMG.

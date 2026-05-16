@@ -100,26 +100,16 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
     @Override
     public byte read(int address) {
         switch (address) {
-            case HDMA1 -> {
-                return (byte) ((sourceAddress >> 8) & 0xFF);
-            }
-            case HDMA2 -> {
-                return (byte) (sourceAddress & 0xF0);
-            }
-            case HDMA3 -> {
-                return (byte) ((destinationAddress >> 8) & 0xFF);
-            }
-            case HDMA4 -> {
-                return (byte) (destinationAddress & 0xFF);
-            }
             case HDMA5 -> {
                 if (completed) {
                     return (byte) 0xFF;
                 }
                 return (byte) (remainingBlocksMinusOne() | (active ? 0x00 : 0x80));
             }
+            default -> {
+                return (byte) 0xFF;
+            }
         }
-        return 0;
     }
 
     @Override

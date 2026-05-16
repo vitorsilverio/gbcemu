@@ -17,9 +17,6 @@ public class WorkRam implements MemorySpace, MemoryBank, Stateful<WorkRamState> 
     @Override
     public void loadState(WorkRamState state) {
         bank = state.bank() & 0x07;
-        if (bank == 0) {
-            bank = 1;
-        }
         System.arraycopy(state.bank0(), 0, bank0, 0, Math.min(bank0.length, state.bank0().length));
         byte[][] stateBanks = state.banks();
         for (int i = 0; i < banks.length && i < stateBanks.length; i++) {
@@ -43,7 +40,7 @@ public class WorkRam implements MemorySpace, MemoryBank, Stateful<WorkRamState> 
     @Override
     public byte read(int address) {
         if (address == SVBK_REGISTER) {
-            return (byte) bank;
+            return (byte) (0xF8 | bank);
         }
         if (address < 0xD000) {
             return bank0[address - 0xC000];
@@ -98,9 +95,6 @@ public class WorkRam implements MemorySpace, MemoryBank, Stateful<WorkRamState> 
     public void write(int address, byte value) {
         if (address == SVBK_REGISTER) {
             bank = value & 0x07;
-            if (bank == 0) {
-                bank = 1;
-            }
         } else if (address < 0xD000) {
             bank0[address - 0xC000] = value;
         } else {

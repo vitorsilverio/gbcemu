@@ -35,7 +35,7 @@ public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState
     @Override
     public byte read(int address) {
         if (address == VBK) {
-            return (byte) bank;
+            return (byte) (0xFE | bank);
         }
 
 

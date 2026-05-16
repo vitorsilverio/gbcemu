@@ -404,6 +404,9 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     @Override
     public byte read(int address) {
         if (videoRam.contains(address)) {
+            if (isVideoRamAddress(address) && control.isEnabled() && PpuMode.VRAM_READ.equals(mode)) {
+                return (byte) 0xff;
+            }
             return videoRam.read(address);
         }
 
@@ -482,6 +485,9 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     @Override
     public void write(int address, byte value) {
         if (videoRam.contains(address)) {
+            if (isVideoRamAddress(address) && control.isEnabled() && PpuMode.VRAM_READ.equals(mode)) {
+                return;
+            }
             videoRam.write(address, value);
             return;
         }
@@ -558,6 +564,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         }
     }
 
+    private boolean isVideoRamAddress(int address) {
+        return 0x8000 <= address && address <= 0x9FFF;
+    }
+
     private void disableLcd() {
         currentLine = 0;
         currentColumn = 0;
@@ -592,6 +602,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     public boolean isHBlank() {
         return mode == PpuMode.HBLANK;
+    }
+
+    public boolean canRunHBlankDma() {
+        return mode == PpuMode.HBLANK && currentLine < 144;
     }
 
     @Override

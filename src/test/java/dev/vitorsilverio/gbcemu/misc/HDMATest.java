@@ -111,6 +111,29 @@ class HDMATest {
         assertEquals(0x9F, ppu.read(0x801F) & 0xFF);
     }
 
+    @Test
+    void hdmaAddressRegistersAreWriteOnlyAndUseMaskedAddressesForTransfer() {
+        Bus bus = new Bus();
+        bus.addMemorySpace(new SourceRam(0x4010, 0x4020));
+        Ppu ppu = new Ppu(bus);
+        bus.addMemorySpace(ppu);
+        HDMA hdma = new HDMA(bus);
+
+        hdma.write(0xFF51, (byte) 0x40);
+        hdma.write(0xFF52, (byte) 0x1F);
+        hdma.write(0xFF53, (byte) 0xFF);
+        hdma.write(0xFF54, (byte) 0xFF);
+        hdma.write(0xFF55, (byte) 0x00);
+        tickEightTimes(hdma);
+
+        assertEquals(0xFF, hdma.read(0xFF51) & 0xFF);
+        assertEquals(0xFF, hdma.read(0xFF52) & 0xFF);
+        assertEquals(0xFF, hdma.read(0xFF53) & 0xFF);
+        assertEquals(0xFF, hdma.read(0xFF54) & 0xFF);
+        assertEquals(0x80, ppu.read(0x9FF0) & 0xFF);
+        assertEquals(0x8F, ppu.read(0x9FFF) & 0xFF);
+    }
+
     private void tickEightTimes(HDMA hdma) {
         for (int i = 0; i < 8; i++) {
             hdma.tick();

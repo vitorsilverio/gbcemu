@@ -684,7 +684,7 @@ public class Emulator {
 
     private void tickSystemCycle() {
         if (hdma.isActive()) {
-            if (hdma.isHBlankMode() && ppu.isHBlank()) {
+            if (hdma.isHBlankMode() && ppu.canRunHBlankDma()) {
                 hdma.tick();
             } else if (hdma.isHBlankMode()) {
                 hdma.leaveHBlank();
