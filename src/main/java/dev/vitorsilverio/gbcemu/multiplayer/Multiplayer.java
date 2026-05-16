@@ -26,12 +26,18 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     private ByteReceivedListener listener;
     private int ticks = 0;
     private String status = "Disconnected";
+    private String lastLocalPath = Path.of(System.getProperty("user.dir"), "gbcemu.sock").toString();
+    private String lastTcpHost = "localhost";
+    private int lastTcpPort = 26803;
+    private boolean lastTcpMode = false;
+    private boolean lastHostMode = true;
 
     public void setListener(ByteReceivedListener listener) {
         this.listener = listener;
     }
 
     public void hostLocal(String pathStr) {
+        rememberLocal(pathStr, true);
         this.protocolFamily = StandardProtocolFamily.UNIX;
         Path socketFile = Path.of(pathStr);
         try {
@@ -46,6 +52,7 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     }
 
     public void hostTcp(String host, int port) {
+        rememberTcp(host, port, true);
         this.protocolFamily = StandardProtocolFamily.INET;
         try {
             address = new InetSocketAddress(host, port);
@@ -56,6 +63,7 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     }
 
     public void joinLocal(String pathStr) {
+        rememberLocal(pathStr, false);
         this.protocolFamily = StandardProtocolFamily.UNIX;
         Path socketFile = Path.of(pathStr);
         try {
@@ -71,6 +79,7 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     }
 
     public void joinTcp(String host, int port) {
+        rememberTcp(host, port, false);
         this.protocolFamily = StandardProtocolFamily.INET;
         try {
             address = new InetSocketAddress(host, port);
@@ -202,6 +211,43 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
 
     public String status() {
         return status;
+    }
+
+    public String lastLocalPath() {
+        return lastLocalPath;
+    }
+
+    public String lastTcpHost() {
+        return lastTcpHost;
+    }
+
+    public int lastTcpPort() {
+        return lastTcpPort;
+    }
+
+    public boolean lastTcpMode() {
+        return lastTcpMode;
+    }
+
+    public boolean lastHostMode() {
+        return lastHostMode;
+    }
+
+    private void rememberLocal(String path, boolean hostMode) {
+        lastTcpMode = false;
+        lastHostMode = hostMode;
+        if (path != null && !path.isBlank()) {
+            lastLocalPath = path;
+        }
+    }
+
+    private void rememberTcp(String host, int port, boolean hostMode) {
+        lastTcpMode = true;
+        lastHostMode = hostMode;
+        if (host != null && !host.isBlank()) {
+            lastTcpHost = host;
+        }
+        lastTcpPort = port;
     }
 
     @Override

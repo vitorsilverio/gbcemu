@@ -51,7 +51,8 @@ public class MultiplayerDialog {
         ButtonGroup connectionGroup = new ButtonGroup();
         connectionGroup.add(localRadio);
         connectionGroup.add(tcpRadio);
-        localRadio.setSelected(true);
+        localRadio.setSelected(!multiplayer.lastTcpMode());
+        tcpRadio.setSelected(multiplayer.lastTcpMode());
 
         gbc.gridy = 1;
         gbc.gridwidth = 1;
@@ -70,7 +71,8 @@ public class MultiplayerDialog {
         ButtonGroup roleGroup = new ButtonGroup();
         roleGroup.add(hostRadio);
         roleGroup.add(guestRadio);
-        hostRadio.setSelected(true);
+        hostRadio.setSelected(multiplayer.lastHostMode());
+        guestRadio.setSelected(!multiplayer.lastHostMode());
 
         gbc.gridy = 3;
         gbc.gridwidth = 1;
@@ -80,7 +82,7 @@ public class MultiplayerDialog {
 
         // Local fields
         pathLabel = new JLabel("Socket Path:");
-        pathField = new JTextField(System.getProperty("user.dir") + "/gbcemu.sock", 20);
+        pathField = new JTextField(multiplayer.lastLocalPath(), 20);
         browseButton = new JButton("Browse");
         browseButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
@@ -101,9 +103,9 @@ public class MultiplayerDialog {
 
         // TCP fields
         hostLabel = new JLabel("Hostname:");
-        hostField = new JTextField("localhost", 15);
+        hostField = new JTextField(multiplayer.lastTcpHost(), 15);
         portLabel = new JLabel("Port:");
-        portField = new JTextField("26803", 5);
+        portField = new JTextField(String.valueOf(multiplayer.lastTcpPort()), 5);
 
         gbc.gridx = 0;
         gbc.gridy = 5;
