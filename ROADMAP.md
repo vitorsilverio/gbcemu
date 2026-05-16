@@ -177,7 +177,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [ ] HDMA/GDMA completo.
   - [x] HBlank HDMA transfere no maximo um bloco de `$10` bytes por HBlank.
   - Confirmar bloqueios de bus e timing por bloco.
-  - Confirmar comportamento de cancelamento de HBlank HDMA.
+  - [x] Confirmar comportamento basico de cancelamento de HBlank HDMA e leitura de blocos restantes.
   - Validar origem/destino, mascaras e leitura de `HDMA5`.
 
 - [ ] Bloqueios de acesso CGB.

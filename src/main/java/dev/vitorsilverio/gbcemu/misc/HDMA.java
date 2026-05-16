@@ -116,8 +116,7 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
                 if (completed) {
                     return (byte) 0xFF;
                 }
-                int remainingBlocks = Math.max(0, ((total - counter) / 0x10) - 1);
-                return (byte) (remainingBlocks | (active ? 0x00 : 0x80));
+                return (byte) (remainingBlocksMinusOne() | (active ? 0x00 : 0x80));
             }
         }
         return 0;
@@ -165,5 +164,13 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
 
     public boolean isGeneralPurposeMode() {
         return mode == 0;
+    }
+
+    public boolean hblankBlockTransferred() {
+        return hblankBlockTransferred;
+    }
+
+    public int remainingBlocksMinusOne() {
+        return Math.max(0, ((total - counter) / 0x10) - 1);
     }
 }

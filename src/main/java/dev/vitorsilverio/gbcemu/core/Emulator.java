@@ -571,6 +571,8 @@ public class Emulator {
         DebugJson.appendNumber(builder, "mode", hdmaState.mode(), true, 4);
         DebugJson.appendNumber(builder, "cycles", hdmaState.cycles(), true, 4);
         DebugJson.appendNumber(builder, "counter", hdmaState.counter(), true, 4);
+        DebugJson.appendNumber(builder, "remainingBlocksMinusOne", hdma.remainingBlocksMinusOne(), true, 4);
+        DebugJson.appendBoolean(builder, "hblankBlockTransferred", hdma.hblankBlockTransferred(), true, 4);
         DebugJson.appendBoolean(builder, "completed", hdmaState.completed(), false, 4);
         builder.append("  },\n");
     }

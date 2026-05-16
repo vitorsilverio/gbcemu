@@ -49,7 +49,7 @@ class HDMATest {
     @Test
     void hblankTransferCanBeStoppedWithoutMarkingCompleted() {
         Bus bus = new Bus();
-        bus.addMemorySpace(new SourceRam(0x4000, 0x4010));
+        bus.addMemorySpace(new SourceRam(0x4000, 0x4020));
         bus.addMemorySpace(new Ppu(bus));
         HDMA hdma = new HDMA(bus);
 
@@ -61,6 +61,25 @@ class HDMATest {
 
         assertFalse(hdma.isActive());
         assertEquals(0x81, hdma.read(0xFF55) & 0xFF);
+    }
+
+    @Test
+    void stoppedHblankTransferReportsRemainingBlocksAfterPartialCopy() {
+        Bus bus = new Bus();
+        bus.addMemorySpace(new SourceRam(0x4000, 0x4040));
+        bus.addMemorySpace(new Ppu(bus));
+        HDMA hdma = new HDMA(bus);
+
+        hdma.write(0xFF51, (byte) 0x40);
+        hdma.write(0xFF55, (byte) 0x83);
+        tickEightTimes(hdma);
+
+        assertEquals(0x02, hdma.read(0xFF55) & 0xFF);
+
+        hdma.write(0xFF55, (byte) 0x00);
+
+        assertFalse(hdma.isActive());
+        assertEquals(0x82, hdma.read(0xFF55) & 0xFF);
     }
 
     @Test
