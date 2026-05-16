@@ -36,6 +36,7 @@ public class EmulatorWindow {
         this.xbrzFiltering = settings.xBrzFiltering();
         this.fullscreen = settings.fullscreen();
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setLocationByPlatform(true);
         screen = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -100,7 +101,6 @@ public class EmulatorWindow {
         } else {
             window.setExtendedState(JFrame.NORMAL);
             window.pack();
-            window.setLocationRelativeTo(null);
         }
         if (visible) {
             window.setVisible(true);

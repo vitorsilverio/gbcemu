@@ -21,9 +21,14 @@ public class MultiplayerDialog {
     private JLabel hostLabel;
     private JLabel portLabel;
     private JButton browseButton;
+    private JLabel statusLabel;
+    private JButton connectButton;
+    private javax.swing.Timer refreshTimer;
+    private final Frame owner;
 
-    public MultiplayerDialog(Multiplayer multiplayer) {
+    public MultiplayerDialog(Multiplayer multiplayer, Frame owner) {
         this.multiplayer = multiplayer;
+        this.owner = owner;
         initialize();
     }
 
@@ -110,15 +115,21 @@ public class MultiplayerDialog {
         gbc.gridx = 3;
         panel.add(portField, gbc);
 
+        statusLabel = new JLabel();
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.gridwidth = 4;
+        panel.add(statusLabel, gbc);
+
         // Buttons
-        JButton connectButton = new JButton(multiplayer.isConnected()?"Disconnect":"Connect");
+        connectButton = new JButton();
         JButton cancelButton = new JButton("Cancel");
 
         connectButton.addActionListener(e -> {
             try {
-                if (multiplayer.isConnected()) {
+                if (multiplayer.isConnected() || multiplayer.isHosting()) {
                     multiplayer.disconnect();
-                    frame.dispose();
+                    refreshStatus();
                     return;
                 }
                 if (localRadio.isSelected()) {
@@ -137,16 +148,18 @@ public class MultiplayerDialog {
                         multiplayer.joinTcp(host, port);
                     }
                 }
-                frame.dispose();
+                refreshStatus();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage());
+                refreshStatus();
             }
         });
 
         cancelButton.addActionListener(e -> frame.dispose());
 
         gbc.gridx = 0;
-        gbc.gridy = 6;
+        gbc.gridy = 7;
+        gbc.gridwidth = 1;
         panel.add(connectButton, gbc);
         gbc.gridx = 1;
         panel.add(cancelButton, gbc);
@@ -155,9 +168,19 @@ public class MultiplayerDialog {
         localRadio.addActionListener(e -> updateVisibility());
         tcpRadio.addActionListener(e -> updateVisibility());
         updateVisibility();
+        refreshStatus();
+        refreshTimer = new javax.swing.Timer(500, event -> refreshStatus());
+        refreshTimer.start();
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent event) {
+                refreshTimer.stop();
+            }
+        });
 
         frame.add(panel);
         frame.pack();
+        frame.setLocationRelativeTo(owner);
         frame.setVisible(true);
     }
 
@@ -170,5 +193,32 @@ public class MultiplayerDialog {
         hostField.setVisible(!isLocal);
         portLabel.setVisible(!isLocal);
         portField.setVisible(!isLocal);
+    }
+
+    private void refreshStatus() {
+        statusLabel.setText("Status: " + multiplayer.status());
+        if (multiplayer.isConnected()) {
+            connectButton.setText("Disconnect");
+            setConnectionFieldsEnabled(false);
+            return;
+        }
+        if (multiplayer.isHosting()) {
+            connectButton.setText("Cancel host");
+            setConnectionFieldsEnabled(false);
+            return;
+        }
+        connectButton.setText("Connect");
+        setConnectionFieldsEnabled(true);
+    }
+
+    private void setConnectionFieldsEnabled(boolean enabled) {
+        localRadio.setEnabled(enabled);
+        tcpRadio.setEnabled(enabled);
+        hostRadio.setEnabled(enabled);
+        guestRadio.setEnabled(enabled);
+        pathField.setEnabled(enabled);
+        hostField.setEnabled(enabled);
+        portField.setEnabled(enabled);
+        browseButton.setEnabled(enabled);
     }
 }

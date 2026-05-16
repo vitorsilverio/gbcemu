@@ -85,7 +85,7 @@ Observacoes:
 - Rewind por snapshots.
 - GameShark.
 - Filtros de tela, incluindo xBRZ.
-- Turbo configuravel por tecla segurada ou toggle.
+- Turbo configuravel por tecla segurada ou toggle, com audio silenciado e frameskip automatico durante a aceleracao.
 - Debug separado por area:
   - CPU/disassembly e breakpoints.
   - Memoria, bancos e edicao segura.

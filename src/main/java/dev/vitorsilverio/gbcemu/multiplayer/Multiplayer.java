@@ -16,13 +16,16 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     private static final int CHECK_INTERVAL = 4096;
 
     private boolean connected = false;
+    private boolean hosting = false;
     private SocketChannel channel;
+    private ServerSocketChannel serverChannel;
     private final ByteBuffer sendBuffer = ByteBuffer.allocate(1);
     private final ByteBuffer receiveBuffer = ByteBuffer.allocate(1);
     private SocketAddress address;
     private ProtocolFamily protocolFamily;
     private ByteReceivedListener listener;
     private int ticks = 0;
+    private String status = "Disconnected";
 
     public void setListener(ByteReceivedListener listener) {
         this.listener = listener;
@@ -78,37 +81,45 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     }
 
     private void host() {
-        try (ServerSocketChannel serverChannel = ServerSocketChannel.open(protocolFamily)) {
+        disconnect();
+        try {
+            serverChannel = ServerSocketChannel.open(protocolFamily);
+            serverChannel.configureBlocking(false);
             serverChannel.bind(address);
+            hosting = true;
+            status = "Hosting on " + address;
             logger.info("Hosting on {}", address);
-            channel = serverChannel.accept();
-            channel.configureBlocking(false);
-            connected = true;
         } catch (IOException e) {
-            e.printStackTrace();
+            status = "Failed to host: " + e.getMessage();
+            throw new RuntimeException("Failed to host multiplayer", e);
         }
     }
 
     private void join() {
+        disconnect();
         try {
             channel = SocketChannel.open(protocolFamily);
             channel.connect(address);
             channel.configureBlocking(false);
             connected = true;
+            hosting = false;
+            status = "Connected to " + address;
             logger.info("Joined {}", address);
         } catch (IOException e) {
-            e.printStackTrace();
+            status = "Failed to join: " + e.getMessage();
+            throw new RuntimeException("Failed to join multiplayer", e);
         }
     }
 
     @Override
     public void tick() {
-        if (!connected || listener == null) return;
-
         try {
             ticks++;
             if (ticks < CHECK_INTERVAL) return;
             ticks = 0;
+
+            acceptPendingConnection();
+            if (!connected || listener == null) return;
 
             receiveBuffer.clear();
             int bytesRead = channel.read(receiveBuffer);
@@ -122,9 +133,27 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         }
     }
 
+    private void acceptPendingConnection() throws IOException {
+        if (!hosting || serverChannel == null) {
+            return;
+        }
+        SocketChannel accepted = serverChannel.accept();
+        if (accepted == null) {
+            return;
+        }
+        channel = accepted;
+        channel.configureBlocking(false);
+        connected = true;
+        hosting = false;
+        status = "Connected to " + channel.getRemoteAddress();
+        serverChannel.close();
+        serverChannel = null;
+    }
+
     private void checkConnection(Exception e) {
         if (channel == null || !channel.isConnected() || "Connection reset".equals(e.getMessage())) {
             logger.warn("Connection lost to {}", address);
+            status = "Connection lost";
             disconnect();
         }
     }
@@ -146,17 +175,33 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
 
     public void disconnect() {
         connected = false;
+        hosting = false;
         try {
             if (channel != null && channel.isOpen()) {
                 channel.close();
             }
+            if (serverChannel != null && serverChannel.isOpen()) {
+                serverChannel.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            channel = null;
+            serverChannel = null;
+            status = "Disconnected";
         }
     }
 
     public boolean isConnected() {
         return connected;
+    }
+
+    public boolean isHosting() {
+        return hosting;
+    }
+
+    public String status() {
+        return status;
     }
 
     @Override

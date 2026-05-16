@@ -680,7 +680,7 @@ public class Emulator {
         ppu.tick();
         updateFastForwardAudioMode();
         apu.tick();
-        if (window != null && ppu.consumeFrameReady()) {
+        if (window != null && ppu.consumeFrameReady() && shouldRenderFrame()) {
             window.renderFrame(ppu);
         }
         dots++;
@@ -738,6 +738,14 @@ public class Emulator {
 
     private boolean isFastForwardActive() {
         return keyboardController != null && keyboardController.isTurboPressed();
+    }
+
+    private boolean shouldRenderFrame() {
+        if (!isFastForwardActive()) {
+            return true;
+        }
+        int renderInterval = Math.max(1, settings.turboMultiplier());
+        return frameNumber % renderInterval == 0;
     }
 
     private void updateFastForwardAudioMode() {
@@ -900,7 +908,7 @@ public class Emulator {
     }
 
     public void openMultiplayerDialog() {
-        new MultiplayerDialog(multiplayer);
+        new MultiplayerDialog(multiplayer, window == null ? null : window.owner());
     }
 
     private enum DebugStepMode {

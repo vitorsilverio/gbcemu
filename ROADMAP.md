@@ -70,14 +70,15 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Multiplicador configuravel.
   - [x] Evitar que o sink de audio limite a velocidade durante turbo.
   - [x] Modo toggle alem de segurar tecla.
-  - [ ] Frameskip durante turbo para tentar passar de 3x.
+  - [x] Frameskip durante turbo para tentar passar de 3x.
+  - [ ] Investigar turbo agressivo/performance acima de 3.5x sem comprometer compatibilidade.
   - [ ] Avaliar alternativa futura para audio em pitch acelerado durante turbo.
 
 - [ ] Link cable.
   - Suportar TCP sockets para conexao via rede.
   - Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
   - Corrigir eleicao/negociacao master/slave para evitar ambos os lados virarem MASTER.
-  - Melhorar UI para conectar/desconectar e indicar estado atual.
+  - [x] Melhorar UI para conectar/desconectar e indicar estado atual.
   - Sincronizacao suficiente para trocas e batalhas.
 
 - [x] Saves `.sav` intercambiaveis.
