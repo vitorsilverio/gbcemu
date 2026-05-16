@@ -44,3 +44,4 @@ build/
 *.gb*
 *.sav
 *.sa*
+*.sock

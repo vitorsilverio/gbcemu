@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Consumer;
 
 public class Emulator {
 
@@ -158,7 +159,7 @@ public class Emulator {
         if (this.window != null) {
             this.window.attach(ppu, (KeyboardController) controller);
         }
-        this.multiplayer = new Multiplayer();
+        this.multiplayer = new Multiplayer(this.settings);
         this.serial = new Serial(bus, multiplayer);
         bus.addMemorySpace(serial);
         cpu.setCycleCallback(this::tickSystemCycle);
@@ -925,8 +926,22 @@ public class Emulator {
         return bus.findMemorySpace(InterruptManager.class).orElseThrow();
     }
 
-    public void openMultiplayerDialog() {
-        new MultiplayerDialog(multiplayer, window == null ? null : window.owner());
+    public void openMultiplayerDialog(Consumer<AppSettings> onSettingsChanged) {
+        new MultiplayerDialog(multiplayer, window == null ? null : window.owner(), () -> persistMultiplayerSettings(onSettingsChanged));
+    }
+
+    private void persistMultiplayerSettings(Consumer<AppSettings> onSettingsChanged) {
+        AppSettings updated = settings.withMultiplayerConfig(
+                multiplayer.lastTcpMode(),
+                multiplayer.lastHostMode(),
+                multiplayer.lastLocalPath(),
+                multiplayer.lastTcpHost(),
+                multiplayer.lastTcpPort()
+        ).normalized();
+        settings = updated;
+        if (onSettingsChanged != null) {
+            onSettingsChanged.accept(updated);
+        }
     }
 
     private enum DebugStepMode {

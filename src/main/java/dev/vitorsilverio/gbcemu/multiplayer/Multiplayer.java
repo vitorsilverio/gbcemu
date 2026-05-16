@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.multiplayer;
 
 import dev.vitorsilverio.gbcemu.core.MachineCycle;
+import dev.vitorsilverio.gbcemu.config.AppSettings;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -31,6 +32,19 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     private int lastTcpPort = 26803;
     private boolean lastTcpMode = false;
     private boolean lastHostMode = true;
+
+    public Multiplayer() {
+        this(AppSettings.defaults());
+    }
+
+    public Multiplayer(AppSettings settings) {
+        AppSettings normalized = settings.normalized();
+        lastLocalPath = normalized.multiplayerLocalPath();
+        lastTcpHost = normalized.multiplayerTcpHost();
+        lastTcpPort = normalized.multiplayerTcpPort();
+        lastTcpMode = normalized.multiplayerTcpMode();
+        lastHostMode = normalized.multiplayerHostMode();
+    }
 
     public void setListener(ByteReceivedListener listener) {
         this.listener = listener;

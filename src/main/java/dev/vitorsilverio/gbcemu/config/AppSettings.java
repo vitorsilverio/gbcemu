@@ -23,7 +23,12 @@ public record AppSettings(
         String defaultBiosPath,
         int rtcOffsetHours,
         int rtcOffsetMinutes,
-        int rtcOffsetSeconds
+        int rtcOffsetSeconds,
+        boolean multiplayerTcpMode,
+        boolean multiplayerHostMode,
+        String multiplayerLocalPath,
+        String multiplayerTcpHost,
+        int multiplayerTcpPort
 ) {
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
     private static final String SCREEN_SCALE = "screenScale";
@@ -45,6 +50,11 @@ public record AppSettings(
     private static final String RTC_OFFSET_HOURS = "rtcOffsetHours";
     private static final String RTC_OFFSET_MINUTES = "rtcOffsetMinutes";
     private static final String RTC_OFFSET_SECONDS = "rtcOffsetSeconds";
+    private static final String MULTIPLAYER_TCP_MODE = "multiplayerTcpMode";
+    private static final String MULTIPLAYER_HOST_MODE = "multiplayerHostMode";
+    private static final String MULTIPLAYER_LOCAL_PATH = "multiplayerLocalPath";
+    private static final String MULTIPLAYER_TCP_HOST = "multiplayerTcpHost";
+    private static final String MULTIPLAYER_TCP_PORT = "multiplayerTcpPort";
 
     public static AppSettings defaults() {
         return new AppSettings(
@@ -66,7 +76,12 @@ public record AppSettings(
                 "",
                 0,
                 0,
-                0
+                0,
+                false,
+                true,
+                "gbcemu.sock",
+                "localhost",
+                26803
         );
     }
 
@@ -101,7 +116,12 @@ public record AppSettings(
                 preferences.get(DEFAULT_BIOS_PATH, defaults.defaultBiosPath),
                 clamp(preferences.getInt(RTC_OFFSET_HOURS, defaults.rtcOffsetHours), -9999, 9999),
                 clamp(preferences.getInt(RTC_OFFSET_MINUTES, defaults.rtcOffsetMinutes), -59, 59),
-                clamp(preferences.getInt(RTC_OFFSET_SECONDS, defaults.rtcOffsetSeconds), -59, 59)
+                clamp(preferences.getInt(RTC_OFFSET_SECONDS, defaults.rtcOffsetSeconds), -59, 59),
+                preferences.getBoolean(MULTIPLAYER_TCP_MODE, defaults.multiplayerTcpMode),
+                preferences.getBoolean(MULTIPLAYER_HOST_MODE, defaults.multiplayerHostMode),
+                preferences.get(MULTIPLAYER_LOCAL_PATH, defaults.multiplayerLocalPath),
+                preferences.get(MULTIPLAYER_TCP_HOST, defaults.multiplayerTcpHost),
+                clamp(preferences.getInt(MULTIPLAYER_TCP_PORT, defaults.multiplayerTcpPort), 1, 65535)
         );
     }
 
@@ -128,6 +148,11 @@ public record AppSettings(
         preferences.putInt(RTC_OFFSET_HOURS, rtcOffsetHours);
         preferences.putInt(RTC_OFFSET_MINUTES, rtcOffsetMinutes);
         preferences.putInt(RTC_OFFSET_SECONDS, rtcOffsetSeconds);
+        preferences.putBoolean(MULTIPLAYER_TCP_MODE, multiplayerTcpMode);
+        preferences.putBoolean(MULTIPLAYER_HOST_MODE, multiplayerHostMode);
+        preferences.put(MULTIPLAYER_LOCAL_PATH, multiplayerLocalPath);
+        preferences.put(MULTIPLAYER_TCP_HOST, multiplayerTcpHost);
+        preferences.putInt(MULTIPLAYER_TCP_PORT, multiplayerTcpPort);
         if (defaultBiosPath == null || defaultBiosPath.isBlank()) {
             preferences.remove(DEFAULT_BIOS_PATH);
         } else {
@@ -159,21 +184,31 @@ public record AppSettings(
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+    }
+
+    public AppSettings withMultiplayerConfig(
+            boolean tcpMode,
+            boolean hostMode,
+            String localPath,
+            String tcpHost,
+            int tcpPort
+    ) {
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
     }
 
     public AppSettings normalized() {
@@ -208,7 +243,12 @@ public record AppSettings(
                 defaultBiosPath == null ? "" : defaultBiosPath.strip(),
                 clamp(rtcOffsetHours, -9999, 9999),
                 clamp(rtcOffsetMinutes, -59, 59),
-                clamp(rtcOffsetSeconds, -59, 59)
+                clamp(rtcOffsetSeconds, -59, 59),
+                multiplayerTcpMode,
+                multiplayerHostMode,
+                multiplayerLocalPath == null || multiplayerLocalPath.isBlank() ? "gbcemu.sock" : multiplayerLocalPath.strip(),
+                multiplayerTcpHost == null || multiplayerTcpHost.isBlank() ? "localhost" : multiplayerTcpHost.strip(),
+                clamp(multiplayerTcpPort, 1, 65535)
         );
     }
 

@@ -25,10 +25,12 @@ public class MultiplayerDialog {
     private JButton connectButton;
     private javax.swing.Timer refreshTimer;
     private final Frame owner;
+    private final Runnable onConfigurationChanged;
 
-    public MultiplayerDialog(Multiplayer multiplayer, Frame owner) {
+    public MultiplayerDialog(Multiplayer multiplayer, Frame owner, Runnable onConfigurationChanged) {
         this.multiplayer = multiplayer;
         this.owner = owner;
+        this.onConfigurationChanged = onConfigurationChanged;
         initialize();
     }
 
@@ -131,6 +133,7 @@ public class MultiplayerDialog {
             try {
                 if (multiplayer.isConnected() || multiplayer.isHosting()) {
                     multiplayer.disconnect();
+                    onConfigurationChanged.run();
                     refreshStatus();
                     return;
                 }
@@ -150,6 +153,7 @@ public class MultiplayerDialog {
                         multiplayer.joinTcp(host, port);
                     }
                 }
+                onConfigurationChanged.run();
                 refreshStatus();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage());

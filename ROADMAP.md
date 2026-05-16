@@ -79,6 +79,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
   - Corrigir eleicao/negociacao master/slave para evitar ambos os lados virarem MASTER.
   - [x] Melhorar UI para conectar/desconectar e indicar estado atual.
+  - [x] Persistir ultima configuracao usada de local/TCP, host/guest, path, host e porta.
   - Sincronizacao suficiente para trocas e batalhas.
   - Estrategia futura:
     - [x] Expor estado serial/link em debug antes de alterar protocolo: `SB`, `SC`, clock interno/externo, transferencia ativa, aguardando resposta.

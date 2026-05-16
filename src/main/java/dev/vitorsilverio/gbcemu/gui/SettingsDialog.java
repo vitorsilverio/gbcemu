@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 public class SettingsDialog extends JDialog {
 
     private final Consumer<AppSettings> onSave;
+    private final AppSettings currentSettings;
     private final JSpinner screenScale;
     private final JCheckBox smoothScaling;
     private final JCheckBox xBrzFiltering;
@@ -49,6 +50,7 @@ public class SettingsDialog extends JDialog {
     public SettingsDialog(Frame owner, AppSettings settings, Consumer<AppSettings> onSave) {
         super(owner, "Settings", true);
         this.onSave = onSave;
+        this.currentSettings = settings;
         this.screenScale = spinner(settings.screenScale(), 1, 8, 1);
         this.smoothScaling = new JCheckBox("Smooth scaling", settings.smoothScaling());
         this.xBrzFiltering = new JCheckBox("xBrz filtering", settings.xBrzFiltering());
@@ -224,7 +226,12 @@ public class SettingsDialog extends JDialog {
                 defaultBiosPath.getText(),
                 (int) rtcOffsetHours.getValue(),
                 (int) rtcOffsetMinutes.getValue(),
-                (int) rtcOffsetSeconds.getValue()
+                (int) rtcOffsetSeconds.getValue(),
+                currentSettings.multiplayerTcpMode(),
+                currentSettings.multiplayerHostMode(),
+                currentSettings.multiplayerLocalPath(),
+                currentSettings.multiplayerTcpHost(),
+                currentSettings.multiplayerTcpPort()
         ).normalized());
         dispose();
     }

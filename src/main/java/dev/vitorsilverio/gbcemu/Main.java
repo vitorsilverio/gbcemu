@@ -108,7 +108,7 @@ public class Main {
 
     private static void configureMultiplayer() {
         if (activeEmulator != null) {
-            activeEmulator.openMultiplayerDialog();
+            activeEmulator.openMultiplayerDialog(Main::applySettings);
         }
     }
 
