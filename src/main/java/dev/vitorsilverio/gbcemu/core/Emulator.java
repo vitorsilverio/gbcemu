@@ -684,6 +684,8 @@ public class Emulator {
         if (hdma.isActive()) {
             if (hdma.isHBlankMode() && ppu.isHBlank()) {
                 hdma.tick();
+            } else if (hdma.isHBlankMode()) {
+                hdma.leaveHBlank();
             }
             if (hdma.isGeneralPurposeMode()) {
                 hdma.tick();

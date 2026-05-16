@@ -10,6 +10,7 @@ public record HdmaState(
         int mode,
         int cycles,
         int counter,
-        boolean completed
+        boolean completed,
+        boolean hblankBlockTransferred
 ) implements Serializable {
 }

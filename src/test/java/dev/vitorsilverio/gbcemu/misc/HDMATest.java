@@ -63,6 +63,35 @@ class HDMATest {
         assertEquals(0x81, hdma.read(0xFF55) & 0xFF);
     }
 
+    @Test
+    void hblankTransferCopiesOnlyOneBlockPerHBlank() {
+        Bus bus = new Bus();
+        bus.addMemorySpace(new SourceRam(0x4000, 0x4020));
+        Ppu ppu = new Ppu(bus);
+        bus.addMemorySpace(ppu);
+        HDMA hdma = new HDMA(bus);
+
+        hdma.write(0xFF51, (byte) 0x40);
+        hdma.write(0xFF53, (byte) 0x00);
+        hdma.write(0xFF55, (byte) 0x81);
+        tickEightTimes(hdma);
+        tickEightTimes(hdma);
+
+        assertTrue(hdma.isActive());
+        assertEquals(0x00, hdma.read(0xFF55) & 0xFF);
+        assertEquals(0x80, ppu.read(0x8000) & 0xFF);
+        assertEquals(0x8F, ppu.read(0x800F) & 0xFF);
+        assertEquals(0x00, ppu.read(0x8010) & 0xFF);
+
+        hdma.leaveHBlank();
+        tickEightTimes(hdma);
+
+        assertFalse(hdma.isActive());
+        assertEquals(0xFF, hdma.read(0xFF55) & 0xFF);
+        assertEquals(0x90, ppu.read(0x8010) & 0xFF);
+        assertEquals(0x9F, ppu.read(0x801F) & 0xFF);
+    }
+
     private void tickEightTimes(HDMA hdma) {
         for (int i = 0; i < 8; i++) {
             hdma.tick();

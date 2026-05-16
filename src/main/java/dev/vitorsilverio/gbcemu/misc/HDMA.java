@@ -28,6 +28,7 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
     private int cycles;
     private int counter;
     private boolean completed = true;
+    private boolean hblankBlockTransferred;
 
     public HDMA(Bus bus) {
         this.bus = bus;
@@ -43,7 +44,8 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
                 mode,
                 cycles,
                 counter,
-                completed
+                completed,
+                hblankBlockTransferred
         );
     }
 
@@ -57,11 +59,15 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
         cycles = Math.max(0, state.cycles());
         counter = Math.max(0, state.counter());
         completed = state.completed();
+        hblankBlockTransferred = state.hblankBlockTransferred();
     }
 
     @Override
     public void tick() {
         if (!active) {
+            return;
+        }
+        if (mode == 1 && hblankBlockTransferred) {
             return;
         }
 
@@ -78,6 +84,7 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
             counter++;
         }
         cycles = 0;
+        hblankBlockTransferred = mode == 1;
 
         if (counter >= total) {
             active = false;
@@ -134,10 +141,18 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
                 total = ((value & 0x7F) + 1) * 0x10;
                 counter = 0;
                 cycles = 0;
+                hblankBlockTransferred = false;
                 completed = false;
             }
         }
 
+    }
+
+    public void leaveHBlank() {
+        if (mode == 1) {
+            hblankBlockTransferred = false;
+            cycles = 0;
+        }
     }
 
     public boolean isActive() {
