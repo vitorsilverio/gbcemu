@@ -387,6 +387,7 @@ public class CpuDebugWindow {
         SerialState serialState = bus.findMemorySpace(Serial.class)
                 .map(Serial::saveState)
                 .orElse(new SerialState(0, 0, 0, 0, ""));
+        Serial serial = bus.findMemorySpace(Serial.class).orElse(null);
         Cart cart = bus.findMemorySpace(Cart.class).orElse(null);
         StringBuilder builder = new StringBuilder();
         builder.append("{\n");
@@ -443,11 +444,15 @@ public class CpuDebugWindow {
         builder.append("  \"serial\": {\n");
         DebugJson.appendHex(builder, "sb", serialState.sb(), true, 4, 2);
         DebugJson.appendHex(builder, "sc", serialState.sc(), true, 4, 2);
-        DebugJson.appendBoolean(builder, "transferActive", serialState.transferCyclesRemaining() > 0, true, 4);
+        DebugJson.appendBoolean(builder, "transferActive", serial != null && serial.isTransferActive(), true, 4);
+        DebugJson.appendBoolean(builder, "master", serial != null && serial.isMaster(), true, 4);
+        DebugJson.appendBoolean(builder, "internalClock", serial != null && serial.isInternalClockSelected(), true, 4);
+        DebugJson.appendBoolean(builder, "fastClock", serial != null && serial.isFastClockSelected(), true, 4);
+        DebugJson.appendBoolean(builder, "masterWaitingResponse", serial != null && serial.isMasterWaitingResponse(), true, 4);
         DebugJson.appendNumber(builder, "transferCyclesRemaining", serialState.transferCyclesRemaining(), true, 4);
         DebugJson.appendHex(builder, "outgoingByte", serialState.outgoingByte(), true, 4, 2);
         DebugJson.appendString(builder, "pendingText", serialState.pendingText(), true, 4);
-        DebugJson.appendString(builder, "transcript", bus.findMemorySpace(Serial.class).map(Serial::transcript).orElse(""), false, 4);
+        DebugJson.appendString(builder, "transcript", serial == null ? "" : serial.transcript(), false, 4);
         builder.append("  },\n");
         appendCartJson(builder, cart);
         appendMemoryBanksJson(builder);

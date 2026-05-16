@@ -501,12 +501,17 @@ public class Emulator {
         builder.append("  \"serial\": {\n");
         DebugJson.appendHex(builder, "sb", serialState.sb(), true, 4, 2);
         DebugJson.appendHex(builder, "sc", serialState.sc(), true, 4, 2);
-        DebugJson.appendBoolean(builder, "transferActive", serialState.transferCyclesRemaining() > 0, true, 4);
+        DebugJson.appendBoolean(builder, "transferActive", serial.isTransferActive(), true, 4);
+        DebugJson.appendBoolean(builder, "master", serial.isMaster(), true, 4);
+        DebugJson.appendBoolean(builder, "internalClock", serial.isInternalClockSelected(), true, 4);
+        DebugJson.appendBoolean(builder, "fastClock", serial.isFastClockSelected(), true, 4);
+        DebugJson.appendBoolean(builder, "masterWaitingResponse", serial.isMasterWaitingResponse(), true, 4);
         DebugJson.appendNumber(builder, "transferCyclesRemaining", serialState.transferCyclesRemaining(), true, 4);
         DebugJson.appendHex(builder, "outgoingByte", serialState.outgoingByte(), true, 4, 2);
         DebugJson.appendString(builder, "pendingText", serialState.pendingText(), true, 4);
         DebugJson.appendString(builder, "transcript", serial.transcript(), false, 4);
         builder.append("  },\n");
+        appendLinkDebugJson(builder);
         appendDmaDebugJson(builder, dmaState, hdmaState);
         appendCgbRegistersDebugJson(builder, key0State, key1State, infraredState);
         builder.append("  \"ppu\": {\n");
@@ -536,6 +541,19 @@ public class Emulator {
         appendWatchpointsDebugJson(builder);
         builder.append("}\n");
         return builder.toString();
+    }
+
+    private void appendLinkDebugJson(StringBuilder builder) {
+        builder.append("  \"link\": {\n");
+        DebugJson.appendBoolean(builder, "connected", multiplayer.isConnected(), true, 4);
+        DebugJson.appendBoolean(builder, "hosting", multiplayer.isHosting(), true, 4);
+        DebugJson.appendString(builder, "status", multiplayer.status(), true, 4);
+        DebugJson.appendString(builder, "mode", multiplayer.lastTcpMode() ? "tcp" : "local", true, 4);
+        DebugJson.appendString(builder, "role", multiplayer.lastHostMode() ? "host" : "guest", true, 4);
+        DebugJson.appendString(builder, "localPath", multiplayer.lastLocalPath(), true, 4);
+        DebugJson.appendString(builder, "tcpHost", multiplayer.lastTcpHost(), true, 4);
+        DebugJson.appendNumber(builder, "tcpPort", multiplayer.lastTcpPort(), false, 4);
+        builder.append("  },\n");
     }
 
     private void appendDmaDebugJson(StringBuilder builder, DmaState dmaState, HdmaState hdmaState) {

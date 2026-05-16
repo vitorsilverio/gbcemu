@@ -187,4 +187,24 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     public String transcript() {
         return transcript.toString();
     }
+
+    public boolean isMaster() {
+        return isMaster;
+    }
+
+    public boolean isTransferActive() {
+        return isTransferActive;
+    }
+
+    public boolean isMasterWaitingResponse() {
+        return isMasterWaitingResponse;
+    }
+
+    public boolean isInternalClockSelected() {
+        return (SC & CLOCK_SELECT) != 0;
+    }
+
+    public boolean isFastClockSelected() {
+        return (SC & CLOCK_SPEED) != 0;
+    }
 }

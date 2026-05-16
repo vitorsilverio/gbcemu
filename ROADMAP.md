@@ -81,7 +81,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Melhorar UI para conectar/desconectar e indicar estado atual.
   - Sincronizacao suficiente para trocas e batalhas.
   - Estrategia futura:
-    - Expor estado serial/link em debug antes de alterar protocolo: `SB`, `SC`, clock interno/externo, transferencia ativa, aguardando resposta, conectado/hospedando.
+    - [x] Expor estado serial/link em debug antes de alterar protocolo: `SB`, `SC`, clock interno/externo, transferencia ativa, aguardando resposta.
+    - [x] Expor estado conectado/hospedando no dump de debug do link.
     - Confirmar ambos os lados quando jogos entram em `SC bit 7 = 1`.
     - Modelar troca como master com clock interno iniciando byte e slave com clock externo respondendo, em vez de byte solto sem contexto.
     - Validar que slave nao completa transferencia sozinho sem clock externo.
