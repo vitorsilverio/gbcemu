@@ -2,10 +2,11 @@ package dev.vitorsilverio.gbcemu.peripherals;
 
 import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
+import dev.vitorsilverio.gbcemu.link.LinkCable;
+import dev.vitorsilverio.gbcemu.link.SerialLinkSnapshot;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
-import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private final Bus bus;
     private final StringBuilder text = new StringBuilder();
     private final StringBuilder transcript = new StringBuilder();
-    private final Multiplayer multiplayer;
+    private final LinkCable linkCable;
 
     private int SB = 0;
     private int SC = 0;
@@ -38,17 +39,15 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private boolean isTransferActive = false;
     private boolean isMasterWaitingResponse = false;
 
-    public Serial(Bus bus, Multiplayer multiplayer) {
+    public Serial(Bus bus, LinkCable linkCable) {
         this.bus = bus;
-        this.multiplayer = multiplayer;
-        if (multiplayer != null) {
-            multiplayer.setListener(this::onByteReceived);
+        this.linkCable = linkCable;
+        if (linkCable != null) {
+            linkCable.attachSerial(this::onPeerByteReceived);
         }
     }
 
-    private void onByteReceived(byte value) {
-        int received = value & 0xFF;
-
+    private void onPeerByteReceived(int received) {
         if (!isTransferActive) {
             return;
         }
@@ -58,8 +57,8 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
                 completeMasterTransfer(received);
             }
         } else {
-            if (multiplayer != null && multiplayer.isConnected()) {
-                multiplayer.send((byte) outgoingByte);
+            if (linkCable != null && linkCable.isConnected()) {
+                linkCable.onExternalClockRespond(outgoingByte);
             }
             completeSlaveTransfer(received);
         }
@@ -82,6 +81,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         text.append(state.pendingText() == null ? "" : state.pendingText());
         transcript.setLength(0);
         transcript.append(text);
+        publishLinkState();
     }
 
     @Override
@@ -119,6 +119,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
                 transferCyclesRemaining = 0;
                 isMasterWaitingResponse = false;
                 isTransferActive = false;
+                publishLinkState();
             }
         }
     }
@@ -129,9 +130,10 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
 
         transferCyclesRemaining--;
         if (transferCyclesRemaining == 0) {
-            if (multiplayer != null && multiplayer.isConnected()) {
-                multiplayer.send((byte) outgoingByte);
+            if (linkCable != null && linkCable.isConnected()) {
                 isMasterWaitingResponse = true;
+                linkCable.onInternalClockComplete(outgoingByte);
+                publishLinkState();
             } else {
                 completeMasterTransfer(0xFF);
             }
@@ -145,6 +147,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         isTransferActive = false;
         isMasterWaitingResponse = false;
         bus.requestInterrupt(Interrupt.SERIAL);
+        publishLinkState();
     }
 
     private void completeSlaveTransfer(int received) {
@@ -152,6 +155,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         SC &= ~TRANSFER_START;
         isTransferActive = false;
         bus.requestInterrupt(Interrupt.SERIAL);
+        publishLinkState();
     }
 
     private void startTransfer() {
@@ -159,6 +163,21 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         isTransferActive = true;
         isMasterWaitingResponse = false;
         transferCyclesRemaining = cyclesPerTransfer();
+        publishLinkState();
+    }
+
+    private void publishLinkState() {
+        if (linkCable == null) {
+            return;
+        }
+        linkCable.reportLocalState(new SerialLinkSnapshot(
+                isTransferActive,
+                isInternalClockSelected(),
+                isMasterWaitingResponse,
+                isMaster,
+                outgoingByte,
+                SC
+        ));
     }
 
     private int cyclesPerTransfer() {

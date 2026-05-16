@@ -18,6 +18,7 @@ import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
 import dev.vitorsilverio.gbcemu.memory.*;
 import dev.vitorsilverio.gbcemu.misc.*;
+import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import dev.vitorsilverio.gbcemu.peripherals.*;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
@@ -87,6 +88,7 @@ public class Emulator {
     private static final DateTimeFormatter DEBUG_DUMP_TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
     private final Multiplayer multiplayer;
+    private final LinkCable linkCable;
 
 
     public Emulator(File biosFile, File romFile, File saveFile) {
@@ -163,7 +165,8 @@ public class Emulator {
             this.window.attach(ppu, (KeyboardController) controller);
         }
         this.multiplayer = new Multiplayer(this.settings);
-        this.serial = new Serial(bus, multiplayer);
+        this.linkCable = new LinkCable(multiplayer);
+        this.serial = new Serial(bus, linkCable);
         bus.addMemorySpace(serial);
         cpu.setCycleCallback(this::tickSystemCycle);
     }
@@ -548,6 +551,7 @@ public class Emulator {
     }
 
     private void appendLinkDebugJson(StringBuilder builder) {
+        var local = linkCable.localState();
         builder.append("  \"link\": {\n");
         DebugJson.appendBoolean(builder, "connected", multiplayer.isConnected(), true, 4);
         DebugJson.appendBoolean(builder, "hosting", multiplayer.isHosting(), true, 4);
@@ -556,7 +560,10 @@ public class Emulator {
         DebugJson.appendString(builder, "role", multiplayer.lastHostMode() ? "host" : "guest", true, 4);
         DebugJson.appendString(builder, "localPath", multiplayer.lastLocalPath(), true, 4);
         DebugJson.appendString(builder, "tcpHost", multiplayer.lastTcpHost(), true, 4);
-        DebugJson.appendNumber(builder, "tcpPort", multiplayer.lastTcpPort(), false, 4);
+        DebugJson.appendNumber(builder, "tcpPort", multiplayer.lastTcpPort(), true, 4);
+        DebugJson.appendBoolean(builder, "localTransferActive", local.transferActive(), true, 4);
+        DebugJson.appendBoolean(builder, "localInternalClock", local.internalClock(), true, 4);
+        DebugJson.appendBoolean(builder, "localMasterWaitingResponse", local.masterWaitingResponse(), false, 4);
         builder.append("  },\n");
     }
 
@@ -708,7 +715,7 @@ public class Emulator {
             dma.tick();
         }
 
-        multiplayer.tick();
+        linkCable.tick();
         timer.tick();
         serial.tick();
         ppu.tick();

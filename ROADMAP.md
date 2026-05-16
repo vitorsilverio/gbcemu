@@ -75,18 +75,41 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [ ] Avaliar alternativa futura para audio em pitch acelerado durante turbo.
 
 - [ ] Link cable.
-  - Suportar TCP sockets para conexao via rede.
-  - Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
-  - Corrigir eleicao/negociacao master/slave para evitar ambos os lados virarem MASTER.
+  - [x] Suportar TCP sockets para conexao via rede.
+  - [x] Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
   - [x] Melhorar UI para conectar/desconectar e indicar estado atual.
   - [x] Persistir ultima configuracao usada de local/TCP, host/guest, path, host e porta.
+  - [x] Expor estado serial/link em debug: `SB`, `SC`, clock interno/externo, transferencia ativa, aguardando resposta.
+  - [x] Expor estado conectado/hospedando no dump de debug do link.
+  - [x] Modelo basico master (clock interno) + slave (clock externo) via `Serial` + byte no socket.
+  - [x] Validar que slave nao completa transferencia sozinho sem clock externo (`SerialTest`).
+  - Validado manualmente: trocas Pokemon Red <-> Silver na maior parte das vezes com um lado master e outro slave.
   - Sincronizacao suficiente para trocas e batalhas.
-  - Estrategia futura:
-    - [x] Expor estado serial/link em debug antes de alterar protocolo: `SB`, `SC`, clock interno/externo, transferencia ativa, aguardando resposta.
-    - [x] Expor estado conectado/hospedando no dump de debug do link.
-    - Confirmar ambos os lados quando jogos entram em `SC bit 7 = 1`.
-    - Modelar troca como master com clock interno iniciando byte e slave com clock externo respondendo, em vez de byte solto sem contexto.
-    - Validar que slave nao completa transferencia sozinho sem clock externo.
+  - Plano de implementacao (seguir a ordem 1 → 6; nao pular para Fase 5 antes de 1–4):
+    - [x] **Fase 1 — Camada `LinkCable` (simular o cabo).**
+      - [x] Inserir entre `Serial` e `Multiplayer`: `Serial` nao chama `send()` direto no socket.
+      - [x] `Serial` reporta estado (`SB`, `SC`, transferencia ativa, clock interno/externo, byte de saida) via `SerialLinkSnapshot`.
+      - [ ] Hub devolve eventos: par pronto, byte recebido, clock do parceiro, abort (Fase 2+; hoje so encaminha byte).
+      - [x] Regra: so clock interno avanca contador e inicia troca; clock externo so completa com clock/byte do parceiro (`Serial` + `InMemoryLinkCablePair` nos testes).
+    - [ ] **Fase 2 — Protocolo de link (substituir byte solto no socket).**
+      - Frames versionados (ex. `HELLO`, `TRANSFER_REQUEST`, `TRANSFER_RESPONSE`).
+      - Confirmar ambos os lados com `SC bit 7 = 1` antes de trocar.
+      - Modelar troca como master inicia byte + slave responde, nao dois `send()` independentes.
+    - [ ] **Fase 3 — Eleicao / arbitragem master-slave.**
+      - Corrigir cenario em que os dois jogos ficam com clock interno (`SC` bit 0 = 1).
+      - Hub usa host/guest da rede para decidir quem emula o clock; nao reescrever `SC` no `write()` do jogo.
+      - Opcional se Red/Silver ja estaveis com um master e um slave manualmente.
+    - [ ] **Fase 4 — `LinkSync` para trades e batalhas.**
+      - Barreira leve apos IRQ serial nos dois lados (nao lockstep frame-a-frame no inicio).
+      - Suficiente para trocas e batalhas sem pausar o emulador inteiro entre bytes.
+    - [ ] **Fase 5 — I/O do transporte (`Multiplayer`), incluindo `drainReceive`.**
+      - **`drainReceive`:** apos `send()` do master, loop non-blocking em `read()` ate esvaziar buffer e entregar ao `Serial` na hora (nao esperar `tick()` com intervalo 4096).
+      - **Polling adaptativo:** intervalo grande quando idle (conectado sem transferencia quente); intervalo curto ou drain apenas em estado hot (`transferActive`, `masterWaitingResponse`, slave aguardando clock).
+      - Nao fazer poll a cada poucos ciclos durante toda a sessao (causa lentidao); clock CGB rapido (128 ciclos) exige resposta rapida so na janela da troca.
+      - `drainReceive` e polling adaptativo entram aqui, apos o hub/protocolo/sync; o hub chama `drainReceive` no mesmo ponto em que hoje o master faz `send()`.
+    - [ ] **Fase 6 — Testes.**
+      - Unit: dois `Serial` + `InMemoryLinkCable`, master/slave, dual-master com hub.
+      - Integracao: duas instancias headless; regressao Pokemon Red/Silver.
 
 - [x] Saves `.sav` intercambiaveis.
   - [x] Passar a salvar RAM externa em formato bruto, igual outros emuladores.

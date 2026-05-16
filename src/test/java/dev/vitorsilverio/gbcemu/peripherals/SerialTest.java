@@ -3,6 +3,7 @@ package dev.vitorsilverio.gbcemu.peripherals;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.misc.Key1;
+import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +15,7 @@ class SerialTest {
     @Test
     void internalTransferCompletesAfterNormalSpeedSerialClock() {
         Bus bus = new Bus();
-        Serial serial = new Serial(bus, new Multiplayer());
+        Serial serial = new Serial(bus, new LinkCable(new Multiplayer()));
         bus.addMemorySpace(serial);
 
         serial.write(0xFF01, (byte) 0xC7);
@@ -40,7 +41,7 @@ class SerialTest {
     @Test
     void cgbFastClockCompletesSooner() {
         Bus bus = new Bus();
-        Serial serial = new Serial(bus, new Multiplayer());
+        Serial serial = new Serial(bus, new LinkCable(new Multiplayer()));
         bus.addMemorySpace(serial);
 
         serial.write(0xFF01, (byte) 0x42);
@@ -62,7 +63,7 @@ class SerialTest {
         key1.write(0xFF4D, (byte) 0x01);
         key1.switchSpeedIfPrepared();
         bus.addMemorySpace(key1);
-        Serial serial = new Serial(bus, new Multiplayer());
+        Serial serial = new Serial(bus, new LinkCable(new Multiplayer()));
         bus.addMemorySpace(serial);
 
         serial.write(0xFF01, (byte) 0x42);
@@ -80,7 +81,7 @@ class SerialTest {
     @Test
     void externalClockTransferStaysPendingWithoutClock() {
         Bus bus = new Bus();
-        Serial serial = new Serial(bus, new Multiplayer());
+        Serial serial = new Serial(bus, new LinkCable(new Multiplayer()));
         bus.addMemorySpace(serial);
 
         serial.write(0xFF01, (byte) 0xC7);
