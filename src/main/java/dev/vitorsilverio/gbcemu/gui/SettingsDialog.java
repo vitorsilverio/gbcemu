@@ -36,6 +36,9 @@ public class SettingsDialog extends JDialog {
     private final KeyCaptureButton turboKey;
     private final JCheckBox turboToggleMode;
     private final JTextField defaultBiosPath;
+    private final JSpinner rtcOffsetHours;
+    private final JSpinner rtcOffsetMinutes;
+    private final JSpinner rtcOffsetSeconds;
     private final JSlider masterVolume;
     private final JSlider leftVolume;
     private final JSlider rightVolume;
@@ -56,6 +59,9 @@ public class SettingsDialog extends JDialog {
         this.turboKey = new KeyCaptureButton(settings.turboKeyCode());
         this.turboToggleMode = new JCheckBox("Toggle turbo", settings.turboToggleMode());
         this.defaultBiosPath = new JTextField(settings.defaultBiosPath(), 28);
+        this.rtcOffsetHours = spinner(settings.rtcOffsetHours(), -9999, 9999, 1);
+        this.rtcOffsetMinutes = spinner(settings.rtcOffsetMinutes(), -59, 59, 1);
+        this.rtcOffsetSeconds = spinner(settings.rtcOffsetSeconds(), -59, 59, 1);
         this.masterVolume = slider(settings.audioMasterVolume());
         this.leftVolume = slider(settings.audioLeftVolume());
         this.rightVolume = slider(settings.audioRightVolume());
@@ -99,7 +105,16 @@ public class SettingsDialog extends JDialog {
         addRow(fields, 3, "Turbo key", turboKey);
         addRow(fields, 4, "Turbo mode", turboToggleMode);
         addRow(fields, 5, "Default BIOS", defaultBiosPanel());
+        addRow(fields, 6, "RTC offset", rtcOffsetPanel());
         return wrapPanel(fields);
+    }
+
+    private JPanel rtcOffsetPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        addInlineSpinner(panel, 0, "Hours", rtcOffsetHours);
+        addInlineSpinner(panel, 1, "Minutes", rtcOffsetMinutes);
+        addInlineSpinner(panel, 2, "Seconds", rtcOffsetSeconds);
+        return panel;
     }
 
     private JPanel defaultBiosPanel() {
@@ -169,6 +184,16 @@ public class SettingsDialog extends JDialog {
         panel.add(field, constraints);
     }
 
+    private void addInlineSpinner(JPanel panel, int column, String label, JSpinner spinner) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = column * 2;
+        constraints.gridy = 0;
+        constraints.insets = new Insets(0, column == 0 ? 0 : 8, 0, 4);
+        panel.add(new JLabel(label), constraints);
+        constraints.gridx = column * 2 + 1;
+        panel.add(spinner, constraints);
+    }
+
     private void save() {
         int[] channelValues = new int[4];
         boolean[] mutedValues = new boolean[4];
@@ -196,7 +221,10 @@ public class SettingsDialog extends JDialog {
                 turboKey.keyCode(),
                 turboToggleMode.isSelected(),
                 xBrzFiltering.isSelected(),
-                defaultBiosPath.getText()
+                defaultBiosPath.getText(),
+                (int) rtcOffsetHours.getValue(),
+                (int) rtcOffsetMinutes.getValue(),
+                (int) rtcOffsetSeconds.getValue()
         ).normalized());
         dispose();
     }

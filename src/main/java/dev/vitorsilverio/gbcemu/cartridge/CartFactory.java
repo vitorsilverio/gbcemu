@@ -24,7 +24,7 @@ public final class CartFactory {
         return fromFile(romFile, saveFile, () -> Instant.now().getEpochSecond());
     }
 
-    static Cart fromFile(File romFile, File saveFile, LongSupplier currentEpochSeconds) {
+    public static Cart fromFile(File romFile, File saveFile, LongSupplier currentEpochSeconds) {
         byte[] rom = readRom(romFile);
         CartHeader header = new CartHeader(rom);
         Cart cart = switch (header.getCartridgeType()) {

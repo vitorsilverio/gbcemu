@@ -86,11 +86,11 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Ao carregar save antigo com sucesso, salvar novamente no formato bruto na proxima gravacao.
   - [x] Evitar perder progresso existente durante a migracao.
 
-- [ ] Offset manual de RTC.
-  - Configurar offset de horas, minutos e segundos.
-  - Permitir testar eventos dependentes de horario sem alterar o relogio do sistema.
-  - Aplicar em cartuchos com RTC, especialmente MBC3.
-  - Persistir offset nas configuracoes, nao no save state nem no `.sav`.
+- [x] Offset manual de RTC.
+  - [x] Configurar offset de horas, minutos e segundos.
+  - [x] Permitir testar eventos dependentes de horario sem alterar o relogio do sistema.
+  - [x] Aplicar em cartuchos com RTC, especialmente MBC3.
+  - [x] Persistir offset nas configuracoes, nao no save state nem no `.sav`.
 
 - [ ] Infrared com hardware real.
   - Criar camada de transporte.

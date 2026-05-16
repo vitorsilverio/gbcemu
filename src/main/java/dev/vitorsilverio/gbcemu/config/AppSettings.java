@@ -20,7 +20,10 @@ public record AppSettings(
         int turboKeyCode,
         boolean turboToggleMode,
         boolean xBrzFiltering,
-        String defaultBiosPath
+        String defaultBiosPath,
+        int rtcOffsetHours,
+        int rtcOffsetMinutes,
+        int rtcOffsetSeconds
 ) {
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
     private static final String SCREEN_SCALE = "screenScale";
@@ -39,6 +42,9 @@ public record AppSettings(
     private static final String TURBO_TOGGLE_MODE = "turboToggleMode";
     private static final String XBRZ_FILTERING = "xbrzFiltering";
     private static final String DEFAULT_BIOS_PATH = "defaultBios";
+    private static final String RTC_OFFSET_HOURS = "rtcOffsetHours";
+    private static final String RTC_OFFSET_MINUTES = "rtcOffsetMinutes";
+    private static final String RTC_OFFSET_SECONDS = "rtcOffsetSeconds";
 
     public static AppSettings defaults() {
         return new AppSettings(
@@ -57,7 +63,10 @@ public record AppSettings(
                 KeyEvent.VK_TAB,
                 false,
                 false,
-                ""
+                "",
+                0,
+                0,
+                0
         );
     }
 
@@ -89,7 +98,10 @@ public record AppSettings(
                 preferences.getInt(TURBO_KEY, defaults.turboKeyCode),
                 preferences.getBoolean(TURBO_TOGGLE_MODE, defaults.turboToggleMode),
                 preferences.getBoolean(XBRZ_FILTERING, defaults.xBrzFiltering),
-                preferences.get(DEFAULT_BIOS_PATH, defaults.defaultBiosPath)
+                preferences.get(DEFAULT_BIOS_PATH, defaults.defaultBiosPath),
+                clamp(preferences.getInt(RTC_OFFSET_HOURS, defaults.rtcOffsetHours), -9999, 9999),
+                clamp(preferences.getInt(RTC_OFFSET_MINUTES, defaults.rtcOffsetMinutes), -59, 59),
+                clamp(preferences.getInt(RTC_OFFSET_SECONDS, defaults.rtcOffsetSeconds), -59, 59)
         );
     }
 
@@ -113,6 +125,9 @@ public record AppSettings(
         preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
         preferences.putInt(TURBO_KEY, turboKeyCode);
         preferences.putBoolean(TURBO_TOGGLE_MODE, turboToggleMode);
+        preferences.putInt(RTC_OFFSET_HOURS, rtcOffsetHours);
+        preferences.putInt(RTC_OFFSET_MINUTES, rtcOffsetMinutes);
+        preferences.putInt(RTC_OFFSET_SECONDS, rtcOffsetSeconds);
         if (defaultBiosPath == null || defaultBiosPath.isBlank()) {
             preferences.remove(DEFAULT_BIOS_PATH);
         } else {
@@ -139,22 +154,26 @@ public record AppSettings(
         return controllerKeyCodes[index];
     }
 
+    public long rtcOffsetTotalSeconds() {
+        return (rtcOffsetHours * 3600L) + (rtcOffsetMinutes * 60L) + rtcOffsetSeconds;
+    }
+
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds);
     }
 
     public AppSettings normalized() {
@@ -186,7 +205,10 @@ public record AppSettings(
                 turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode,
                 turboToggleMode,
                 xBrzFiltering,
-                defaultBiosPath == null ? "" : defaultBiosPath.strip()
+                defaultBiosPath == null ? "" : defaultBiosPath.strip(),
+                clamp(rtcOffsetHours, -9999, 9999),
+                clamp(rtcOffsetMinutes, -59, 59),
+                clamp(rtcOffsetSeconds, -59, 59)
         );
     }
 

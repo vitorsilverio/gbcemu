@@ -114,7 +114,7 @@ public class Emulator {
         }
         this.romFile = romFile;
         this.saveFile = saveFile;
-        this.cart = CartFactory.fromFile(romFile, saveFile);
+        this.cart = CartFactory.fromFile(romFile, saveFile, this::currentRtcEpochSeconds);
         this.cartridgeCgbCompatible = cart.getHeader().isCgbCompatible();
         this.cpu = new Cpu(bus);
         this.timer = new Timer(bus);
@@ -305,6 +305,10 @@ public class Emulator {
         if (keyboardController != null) {
             keyboardController.applySettings(this.settings);
         }
+    }
+
+    private long currentRtcEpochSeconds() {
+        return Instant.now().getEpochSecond() + settings.rtcOffsetTotalSeconds();
     }
 
     public void openMemoryDebugger() {
