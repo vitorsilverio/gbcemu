@@ -5,10 +5,13 @@ import dev.vitorsilverio.gbcemu.config.AppSettings;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import java.awt.BorderLayout;
 import java.awt.Frame;
@@ -17,6 +20,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.util.function.Consumer;
 
 public class SettingsDialog extends JDialog {
@@ -30,6 +34,8 @@ public class SettingsDialog extends JDialog {
     private final JSpinner rewindInterval;
     private final JSpinner turboMultiplier;
     private final KeyCaptureButton turboKey;
+    private final JCheckBox turboToggleMode;
+    private final JTextField defaultBiosPath;
     private final JSlider masterVolume;
     private final JSlider leftVolume;
     private final JSlider rightVolume;
@@ -48,6 +54,8 @@ public class SettingsDialog extends JDialog {
         this.rewindInterval = spinner(settings.rewindCaptureIntervalFrames(), 1, 60, 1);
         this.turboMultiplier = spinner(settings.turboMultiplier(), 1, 10, 1);
         this.turboKey = new KeyCaptureButton(settings.turboKeyCode());
+        this.turboToggleMode = new JCheckBox("Toggle turbo", settings.turboToggleMode());
+        this.defaultBiosPath = new JTextField(settings.defaultBiosPath(), 28);
         this.masterVolume = slider(settings.audioMasterVolume());
         this.leftVolume = slider(settings.audioLeftVolume());
         this.rightVolume = slider(settings.audioRightVolume());
@@ -64,28 +72,12 @@ public class SettingsDialog extends JDialog {
     private void initialize() {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(8, 8));
-        JPanel fields = new JPanel(new GridBagLayout());
-        addRow(fields, 0, "Screen scale", screenScale);
-        addRow(fields, 1, "Screen filter", smoothScaling);
-        addRow(fields, 2, "xBrz filter", xBrzFiltering);
-        addRow(fields, 3, "Fullscreen", fullscreen);
-        addRow(fields, 4, "Rewind seconds", rewindSeconds);
-        addRow(fields, 5, "Rewind interval frames", rewindInterval);
-        addRow(fields, 6, "Turbo multiplier", turboMultiplier);
-        addRow(fields, 7, "Turbo key", turboKey);
-        addRow(fields, 8, "Master volume", masterVolume);
-        addRow(fields, 9, "Left volume", leftVolume);
-        addRow(fields, 10, "Right volume", rightVolume);
-        for (int i = 0; i < channelVolumes.length; i++) {
-            JPanel channel = new JPanel(new BorderLayout(6, 0));
-            channel.add(channelVolumes[i], BorderLayout.CENTER);
-            channel.add(channelMuted[i], BorderLayout.EAST);
-            addRow(fields, i + 10, "Channel " + (i + 1) + " volume", channel);
-        }
-        for (int i = 0; i < controllerKeys.length; i++) {
-            addRow(fields, i + 14, "Button " + AppSettings.CONTROLLER_BUTTON_NAMES[i], controllerKeys[i]);
-        }
-        add(fields, BorderLayout.CENTER);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("General", generalPanel());
+        tabs.addTab("Graphics", graphicsPanel());
+        tabs.addTab("Audio", audioPanel());
+        tabs.addTab("Controls", controlsPanel());
+        add(tabs, BorderLayout.CENTER);
 
         JPanel buttons = new JPanel();
         JButton save = new JButton("Save");
@@ -97,6 +89,71 @@ public class SettingsDialog extends JDialog {
         add(buttons, BorderLayout.SOUTH);
         pack();
         setLocationRelativeTo(getOwner());
+    }
+
+    private JPanel generalPanel() {
+        JPanel fields = new JPanel(new GridBagLayout());
+        addRow(fields, 0, "Rewind seconds", rewindSeconds);
+        addRow(fields, 1, "Rewind interval frames", rewindInterval);
+        addRow(fields, 2, "Turbo multiplier", turboMultiplier);
+        addRow(fields, 3, "Turbo key", turboKey);
+        addRow(fields, 4, "Turbo mode", turboToggleMode);
+        addRow(fields, 5, "Default BIOS", defaultBiosPanel());
+        return wrapPanel(fields);
+    }
+
+    private JPanel defaultBiosPanel() {
+        JPanel panel = new JPanel(new BorderLayout(6, 0));
+        JButton browse = new JButton("Browse...");
+        browse.addActionListener(event -> chooseDefaultBios());
+        panel.add(defaultBiosPath, BorderLayout.CENTER);
+        panel.add(browse, BorderLayout.EAST);
+        return panel;
+    }
+
+    private void chooseDefaultBios() {
+        JFileChooser chooser = new JFileChooser(currentDirectory());
+        chooser.setDialogTitle("Set default BIOS");
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            defaultBiosPath.setText(chooser.getSelectedFile().getAbsolutePath());
+        }
+    }
+
+    private JPanel graphicsPanel() {
+        JPanel fields = new JPanel(new GridBagLayout());
+        addRow(fields, 0, "Screen scale", screenScale);
+        addRow(fields, 1, "Screen filter", smoothScaling);
+        addRow(fields, 2, "xBrz filter", xBrzFiltering);
+        addRow(fields, 3, "Fullscreen", fullscreen);
+        return wrapPanel(fields);
+    }
+
+    private JPanel audioPanel() {
+        JPanel fields = new JPanel(new GridBagLayout());
+        addRow(fields, 0, "Master volume", masterVolume);
+        addRow(fields, 1, "Left volume", leftVolume);
+        addRow(fields, 2, "Right volume", rightVolume);
+        for (int i = 0; i < channelVolumes.length; i++) {
+            JPanel channel = new JPanel(new BorderLayout(6, 0));
+            channel.add(channelVolumes[i], BorderLayout.CENTER);
+            channel.add(channelMuted[i], BorderLayout.EAST);
+            addRow(fields, i + 3, "Channel " + (i + 1) + " volume", channel);
+        }
+        return wrapPanel(fields);
+    }
+
+    private JPanel controlsPanel() {
+        JPanel fields = new JPanel(new GridBagLayout());
+        for (int i = 0; i < controllerKeys.length; i++) {
+            addRow(fields, i, "Button " + AppSettings.CONTROLLER_BUTTON_NAMES[i], controllerKeys[i]);
+        }
+        return wrapPanel(fields);
+    }
+
+    private JPanel wrapPanel(JPanel fields) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(fields, BorderLayout.NORTH);
+        return panel;
     }
 
     private void addRow(JPanel panel, int row, String label, java.awt.Component field) {
@@ -137,9 +194,23 @@ public class SettingsDialog extends JDialog {
                 keyValues,
                 (int) turboMultiplier.getValue(),
                 turboKey.keyCode(),
-                xBrzFiltering.isSelected()
+                turboToggleMode.isSelected(),
+                xBrzFiltering.isSelected(),
+                defaultBiosPath.getText()
         ).normalized());
         dispose();
+    }
+
+    private File currentDirectory() {
+        String path = defaultBiosPath.getText();
+        if (path != null && !path.isBlank()) {
+            File file = new File(path);
+            File parent = file.isDirectory() ? file : file.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                return parent;
+            }
+        }
+        return new File(System.getProperty("user.dir"));
     }
 
     private JSpinner spinner(int value, int min, int max, int step) {

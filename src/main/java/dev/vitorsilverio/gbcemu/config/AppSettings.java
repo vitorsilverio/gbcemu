@@ -18,7 +18,9 @@ public record AppSettings(
         int[] controllerKeyCodes,
         int turboMultiplier,
         int turboKeyCode,
-        boolean xBrzFiltering
+        boolean turboToggleMode,
+        boolean xBrzFiltering,
+        String defaultBiosPath
 ) {
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
     private static final String SCREEN_SCALE = "screenScale";
@@ -34,7 +36,9 @@ public record AppSettings(
     private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
     private static final String TURBO_MULTIPLIER = "turboMultiplier";
     private static final String TURBO_KEY = "turboKey";
+    private static final String TURBO_TOGGLE_MODE = "turboToggleMode";
     private static final String XBRZ_FILTERING = "xbrzFiltering";
+    private static final String DEFAULT_BIOS_PATH = "defaultBios";
 
     public static AppSettings defaults() {
         return new AppSettings(
@@ -51,7 +55,9 @@ public record AppSettings(
                 defaultControllerKeyCodes(),
                 3,
                 KeyEvent.VK_TAB,
-                false
+                false,
+                false,
+                ""
         );
     }
 
@@ -81,7 +87,9 @@ public record AppSettings(
                 controllerKeyCodes,
                 clamp(preferences.getInt(TURBO_MULTIPLIER, defaults.turboMultiplier), 1, 10),
                 preferences.getInt(TURBO_KEY, defaults.turboKeyCode),
-                preferences.getBoolean(XBRZ_FILTERING, defaults.xBrzFiltering)
+                preferences.getBoolean(TURBO_TOGGLE_MODE, defaults.turboToggleMode),
+                preferences.getBoolean(XBRZ_FILTERING, defaults.xBrzFiltering),
+                preferences.get(DEFAULT_BIOS_PATH, defaults.defaultBiosPath)
         );
     }
 
@@ -104,6 +112,12 @@ public record AppSettings(
         }
         preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
         preferences.putInt(TURBO_KEY, turboKeyCode);
+        preferences.putBoolean(TURBO_TOGGLE_MODE, turboToggleMode);
+        if (defaultBiosPath == null || defaultBiosPath.isBlank()) {
+            preferences.remove(DEFAULT_BIOS_PATH);
+        } else {
+            preferences.put(DEFAULT_BIOS_PATH, defaultBiosPath);
+        }
     }
 
     public int rewindCapacity() {
@@ -126,21 +140,21 @@ public record AppSettings(
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, xBrzFiltering);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, xBrzFiltering);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, xBrzFiltering);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, xBrzFiltering);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath);
     }
 
     public AppSettings normalized() {
@@ -170,7 +184,9 @@ public record AppSettings(
                 keys,
                 clamp(turboMultiplier, 1, 10),
                 turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode,
-                xBrzFiltering
+                turboToggleMode,
+                xBrzFiltering,
+                defaultBiosPath == null ? "" : defaultBiosPath.strip()
         );
     }
 

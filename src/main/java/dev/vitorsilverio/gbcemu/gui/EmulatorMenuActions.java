@@ -2,7 +2,6 @@ package dev.vitorsilverio.gbcemu.gui;
 
 public record EmulatorMenuActions(
         Runnable openRom,
-        Runnable configureDefaultBios,
         Runnable openSettings,
         Runnable pause,
         Runnable resume,

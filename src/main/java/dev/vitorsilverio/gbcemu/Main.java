@@ -18,7 +18,6 @@ import java.util.prefs.Preferences;
 public class Main {
 
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(Main.class);
-    private static final String DEFAULT_BIOS_KEY = "defaultBios";
     private static AppSettings settings = AppSettings.load(PREFERENCES);
     private static Emulator activeEmulator;
     private static Options activeOptions;
@@ -86,7 +85,6 @@ public class Main {
     private static EmulatorMenuActions menuActions() {
         return new EmulatorMenuActions(
                 Main::openRomFromMenu,
-                Main::configureDefaultBios,
                 Main::openSettings,
                 Main::pauseEmulator,
                 Main::resumeEmulator,
@@ -333,20 +331,6 @@ public class Main {
         return chooser.getSelectedFile();
     }
 
-    private static void configureDefaultBios() {
-        JFileChooser chooser = new JFileChooser(currentDirectory());
-        chooser.setDialogTitle("Set default BIOS");
-        if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        File biosFile = chooser.getSelectedFile();
-        PREFERENCES.put(DEFAULT_BIOS_KEY, biosFile.getAbsolutePath());
-        JOptionPane.showMessageDialog(null,
-                "Default BIOS updated. It will be used the next time a ROM is opened.",
-                "GBC EMU",
-                JOptionPane.INFORMATION_MESSAGE);
-    }
-
     private static synchronized void startEmulator(Options options) {
         if (activeEmulator != null) {
             activeEmulator.stop();
@@ -404,7 +388,7 @@ public class Main {
     }
 
     private static File defaultBiosFile() {
-        String configured = PREFERENCES.get(DEFAULT_BIOS_KEY, null);
+        String configured = settings.defaultBiosPath();
         return configured == null || configured.isBlank() ? new File("cgb_bios.bin") : new File(configured);
     }
 
@@ -516,7 +500,8 @@ public class Main {
 
         private Options withRomFile(File romFile) {
             File resolvedSaveFile = noSave ? null : defaultSaveFile(romFile);
-            return new Options(romFile, biosFile, resolvedSaveFile, headless, skipBios, help, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
+            File resolvedBiosFile = noBios ? null : defaultBiosFile();
+            return new Options(romFile, resolvedBiosFile, resolvedSaveFile, headless, skipBios, help, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
         }
 
     }

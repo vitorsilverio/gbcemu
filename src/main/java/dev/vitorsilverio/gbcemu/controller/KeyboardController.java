@@ -19,6 +19,8 @@ public class KeyboardController implements Controller, KeyListener {
     private boolean buttonLeft_Pressed = false;
     private boolean buttonRight_Pressed = false;
     private boolean turboPressed = false;
+    private boolean turboKeyDown = false;
+    private boolean turboToggleMode = false;
 
     public KeyboardController(AppSettings settings) {
         applySettings(settings);
@@ -31,7 +33,9 @@ public class KeyboardController implements Controller, KeyListener {
         }
         updated[AppSettings.CONTROLLER_BUTTON_NAMES.length] = settings.turboKeyCode();
         keyCodes = updated;
+        turboToggleMode = settings.turboToggleMode();
         turboPressed = false;
+        turboKeyDown = false;
         releaseAll();
     }
 
@@ -90,7 +94,10 @@ public class KeyboardController implements Controller, KeyListener {
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
         if (keyCode == settingsTurboKey()) {
-            turboPressed = true;
+            if (!turboKeyDown) {
+                turboPressed = turboToggleMode ? !turboPressed : true;
+            }
+            turboKeyDown = true;
         }
         if (keyCode == keyCodes[0]) {
                 buttonA_Pressed = true;
@@ -123,7 +130,10 @@ public class KeyboardController implements Controller, KeyListener {
     public void keyReleased(KeyEvent e) {
         int keyCode = e.getKeyCode();
         if (keyCode == settingsTurboKey()) {
-            turboPressed = false;
+            turboKeyDown = false;
+            if (!turboToggleMode) {
+                turboPressed = false;
+            }
         }
         if (keyCode == keyCodes[0]) {
             buttonA_Pressed = false;
@@ -154,6 +164,7 @@ public class KeyboardController implements Controller, KeyListener {
         buttonLeft_Pressed = false;
         buttonRight_Pressed = false;
         turboPressed = false;
+        turboKeyDown = false;
     }
 
     public boolean isTurboPressed() {

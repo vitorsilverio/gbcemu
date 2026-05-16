@@ -41,10 +41,19 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 ## Usabilidade
 
+- [x] Configuracoes em abas.
+  - [x] Geral.
+  - [x] Graficos.
+  - [x] Som.
+  - [x] Controle.
+  - [x] Mover configuracao de BIOS padrao para a janela de configuracoes.
+
 - [ ] Gamepad.
+  - Usar `input4j`.
   - Detectar controles.
   - Mapear botoes.
   - Persistir perfil por controle quando possivel.
+  - Suportar rumble para cartuchos/jogos compativeis.
 
 - [ ] Configuracao de audio mais completa.
   - Latencia/buffer.
@@ -60,13 +69,22 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Acelerar enquanto uma tecla configuravel estiver pressionada.
   - [x] Multiplicador configuravel.
   - [x] Evitar que o sink de audio limite a velocidade durante turbo.
+  - [x] Modo toggle alem de segurar tecla.
+  - [ ] Frameskip durante turbo para tentar passar de 3x.
   - [ ] Avaliar alternativa futura para audio em pitch acelerado durante turbo.
 
 - [ ] Link cable.
   - Suportar TCP sockets para conexao via rede.
   - Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
-  - UI para conectar/desconectar.
+  - Corrigir eleicao/negociacao master/slave para evitar ambos os lados virarem MASTER.
+  - Melhorar UI para conectar/desconectar e indicar estado atual.
   - Sincronizacao suficiente para trocas e batalhas.
+
+- [ ] Saves `.sav` intercambiaveis.
+  - Passar a salvar RAM externa em formato bruto, igual outros emuladores.
+  - Manter leitura dos saves antigos com magic number, versao, tamanho e bytes extras.
+  - Ao carregar save antigo com sucesso, salvar novamente no formato bruto na proxima gravacao.
+  - Evitar perder progresso existente durante a migracao.
 
 - [ ] Infrared com hardware real.
   - Criar camada de transporte.
@@ -188,6 +206,15 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Incluir transcript serial completo no dump de debug.
   - [x] Capturar e avaliar texto serial com status/exit code.
 - [x] Gerar screenshot/dump em falhas visuais.
+
+## Documentacao
+
+- [x] `README.md`.
+  - Como usar pela UI.
+  - Como usar por linha de comando/headless.
+  - Como buildar com Maven.
+  - Como buildar nativo com GraalVM.
+  - Recursos atuais e limitacoes conhecidas.
 
 ## Arquitetura De Estado
 

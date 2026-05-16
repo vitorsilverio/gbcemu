@@ -192,10 +192,6 @@ public class EmulatorWindow {
 
         emulatorMenu.addSeparator();
 
-        JMenuItem configureBios = new JMenuItem("Set default BIOS...");
-        configureBios.addActionListener(event -> menuActions.configureDefaultBios().run());
-        emulatorMenu.add(configureBios);
-
         JMenuItem settings = new JMenuItem("Settings...");
         settings.addActionListener(event -> menuActions.openSettings().run());
         emulatorMenu.add(settings);
