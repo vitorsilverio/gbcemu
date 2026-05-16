@@ -8,6 +8,7 @@ import dev.vitorsilverio.gbcemu.memory.BiosState;
 import dev.vitorsilverio.gbcemu.memory.WorkRamState;
 import dev.vitorsilverio.gbcemu.memory.ZeroPageState;
 import dev.vitorsilverio.gbcemu.misc.DmaState;
+import dev.vitorsilverio.gbcemu.misc.CgbUndocumentedRegistersState;
 import dev.vitorsilverio.gbcemu.misc.HdmaState;
 import dev.vitorsilverio.gbcemu.misc.InfraredState;
 import dev.vitorsilverio.gbcemu.misc.Key0State;
@@ -38,7 +39,8 @@ public record EmulatorState(
         CartState cart,
         Key0State key0,
         Key1State key1,
-        InfraredState infrared
+        InfraredState infrared,
+        CgbUndocumentedRegistersState cgbUndocumentedRegisters
 ) implements Serializable {
     public static final int CURRENT_VERSION = 1;
 }

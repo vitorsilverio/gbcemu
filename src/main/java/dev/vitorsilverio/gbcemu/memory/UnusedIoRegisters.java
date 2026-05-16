@@ -13,7 +13,6 @@ public class UnusedIoRegisters implements MemorySpace {
                 (address >= 0xFF57 && address <= 0xFF67) ||
                 (address >= 0xFF6D && address <= 0xFF6F) ||
                 address == 0xFF71 ||
-                (address >= 0xFF72 && address <= 0xFF75) ||
                 address == 0xFF7F;
     }
 

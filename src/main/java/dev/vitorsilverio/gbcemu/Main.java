@@ -69,7 +69,7 @@ public class Main {
                   --no-bios           Do not load a BIOS file. Requires --skip-bios.
                   --save-file <path>  Save file path. Defaults to ROM name with .sav extension.
                   --no-save           Disable save file persistence.
-                  --skip-bios         Start directly at 0x0100 using default DMG registers.
+                  --skip-bios         Start directly at 0x0100 using default boot registers.
                   --headless          Run without window or audio output, unthrottled.
                   --max-frames <n>    Stop automatically after n rendered frames.
                   --dump-debug-on-exit

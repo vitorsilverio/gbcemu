@@ -57,6 +57,7 @@ public class Emulator {
     private final Key0 key0;
     private final Key1 key1;
     private final InfraredPort infraredPort;
+    private final CgbUndocumentedRegisters cgbUndocumentedRegisters;
     private final EmulatorWindow window;
     private final KeyboardController keyboardController;
     private final GameSharkDevice gameSharkDevice;
@@ -107,12 +108,6 @@ public class Emulator {
         this.debugController.setWatchpointsChangedListener(this::updateMemoryAccessListener);
         this.gameSharkDevice = new GameSharkDevice();
         this.bus.addMemorySpace(gameSharkDevice);
-        if (biosFile != null) {
-            bios = new Bios(biosFile);
-            bus.addMemorySpace(bios);
-        } else {
-            bios = null;
-        }
         this.romFile = romFile;
         this.saveFile = saveFile;
         this.cart = CartFactory.fromFile(romFile, saveFile, this::currentRtcEpochSeconds);
@@ -147,13 +142,21 @@ public class Emulator {
         bus.addMemorySpace(echoRam);
         zeroPage = new ZeroPage();
         bus.addMemorySpace(zeroPage);
-        bus.addMemorySpace(cart);
         key0 = new Key0(ppu::setCgbMode);
         key1 = new Key1();
         infraredPort = new InfraredPort();
+        cgbUndocumentedRegisters = new CgbUndocumentedRegisters();
+        if (biosFile != null) {
+            bios = new Bios(biosFile, key0::lock);
+            bus.addMemorySpace(bios);
+        } else {
+            bios = null;
+        }
+        bus.addMemorySpace(cart);
         bus.addMemorySpace(key0);
         bus.addMemorySpace(key1);
         bus.addMemorySpace(infraredPort);
+        bus.addMemorySpace(cgbUndocumentedRegisters);
         bus.addMemorySpace(new UnusedIoRegisters());
         this.window = headless ? null : window;
         if (this.window != null) {
@@ -185,10 +188,10 @@ public class Emulator {
                 continue;
             }
             synchronized (stateLock) {
-                if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
-                    cpu.tick();
-                } else {
+                if (hdmaBlocksCpu()) {
                     tickSystemCycle();
+                } else {
+                    cpu.tick();
                 }
             }
             if (stepInstruction) {
@@ -447,7 +450,7 @@ public class Emulator {
         HdmaState hdmaState = hdma.saveState();
         Key0State key0State = key0.saveState();
         Key1State key1State = key1.saveState();
-        InfraredState infraredState = infraredPort.saveState();
+        CgbUndocumentedRegistersState cgbUndocumentedState = cgbUndocumentedRegisters.saveState();
         StringBuilder builder = new StringBuilder();
         builder.append("{\n");
         builder.append("  \"metadata\": {\n");
@@ -514,7 +517,7 @@ public class Emulator {
         builder.append("  },\n");
         appendLinkDebugJson(builder);
         appendDmaDebugJson(builder, dmaState, hdmaState);
-        appendCgbRegistersDebugJson(builder, key0State, key1State, infraredState);
+        appendCgbRegistersDebugJson(builder, key0State, key1State, cgbUndocumentedState);
         builder.append("  \"ppu\": {\n");
         DebugJson.appendBoolean(builder, "cgbMode", ppuSnapshot.cgbMode(), true, 4);
         DebugJson.appendHex(builder, "lcdc", ppuSnapshot.lcdc(), true, 4, 2);
@@ -581,13 +584,21 @@ public class Emulator {
             StringBuilder builder,
             Key0State key0State,
             Key1State key1State,
-            InfraredState infraredState
+            CgbUndocumentedRegistersState cgbUndocumentedState
     ) {
         builder.append("  \"cgbRegisters\": {\n");
         DebugJson.appendHex(builder, "key0", key0State.key0() & 0xFF, true, 4, 2);
+        DebugJson.appendBoolean(builder, "key0Locked", key0State.locked(), true, 4);
+        DebugJson.appendHex(builder, "key1", key1.read(0xFF4D) & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "vbk", ppu.read(0xFF4F) & 0xFF, true, 4, 2);
         DebugJson.appendBoolean(builder, "prepareSpeedSwitch", key1State.prepareSpeedSwitch(), true, 4);
         DebugJson.appendBoolean(builder, "doubleSpeed", key1State.doubleSpeed(), true, 4);
-        DebugJson.appendHex(builder, "infrared", infraredState.data() & 0xFF, false, 4, 2);
+        DebugJson.appendHex(builder, "svbk", workRam.read(0xFF70) & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "infrared", infraredPort.read(0xFF56) & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "ff72", cgbUndocumentedState.ff72() & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "ff73", cgbUndocumentedState.ff73() & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "ff74", cgbUndocumentedState.ff74() & 0xFF, true, 4, 2);
+        DebugJson.appendHex(builder, "ff75", (0x8F | (cgbUndocumentedState.ff75() & 0x70)), false, 4, 2);
         builder.append("  },\n");
     }
 
@@ -722,6 +733,16 @@ public class Emulator {
         }
     }
 
+    private boolean hdmaBlocksCpu() {
+        if (!hdma.isActive()) {
+            return false;
+        }
+        if (hdma.isGeneralPurposeMode()) {
+            return true;
+        }
+        return hdma.isHBlankMode() && ppu.canRunHBlankDma() && !hdma.hblankBlockTransferred();
+    }
+
     private void updatePerformanceStats() {
         performanceStatsFrames++;
         long now = System.nanoTime();
@@ -816,17 +837,34 @@ public class Emulator {
     }
 
     public void skipBios() {
-        cpu.getBus().write(0xFF50, (byte) 0x01);
-        ppu.setCgbMode(cartridgeCgbCompatible);
+        if (cartridgeCgbCompatible) {
+            key0.write(0xFF4C, cart.getHeader().getCgbFlag());
+        } else {
+            key0.write(0xFF4C, (byte) 0x04);
+            ppu.write(0xFF6C, (byte) 0x01);
+        }
+        if (bios != null) {
+            cpu.getBus().write(0xFF50, (byte) 0x01);
+        } else {
+            key0.lock();
+        }
         cpu.setPc(0x100);
         cpu.setSp(0xfffe);
-        cpu.setA((byte) 0x01);
-        cpu.setB((byte) 0x00);
-        cpu.setC((byte) 0x13);
-        cpu.setD((byte) 0x00);
-        cpu.setE((byte) 0xD8);
-        cpu.setH((byte) 0x01);
-        cpu.setL((byte) 0x4D);
+        if (cartridgeCgbCompatible) {
+            cpu.setAf(0x1180);
+            cpu.setBc(0x0000);
+            cpu.setDe(0xFF56);
+            cpu.setHl(0x000D);
+            return;
+        }
+        int b = cart.getHeader().isNintendoLicensedForCgbCompatibilityPalettes()
+                ? cart.getHeader().getTitleChecksum()
+                : 0x00;
+        cpu.setAf(0x1180);
+        cpu.setB((byte) b);
+        cpu.setC((byte) 0x00);
+        cpu.setDe(0x0008);
+        cpu.setHl(b == 0x43 || b == 0x58 ? 0x991A : 0x007C);
 
     }
 
@@ -885,7 +923,8 @@ public class Emulator {
                     cart.saveState(),
                     key0.saveState(),
                     key1.saveState(),
-                    infraredPort.saveState()
+                    infraredPort.saveState(),
+                    cgbUndocumentedRegisters.saveState()
             );
         }
     }
@@ -922,6 +961,7 @@ public class Emulator {
             key0.loadState(emulatorState.key0());
             key1.loadState(emulatorState.key1());
             infraredPort.loadState(emulatorState.infrared());
+            cgbUndocumentedRegisters.loadState(emulatorState.cgbUndocumentedRegisters());
         }
         resume();
     }

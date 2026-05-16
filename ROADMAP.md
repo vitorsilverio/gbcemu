@@ -154,14 +154,17 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Timer e serial com consideracao inicial de double speed.
 - VRAM bank (`VBK`) e WRAM bank (`SVBK`).
   - [x] `VBK` le bits nao usados como 1.
-  - [ ] Validar `SVBK` lendo bits nao usados como 1 e banco 0 mapeando banco 1.
+  - [x] `SVBK` le bits nao usados como 1 e banco 0 mapeia banco 1.
 - CGB palettes (`BGPI/BGPD`, `OBPI/OBPD`).
+- Registradores CGB nao documentados (`FF72`-`FF75`).
+  - [x] Latch dedicado para `FF72`-`FF75`.
 - Atributos CGB de tile map: banco, paleta, flip e prioridade.
 - OAM com atributos CGB: banco, paleta, flip e prioridade.
 - HDMA/GDMA inicial.
 - Infrared register (`FF56`) inicial.
+  - [x] Mascaras de leitura/escrita do RP.
 - Object priority mode (`OPRI`).
-- PCM registers (`FF76/FF77`) para saida digital da APU.
+- [x] PCM registers (`FF76/FF77`) para saida digital da APU.
 - MBC1, MBC3 com RTC, MBC5 e RAM externa.
 
 ### Faltante / Incerto
@@ -179,7 +182,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [ ] HDMA/GDMA completo.
   - [x] HBlank HDMA transfere no maximo um bloco de `$10` bytes por HBlank.
   - [x] HBlank HDMA nao transfere durante VBlank.
-  - Confirmar bloqueios de bus e timing por bloco.
+  - [x] Bloquear CPU durante GDMA e durante o bloco ativo de HBlank HDMA.
   - [x] Confirmar comportamento basico de cancelamento de HBlank HDMA e leitura de blocos restantes.
   - [x] Validar origem/destino, mascaras e leitura de `HDMA5`.
 
@@ -196,9 +199,21 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - OAM bug apenas se afetar CGB real ou jogos CGB.
 
 - [ ] Paletas e boot behavior.
-  - Confirmar estado pos-BIOS.
+  - [x] `--skip-bios` usa registradores pos-BIOS CGB para ROMs CGB-compatible.
+  - [x] `--skip-bios` usa registradores pos-BIOS CGB em compatibilidade DMG para ROMs DMG-only.
+  - [x] `--skip-bios` aplica a ordem basica da BIOS CGB para `KEY0`/`OPRI` antes de desmapear `FF50`.
+  - [x] `KEY0` trava quando a BIOS e desmapeada em `FF50`.
+  - [x] `FF50` desmapeia a BIOS apenas em escrita nao-zero e uma unica vez.
+  - Confirmar estado pos-BIOS completo dos registradores de hardware.
   - Confirmar mapeamento RGB555/BGR555 e conversao para RGB host.
   - Confirmar comportamento de jogos DMG rodando em modo CGB.
+  - Separar no PPU o modo de CPU/compatibilidade DMG (`KEY0`) do uso de paletas CGB.
+    - No CGB real em compatibilidade DMG, as paletas CGB continuam ativas; `BGP`, `OBP0` e `OBP1` indexam as cores CGB escolhidas pela BIOS.
+    - `Ppu.cgbMode=false` hoje tambem desliga o caminho de paletas CGB, entao precisa virar um estado mais especifico antes de considerar `--skip-bios` DMG equivalente ao CGB real.
+  - Implementar/validar a tabela de compatibilidade da BIOS CGB para colorizacao automatica de jogos DMG.
+    - [x] Expor no `CartHeader` licensee codes e checksum de titulo usados pelo algoritmo da BIOS CGB.
+    - A escolha de paletas depende do header do cartucho, incluindo licenca, checksum do titulo e casos especiais por quarta letra do titulo.
+    - `--skip-bios` em jogos DMG no modo CGB precisa aplicar essas paletas para ficar equivalente ao hardware real.
 
 - [ ] Infrared real.
   - Registro existe, mas falta comportamento fisico e transporte externo.

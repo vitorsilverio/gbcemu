@@ -7,16 +7,16 @@ public class InfraredPort implements MemorySpace, Stateful<InfraredState> {
 
     private static final int RP_REGISTER = 0xFF56;
 
-    private byte data = 0x02;
+    private byte control;
 
     @Override
     public InfraredState saveState() {
-        return new InfraredState(data);
+        return new InfraredState(control);
     }
 
     @Override
     public void loadState(InfraredState state) {
-        data = state.data();
+        control = (byte) (state.data() & 0xC1);
     }
 
     @Override
@@ -26,11 +26,11 @@ public class InfraredPort implements MemorySpace, Stateful<InfraredState> {
 
     @Override
     public byte read(int address) {
-        return data;
+        return (byte) (0x3E | (control & 0xC1));
     }
 
     @Override
     public void write(int address, byte value) {
-        data = value;
+        control = (byte) (value & 0xC1);
     }
 }

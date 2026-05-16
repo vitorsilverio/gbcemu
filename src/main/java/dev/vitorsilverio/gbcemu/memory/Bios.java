@@ -9,8 +9,15 @@ public class Bios implements MemorySpace, Stateful<BiosState> {
     private boolean enabled = true;
 
     private final byte[] bios;
+    private final Runnable onDisabled;
 
     public Bios(File biosFile) {
+        this(biosFile, () -> {
+        });
+    }
+
+    public Bios(File biosFile, Runnable onDisabled) {
+        this.onDisabled = onDisabled;
         try(var inputStream = biosFile.toURI().toURL().openStream()) {
             this.bios = inputStream.readAllBytes();
         } catch (Exception e) {
@@ -49,8 +56,9 @@ public class Bios implements MemorySpace, Stateful<BiosState> {
 
     @Override
     public void write(int address, byte value) {
-        if (address == 0xFF50) {
+        if (address == 0xFF50 && enabled && value != 0) {
             enabled = false;
+            onDisabled.run();
         }
     }
 }

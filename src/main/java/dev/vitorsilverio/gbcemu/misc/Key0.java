@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 public class Key0 implements MemorySpace, Stateful<Key0State> {
 
     private byte key0 = 0;
+    private boolean locked;
     private final Consumer<Boolean> onCgbModeChange;
 
     public Key0() {
@@ -27,12 +28,13 @@ public class Key0 implements MemorySpace, Stateful<Key0State> {
 
     @Override
     public Key0State saveState() {
-        return new Key0State(key0);
+        return new Key0State(key0, locked);
     }
 
     @Override
     public void loadState(Key0State state) {
         key0 = state.key0();
+        locked = state.locked();
         onCgbModeChange.accept((key0 & 0x04) == 0);
     }
 
@@ -48,7 +50,14 @@ public class Key0 implements MemorySpace, Stateful<Key0State> {
 
     @Override
     public void write(int address, byte value) {
+        if (locked) {
+            return;
+        }
         key0 = value;
         onCgbModeChange.accept((value & 0x04) == 0);
+    }
+
+    public void lock() {
+        locked = true;
     }
 }

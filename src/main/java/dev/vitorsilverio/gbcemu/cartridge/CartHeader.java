@@ -4,6 +4,7 @@ public class CartHeader {
 
     private final Integer entryPoint;
     private final byte[] nintendoLogo;
+    private final byte[] titleBytes;
     private final String title;
     private final String manufacturerCode;
     private final byte cgbFlag;
@@ -14,6 +15,7 @@ public class CartHeader {
     private final int ramSize;
     private final String destinationCode;
     private final String oldLicenseeCode;
+    private final int oldLicenseeCodeValue;
     private final String versionNumber;
     private final String headerChecksum;
     private final String globalChecksum;
@@ -23,6 +25,8 @@ public class CartHeader {
         entryPoint = ((rom[0x0104] & 0xFF) << 8) | (rom[0x0105] & 0xFF);
         nintendoLogo = new byte[0x3f];
         System.arraycopy(rom, 262, nintendoLogo, 0, nintendoLogo.length);
+        titleBytes = new byte[16];
+        System.arraycopy(rom, 0x0134, titleBytes, 0, titleBytes.length);
         title = new String(rom, 0x0134, 16);
         manufacturerCode = new String(rom, 0x013F, 4);
         cgbFlag = rom[0x0143];
@@ -32,7 +36,8 @@ public class CartHeader {
         romSize = (1 << rom[0x0148]) * 32 * 1024;
         ramSize = rom[0x0149];
         destinationCode = new String(rom, 0x014A, 1);
-        oldLicenseeCode = new String(rom, 0x014B, 2);
+        oldLicenseeCodeValue = rom[0x014B] & 0xFF;
+        oldLicenseeCode = new String(rom, 0x014B, 1);
         versionNumber = new String(rom, 0x014C, 1);
         headerChecksum = new String(rom, 0x014D, 1);
         globalChecksum = new String(rom, 0x014E, 2);
@@ -48,6 +53,33 @@ public class CartHeader {
 
     public boolean isCgbCompatible() {
         return cgbFlag == (byte) 0x80 || cgbFlag == (byte) 0xC0;
+    }
+
+    public byte getCgbFlag() {
+        return cgbFlag;
+    }
+
+    public int getOldLicenseeCode() {
+        return oldLicenseeCodeValue;
+    }
+
+    public String getNewLicenseeCode() {
+        return newLicenseeCode;
+    }
+
+    public int getTitleChecksum() {
+        int checksum = 0;
+        for (byte titleByte : titleBytes) {
+            checksum = (checksum + (titleByte & 0xFF)) & 0xFF;
+        }
+        return checksum;
+    }
+
+    public boolean isNintendoLicensedForCgbCompatibilityPalettes() {
+        if (oldLicenseeCodeValue == 0x33) {
+            return "01".equals(newLicenseeCode);
+        }
+        return oldLicenseeCodeValue == 0x01;
     }
 
     public int getRamSizeBytes() {

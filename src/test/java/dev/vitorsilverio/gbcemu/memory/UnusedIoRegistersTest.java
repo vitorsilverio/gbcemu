@@ -13,6 +13,8 @@ class UnusedIoRegistersTest {
         UnusedIoRegisters registers = new UnusedIoRegisters();
 
         assertTrue(registers.contains(0xFF7F));
+        assertFalse(registers.contains(0xFF72));
+        assertFalse(registers.contains(0xFF75));
 
         registers.write(0xFF7F, (byte) 0x42);
 
