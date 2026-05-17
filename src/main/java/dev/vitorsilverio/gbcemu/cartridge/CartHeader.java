@@ -7,6 +7,7 @@ public class CartHeader {
     private final Integer entryPoint;
     private final byte[] nintendoLogo;
     private final byte[] titleBytes;
+    private final byte[] headerChecksumBytes;
     private final String title;
     private final String manufacturerCode;
     private final byte cgbFlag;
@@ -19,8 +20,8 @@ public class CartHeader {
     private final String oldLicenseeCode;
     private final int oldLicenseeCodeValue;
     private final String versionNumber;
-    private final String headerChecksum;
-    private final String globalChecksum;
+    private final int headerChecksum;
+    private final int globalChecksum;
 
 
     public CartHeader(byte[] rom) {
@@ -32,6 +33,8 @@ public class CartHeader {
         System.arraycopy(rom, 0x0104, nintendoLogo, 0, nintendoLogo.length);
         titleBytes = new byte[16];
         System.arraycopy(rom, 0x0134, titleBytes, 0, titleBytes.length);
+        headerChecksumBytes = new byte[0x014C - 0x0134 + 1];
+        System.arraycopy(rom, 0x0134, headerChecksumBytes, 0, headerChecksumBytes.length);
         cgbFlag = rom[0x0143];
         title = new String(rom, 0x0134, titleLength(), StandardCharsets.ISO_8859_1);
         manufacturerCode = new String(rom, 0x013F, 4, StandardCharsets.ISO_8859_1);
@@ -44,8 +47,8 @@ public class CartHeader {
         oldLicenseeCodeValue = rom[0x014B] & 0xFF;
         oldLicenseeCode = new String(rom, 0x014B, 1, StandardCharsets.ISO_8859_1);
         versionNumber = new String(rom, 0x014C, 1, StandardCharsets.ISO_8859_1);
-        headerChecksum = new String(rom, 0x014D, 1, StandardCharsets.ISO_8859_1);
-        globalChecksum = new String(rom, 0x014E, 2, StandardCharsets.ISO_8859_1);
+        headerChecksum = rom[0x014D] & 0xFF;
+        globalChecksum = ((rom[0x014E] & 0xFF) << 8) | (rom[0x014F] & 0xFF);
     }
 
     private int titleLength() {
@@ -103,6 +106,26 @@ public class CartHeader {
         return titleBytes[index] & 0xFF;
     }
 
+    public int getHeaderChecksum() {
+        return headerChecksum;
+    }
+
+    public int getComputedHeaderChecksum() {
+        int checksum = 0;
+        for (byte value : headerChecksumBytes) {
+            checksum = (checksum - ((value & 0xFF) + 1)) & 0xFF;
+        }
+        return checksum;
+    }
+
+    public boolean isHeaderChecksumValid() {
+        return headerChecksum == getComputedHeaderChecksum();
+    }
+
+    public int getGlobalChecksum() {
+        return globalChecksum;
+    }
+
     public boolean isNintendoLicensedForCgbCompatibilityPalettes() {
         if (oldLicenseeCodeValue == 0x33) {
             return "01".equals(newLicenseeCode);
@@ -156,8 +179,8 @@ public class CartHeader {
                 destinationCode: %s
                 oldLicenseeCode: %s
                 versionNumber: %s
-                headerChecksum: %s
-                globalChecksum: %s
+                headerChecksum: %02X (computed %02X, valid: %s)
+                globalChecksum: %04X
                 """,
                 entryPoint,
                 new String(nintendoLogo),
@@ -173,6 +196,8 @@ public class CartHeader {
                 oldLicenseeCode,
                 versionNumber,
                 headerChecksum,
+                getComputedHeaderChecksum(),
+                isHeaderChecksumValid(),
                 globalChecksum);
     }
 }

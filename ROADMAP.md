@@ -201,6 +201,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Header de cartucho decodifica tamanho de ROM/RAM como unsigned e trata codigos especiais `$52`-`$54`.
 - Header de cartucho reporta entry point real de `$0100-$0103`, nao bytes iniciais do logo Nintendo.
 - Header de cartucho le exatamente 48 bytes do logo Nintendo em `$0104-$0133`.
+- Header de cartucho expoe checksum/global checksum como inteiros e valida header checksum oficial.
 
 ### Faltante / Incerto
 

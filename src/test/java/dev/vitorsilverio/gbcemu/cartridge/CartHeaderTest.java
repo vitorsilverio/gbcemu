@@ -134,11 +134,44 @@ class CartHeaderTest {
         assertEquals(0x2F, header.getNintendoLogo()[0x2F] & 0xFF);
     }
 
+    @Test
+    void exposesAndValidatesHeaderChecksum() {
+        byte[] rom = baseRom();
+        byte[] title = "CHECK".getBytes();
+        System.arraycopy(title, 0, rom, 0x0134, title.length);
+        rom[0x014D] = (byte) computedHeaderChecksum(rom);
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals(rom[0x014D] & 0xFF, header.getHeaderChecksum());
+        assertEquals(rom[0x014D] & 0xFF, header.getComputedHeaderChecksum());
+        assertTrue(header.isHeaderChecksumValid());
+    }
+
+    @Test
+    void exposesGlobalChecksumAsUnsignedBigEndianValue() {
+        byte[] rom = baseRom();
+        rom[0x014E] = 0x12;
+        rom[0x014F] = 0x34;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals(0x1234, header.getGlobalChecksum());
+    }
+
     private byte[] baseRom() {
         byte[] rom = new byte[0x150];
         rom[0x0147] = 0x00;
         rom[0x0148] = 0x00;
         rom[0x0149] = 0x00;
         return rom;
+    }
+
+    private int computedHeaderChecksum(byte[] rom) {
+        int checksum = 0;
+        for (int address = 0x0134; address <= 0x014C; address++) {
+            checksum = (checksum - ((rom[address] & 0xFF) + 1)) & 0xFF;
+        }
+        return checksum;
     }
 }
