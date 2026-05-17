@@ -108,6 +108,43 @@ class CartTest {
     }
 
     @Test
+    void mmm01StartsUnmappedToLastThirtyTwoKiBMenu() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MMM01, 0x08, 0x00));
+
+        assertEquals(0x06, cart.read(0x0000) & 0xFF);
+        assertEquals(0x07, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void mmm01CanEnterMappedModeAndUseMbc1StyleBanking() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MMM01, 0x08, 0x00));
+
+        cart.write(0x0000, (byte) 0x40);
+        cart.write(0x2000, (byte) 0x03);
+
+        assertEquals(0x00, cart.read(0x0000) & 0xFF);
+        assertEquals(0x03, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void mmm01RamPersistsForBatteryType() throws IOException {
+        File rom = writeRom(CartridgeType.MMM01_RAM_BATTERY, 0x02, 0x02);
+        File save = tempDir.resolve("mmm01.sav").toFile();
+        Cart cart = CartFactory.fromFile(rom, save);
+
+        cart.write(0x0000, (byte) 0x4A);
+        cart.write(0xA123, (byte) 0x5E);
+        cart.flushSave();
+
+        assertEquals(0x2000, Files.size(save.toPath()));
+
+        Cart loaded = CartFactory.fromFile(rom, save);
+        loaded.write(0x0000, (byte) 0x4A);
+
+        assertEquals(0x5E, loaded.read(0xA123) & 0xFF);
+    }
+
+    @Test
     void mbc3CanSelectRomBankTwenty() throws IOException {
         Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC3, 0x40, 0x00));
 

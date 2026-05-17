@@ -245,8 +245,8 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
     private int defaultRamSize(CartridgeType type) {
         return switch (type) {
             case MBC2, MBC2_BATTERY -> 512;
-            case MBC1_RAM, MBC1_RAM_BATTERY, ROM_RAM, ROM_RAM_BATTERY, MBC3_RAM, MBC3_RAM_BATTERY,
-                 MBC3_TIMER_RAM_BATTERY, MBC5_RAM, MBC5_RAM_BATTERY, MBC5_RUMBLE_RAM,
+            case MBC1_RAM, MBC1_RAM_BATTERY, MMM01_RAM, MMM01_RAM_BATTERY, ROM_RAM, ROM_RAM_BATTERY,
+                 MBC3_RAM, MBC3_RAM_BATTERY, MBC3_TIMER_RAM_BATTERY, MBC5_RAM, MBC5_RAM_BATTERY, MBC5_RUMBLE_RAM,
                  MBC5_RUMBLE_RAM_BATTERY -> RAM_BANK_SIZE;
             case HuC1_RAM_BATTERY, HuC3 -> 4 * RAM_BANK_SIZE;
             default -> 0;

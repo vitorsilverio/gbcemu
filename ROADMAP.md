@@ -267,7 +267,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] HuC1 inicial com ROM/RAM banking e modo IR basico.
   - [x] HuC3 inicial com ROM/RAM banking, selecao de modos e mailbox RTC minimo.
   - [x] HuC3 persiste mailbox/registradores RTC internos em sidecar `.huc3rtc`, mantendo `.sav` bruto.
-  - Possiveis proximos: MBC1M, MMM01, Pocket Camera, rumble nuances.
+  - [x] MMM01 inicial com modo unmapped mapeando o menu nos ultimos 32 KiB e entrada em modo mapped estilo MBC1.
+  - Possiveis proximos: MBC1M, MMM01 masks/multiplex completo, Pocket Camera, rumble nuances.
   - HuC3 ainda precisa RTC completo e speaker.
 
 ## Testes
