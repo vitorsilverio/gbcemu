@@ -333,6 +333,39 @@ class CartTest {
         assertEquals(0x66, loaded.read(0xA123) & 0xFF);
     }
 
+    @Test
+    void huc1MapsRomAndRamBanksWithoutRamDisable() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC1_RAM_BATTERY, 0x40, 0x03));
+
+        cart.write(0x0000, (byte) 0x00);
+        cart.write(0x2000, (byte) 0x22);
+        cart.write(0x4000, (byte) 0x02);
+        cart.write(0xA123, (byte) 0x55);
+        cart.write(0x4000, (byte) 0x00);
+
+        assertEquals(0x22, cart.read(0x4000) & 0xFF);
+        assertEquals(0x00, cart.read(0xA123) & 0xFF);
+
+        cart.write(0x4000, (byte) 0x02);
+
+        assertEquals(0x55, cart.read(0xA123) & 0xFF);
+    }
+
+    @Test
+    void huc1IrModeReturnsNoLightValueAndDoesNotWriteRam() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC1_RAM_BATTERY, 0x02, 0x02));
+
+        cart.write(0xA000, (byte) 0x66);
+        cart.write(0x0000, (byte) 0x0E);
+        cart.write(0xA000, (byte) 0x01);
+
+        assertEquals(0xC0, cart.read(0xA000) & 0xFF);
+
+        cart.write(0x0000, (byte) 0x00);
+
+        assertEquals(0x66, cart.read(0xA000) & 0xFF);
+    }
+
     private File writeRom(CartridgeType cartridgeType, byte bank0Value, byte bank1Value) throws IOException {
         byte[] rom = new byte[0x8000];
         rom[0] = bank0Value;

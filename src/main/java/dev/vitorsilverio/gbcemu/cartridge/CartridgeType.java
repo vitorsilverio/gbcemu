@@ -86,11 +86,12 @@ public enum CartridgeType {
     }
 
     public static CartridgeType fromCode(int code) {
+        int unsignedCode = code & 0xFF;
         for (CartridgeType type : values()) {
-            if (type.code == code) {
+            if (type.code == unsignedCode) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown cartridge type: " + code);
+        throw new IllegalArgumentException("Unknown cartridge type: " + unsignedCode);
     }
 }

@@ -254,12 +254,14 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
     - A escolha de paletas depende do header do cartucho, incluindo licenca, checksum do titulo e casos especiais por quarta letra do titulo.
 
 - [ ] Infrared real.
-  - Registro existe, mas falta comportamento fisico e transporte externo.
+  - Registro do CGB existe, mas falta comportamento fisico e transporte externo.
+  - HuC1 ja expoe modo IR basico do cartucho, lendo `$C0` quando nao ha luz externa simulada.
 
 - [ ] Mappers faltantes.
   - Priorizar conforme jogos reais.
   - [x] MBC2 com ROM banking, RAM interna 512 x 4-bit e save bruto de 512 bytes.
-  - Possiveis proximos: MMM01, HuC1/HuC3, Pocket Camera, rumble nuances.
+  - [x] HuC1 inicial com ROM/RAM banking e modo IR basico.
+  - Possiveis proximos: MMM01, HuC3, Pocket Camera, rumble nuances.
 
 ## Testes
 

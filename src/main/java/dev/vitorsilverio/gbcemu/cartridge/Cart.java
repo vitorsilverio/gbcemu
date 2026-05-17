@@ -247,7 +247,7 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
             case MBC2, MBC2_BATTERY -> 512;
             case MBC1_RAM, MBC1_RAM_BATTERY, ROM_RAM, ROM_RAM_BATTERY, MBC3_RAM, MBC3_RAM_BATTERY,
                  MBC3_TIMER_RAM_BATTERY, MBC5_RAM, MBC5_RAM_BATTERY, MBC5_RUMBLE_RAM,
-                 MBC5_RUMBLE_RAM_BATTERY -> RAM_BANK_SIZE;
+                 MBC5_RUMBLE_RAM_BATTERY, HuC1_RAM_BATTERY -> RAM_BANK_SIZE;
             default -> 0;
         };
     }
