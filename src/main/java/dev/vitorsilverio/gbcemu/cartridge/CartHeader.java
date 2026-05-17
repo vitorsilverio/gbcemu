@@ -28,8 +28,8 @@ public class CartHeader {
                 | ((rom[0x0101] & 0xFF) << 16)
                 | ((rom[0x0102] & 0xFF) << 8)
                 | (rom[0x0103] & 0xFF);
-        nintendoLogo = new byte[0x3f];
-        System.arraycopy(rom, 262, nintendoLogo, 0, nintendoLogo.length);
+        nintendoLogo = new byte[0x30];
+        System.arraycopy(rom, 0x0104, nintendoLogo, 0, nintendoLogo.length);
         titleBytes = new byte[16];
         System.arraycopy(rom, 0x0134, titleBytes, 0, titleBytes.length);
         cgbFlag = rom[0x0143];
@@ -58,6 +58,10 @@ public class CartHeader {
 
     public int getEntryPoint() {
         return entryPoint;
+    }
+
+    public byte[] getNintendoLogo() {
+        return nintendoLogo.clone();
     }
 
     public String getTitle() {
