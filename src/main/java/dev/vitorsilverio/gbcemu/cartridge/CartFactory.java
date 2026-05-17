@@ -30,6 +30,7 @@ public final class CartFactory {
         Cart cart = switch (header.getCartridgeType()) {
             case ROM_ONLY -> new RomOnlyCart(rom, saveFile);
             case MBC1, MBC1_RAM, MBC1_RAM_BATTERY -> new Mbc1Cart(rom, saveFile);
+            case MBC2, MBC2_BATTERY -> new Mbc2Cart(rom, saveFile);
             case MBC3_TIMER_BATTERY, MBC3_TIMER_RAM_BATTERY, MBC3, MBC3_RAM, MBC3_RAM_BATTERY ->
                     new Mbc3Cart(rom, saveFile, currentEpochSeconds);
             case MBC5, MBC5_RAM, MBC5_RAM_BATTERY, MBC5_RUMBLE, MBC5_RUMBLE_RAM, MBC5_RUMBLE_RAM_BATTERY ->

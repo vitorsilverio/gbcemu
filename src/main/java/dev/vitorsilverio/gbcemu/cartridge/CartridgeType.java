@@ -70,6 +70,7 @@ public enum CartridgeType {
 
     public boolean hasBattery() {
         return this == MBC1_RAM_BATTERY ||
+                this == MBC2_BATTERY ||
                 this == ROM_RAM_BATTERY ||
                 this == MBC3_TIMER_BATTERY ||
                 this == MBC3_TIMER_RAM_BATTERY ||

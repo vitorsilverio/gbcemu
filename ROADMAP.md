@@ -193,7 +193,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Mascaras de leitura/escrita do RP.
 - Object priority mode (`OPRI`).
 - [x] PCM registers (`FF76/FF77`) para saida digital da APU.
-- MBC1, MBC3 com RTC, MBC5 e RAM externa.
+- MBC1, MBC2, MBC3 com RTC, MBC5 e RAM externa.
 
 ### Faltante / Incerto
 
@@ -258,7 +258,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - [ ] Mappers faltantes.
   - Priorizar conforme jogos reais.
-  - Possiveis proximos: MBC2, MMM01, HuC1/HuC3, Pocket Camera, rumble nuances.
+  - [x] MBC2 com ROM banking, RAM interna 512 x 4-bit e save bruto de 512 bytes.
+  - Possiveis proximos: MMM01, HuC1/HuC3, Pocket Camera, rumble nuances.
 
 ## Testes
 

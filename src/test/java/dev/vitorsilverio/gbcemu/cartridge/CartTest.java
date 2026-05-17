@@ -135,6 +135,46 @@ class CartTest {
     }
 
     @Test
+    void mbc2UsesAddressBitEightToSelectRamEnableOrRomBank() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC2, 0x04, 0x00));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x0100, (byte) 0x03);
+        cart.write(0xA000, (byte) 0x5A);
+
+        assertEquals(0x03, cart.read(0x4000) & 0xFF);
+        assertEquals(0xFA, cart.read(0xA000) & 0xFF);
+    }
+
+    @Test
+    void mbc2RamEchoesEveryFiveHundredTwelveBytesAndStoresLowerNibble() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC2, 0x02, 0x00));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0xA000, (byte) 0x2B);
+
+        assertEquals(0xFB, cart.read(0xA200) & 0xFF);
+    }
+
+    @Test
+    void mbc2BatteryRamPersistsRawFiveHundredTwelveBytes() throws IOException {
+        File rom = writeRom(CartridgeType.MBC2_BATTERY, 0x02, 0x00);
+        File save = tempDir.resolve("mbc2.sav").toFile();
+        Cart cart = CartFactory.fromFile(rom, save);
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0xA123, (byte) 0x6C);
+        cart.flushSave();
+
+        assertEquals(512, Files.size(save.toPath()));
+
+        Cart loaded = CartFactory.fromFile(rom, save);
+        loaded.write(0x0000, (byte) 0x0A);
+
+        assertEquals(0xFC, loaded.read(0xA123) & 0xFF);
+    }
+
+    @Test
     void mbc3BatteryRamStaysInMemoryWhenExternalRamIsDisabled() throws IOException {
         File rom = writeRom(CartridgeType.MBC3_RAM_BATTERY, 0x02, 0x03);
         File save = tempDir.resolve("disable-does-not-flush.sav").toFile();
