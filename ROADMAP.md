@@ -50,7 +50,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Mover configuracao de BIOS padrao para a janela de configuracoes.
 
 - [ ] Gamepad.
-  - Usar `input4j`.
+  - Usar `input4j` ou alternativas de preferencia que não adicionem dependencia a JNI.
   - Detectar controles.
   - Mapear botoes.
   - Persistir perfil por controle quando possivel.
@@ -207,14 +207,14 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Confirmar double speed em CPU, timer, serial, PPU, DMA, HDMA e APU.
   - Garantir que componentes que nao dobram no CGB continuem no clock correto.
 
-- [ ] HDMA/GDMA completo.
+- [x] HDMA/GDMA completo.
   - [x] HBlank HDMA transfere no maximo um bloco de `$10` bytes por HBlank.
   - [x] HBlank HDMA nao transfere durante VBlank.
   - [x] Bloquear CPU durante GDMA e durante o bloco ativo de HBlank HDMA.
   - [x] Confirmar comportamento basico de cancelamento de HBlank HDMA e leitura de blocos restantes.
   - [x] Validar origem/destino, mascaras e leitura de `HDMA5`.
 
-- [ ] Bloqueios de acesso CGB.
+- [x] Bloqueios de acesso CGB.
   - [x] VRAM durante mode 3.
   - [x] OAM durante mode 2/3.
   - [x] Paletas durante modos bloqueados.
@@ -266,10 +266,9 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [x] `instr_timing`.
 - [x] `mem_timing`.
 - [x] `mem_timing-2`.
-- [ ] `halt_bug`.
+- [x] `halt_bug`.
 - [ ] `oam_bug` apenas no que afetar CGB real.
-- [ ] `interrupt_time`.
-- [ ] `cgb_timing`.
+- [x] `interrupt_time`.
 - [ ] `cgb_sound`.
 - [x] Automatizar execucao headless de test ROMs com leitura de serial.
   - [x] `--max-frames` para limitar execucao headless.
