@@ -35,8 +35,8 @@ public class CartHeader {
         newLicenseeCode = new String(rom, 0x0144, 2, StandardCharsets.ISO_8859_1);
         sgbFlag = new String(rom, 0x0146, 1, StandardCharsets.ISO_8859_1);
         cartridgeType = CartridgeType.fromCode(rom[0x0147]);
-        romSize = (1 << rom[0x0148]) * 32 * 1024;
-        ramSize = rom[0x0149];
+        romSize = decodeRomSize(rom[0x0148] & 0xFF);
+        ramSize = rom[0x0149] & 0xFF;
         destinationCode = new String(rom, 0x014A, 1, StandardCharsets.ISO_8859_1);
         oldLicenseeCodeValue = rom[0x014B] & 0xFF;
         oldLicenseeCode = new String(rom, 0x014B, 1, StandardCharsets.ISO_8859_1);
@@ -100,13 +100,31 @@ public class CartHeader {
     }
 
     public int getRamSizeBytes() {
-        return switch (ramSize & 0xFF) {
+        return switch (ramSize) {
             case 0x00 -> 0;
             case 0x01 -> 2 * 1024;
             case 0x02 -> 8 * 1024;
             case 0x03 -> 32 * 1024;
             case 0x04 -> 128 * 1024;
             case 0x05 -> 64 * 1024;
+            default -> 0;
+        };
+    }
+
+    public int getRomSizeBytes() {
+        return romSize;
+    }
+
+    public int getRamSizeCode() {
+        return ramSize;
+    }
+
+    private int decodeRomSize(int code) {
+        return switch (code) {
+            case 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 -> (32 * 1024) << code;
+            case 0x52 -> 72 * 16 * 1024;
+            case 0x53 -> 80 * 16 * 1024;
+            case 0x54 -> 96 * 16 * 1024;
             default -> 0;
         };
     }

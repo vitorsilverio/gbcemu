@@ -194,6 +194,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Object priority mode (`OPRI`).
 - [x] PCM registers (`FF76/FF77`) para saida digital da APU.
 - ROM+RAM, MBC1, MBC2, MBC3 com RTC, MBC5 e RAM externa.
+- Header de cartucho decodifica tamanho de ROM/RAM como unsigned e trata codigos especiais `$52`-`$54`.
 
 ### Faltante / Incerto
 

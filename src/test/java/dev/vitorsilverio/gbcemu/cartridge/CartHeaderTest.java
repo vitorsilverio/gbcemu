@@ -70,6 +70,41 @@ class CartHeaderTest {
         assertEquals("CGB GAME", header.getTitle());
     }
 
+    @Test
+    void decodesStandardRomSizeCodeAsUnsignedValue() {
+        byte[] rom = baseRom();
+        rom[0x0148] = 0x05;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals(1024 * 1024, header.getRomSizeBytes());
+    }
+
+    @Test
+    void decodesUnofficialRomSizeCodes() {
+        byte[] rom = baseRom();
+
+        rom[0x0148] = 0x52;
+        assertEquals(72 * 16 * 1024, new CartHeader(rom).getRomSizeBytes());
+
+        rom[0x0148] = 0x53;
+        assertEquals(80 * 16 * 1024, new CartHeader(rom).getRomSizeBytes());
+
+        rom[0x0148] = 0x54;
+        assertEquals(96 * 16 * 1024, new CartHeader(rom).getRomSizeBytes());
+    }
+
+    @Test
+    void exposesRamSizeCodeAsUnsignedValue() {
+        byte[] rom = baseRom();
+        rom[0x0149] = (byte) 0xFF;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals(0xFF, header.getRamSizeCode());
+        assertEquals(0, header.getRamSizeBytes());
+    }
+
     private byte[] baseRom() {
         byte[] rom = new byte[0x150];
         rom[0x0147] = 0x00;
