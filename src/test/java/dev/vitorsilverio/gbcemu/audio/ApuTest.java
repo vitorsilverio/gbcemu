@@ -157,7 +157,7 @@ class ApuTest {
         apu.write(0xFF1C, (byte) 0x20);
         apu.write(0xFF1D, (byte) 0xFF);
         apu.write(0xFF1E, (byte) 0x87);
-        tick(apu, 64);
+        tickUntilWaveDigitalOutputIsVisible(apu);
 
         assertEquals(0x0F, apu.read(0xFF77) & 0x0F);
 
@@ -168,6 +168,12 @@ class ApuTest {
 
     private void tickUntilSamplesAreBuffered(Apu apu) {
         tick(apu, 200);
+    }
+
+    private void tickUntilWaveDigitalOutputIsVisible(Apu apu) {
+        for (int i = 0; i < 128 && (apu.read(0xFF77) & 0x0F) == 0; i++) {
+            apu.tick();
+        }
     }
 
     private void tick(Apu apu, int ticks) {
