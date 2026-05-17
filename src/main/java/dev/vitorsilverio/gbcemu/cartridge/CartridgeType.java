@@ -78,6 +78,7 @@ public enum CartridgeType {
                 this == MBC5_RAM_BATTERY ||
                 this == MBC5_RUMBLE_RAM_BATTERY ||
                 this == MBC7_SENSOR_RUMBLE_RAM_BATTERY ||
+                this == HuC3 ||
                 this == HuC1_RAM_BATTERY;
     }
 

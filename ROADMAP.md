@@ -259,12 +259,15 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [ ] Infrared real.
   - Registro do CGB existe, mas falta comportamento fisico e transporte externo.
   - HuC1 ja expoe modo IR basico do cartucho, lendo `$C0` quando nao ha luz externa simulada.
+  - HuC3 ja expoe modo IR basico do cartucho, tambem sem transporte fisico.
 
 - [ ] Mappers faltantes.
   - Priorizar conforme jogos reais.
   - [x] MBC2 com ROM banking, RAM interna 512 x 4-bit e save bruto de 512 bytes.
   - [x] HuC1 inicial com ROM/RAM banking e modo IR basico.
-  - Possiveis proximos: MBC1M, MMM01, HuC3, Pocket Camera, rumble nuances.
+  - [x] HuC3 inicial com ROM/RAM banking, selecao de modos e mailbox RTC minimo.
+  - Possiveis proximos: MBC1M, MMM01, Pocket Camera, rumble nuances.
+  - HuC3 ainda precisa RTC completo, speaker e persistencia dedicada dos registradores internos.
 
 ## Testes
 

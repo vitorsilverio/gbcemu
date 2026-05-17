@@ -447,6 +447,70 @@ class CartTest {
         assertEquals(0x66, cart.read(0xA000) & 0xFF);
     }
 
+    @Test
+    void huc3MapsRomAndRamBanksWithModeSelection() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC3, 0x80, 0x00));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x2000, (byte) 0x45);
+        cart.write(0x4000, (byte) 0x03);
+        cart.write(0xA123, (byte) 0x5C);
+        cart.write(0x4000, (byte) 0x00);
+
+        assertEquals(0x45, cart.read(0x4000) & 0xFF);
+        assertEquals(0x00, cart.read(0xA123) & 0xFF);
+
+        cart.write(0x4000, (byte) 0x03);
+
+        assertEquals(0x5C, cart.read(0xA123) & 0xFF);
+    }
+
+    @Test
+    void huc3RamReadOnlyModeIgnoresRamWrites() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC3, 0x02, 0x02));
+
+        cart.write(0x0000, (byte) 0x00);
+        cart.write(0xA000, (byte) 0x77);
+
+        assertEquals(0x00, cart.read(0xA000) & 0xFF);
+    }
+
+    @Test
+    void huc3SupportsMinimalRtcMailboxProtocol() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC3, 0x02, 0x00));
+
+        cart.write(0x0000, (byte) 0x0D);
+        assertEquals(0x81, cart.read(0xA000) & 0xFF);
+
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x42);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x53);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x3A);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x42);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x53);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x10);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0C);
+
+        assertEquals(0x9A, cart.read(0xA000) & 0xFF);
+    }
+
     private File writeRom(CartridgeType cartridgeType, byte bank0Value, byte bank1Value) throws IOException {
         byte[] rom = new byte[0x8000];
         rom[0] = bank0Value;
