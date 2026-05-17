@@ -37,7 +37,6 @@ public class CartHeader {
         headerChecksumBytes = new byte[0x014C - 0x0134 + 1];
         System.arraycopy(rom, 0x0134, headerChecksumBytes, 0, headerChecksumBytes.length);
         cgbFlag = rom[0x0143];
-        title = new String(rom, 0x0134, titleLength(), StandardCharsets.ISO_8859_1);
         manufacturerCode = new String(rom, 0x013F, 4, StandardCharsets.ISO_8859_1);
         newLicenseeCode = new String(rom, 0x0144, 2, StandardCharsets.ISO_8859_1);
         sgbFlag = new String(rom, 0x0146, 1, StandardCharsets.ISO_8859_1);
@@ -47,6 +46,7 @@ public class CartHeader {
         destinationCode = new String(rom, 0x014A, 1, StandardCharsets.ISO_8859_1);
         oldLicenseeCodeValue = rom[0x014B] & 0xFF;
         oldLicenseeCode = new String(rom, 0x014B, 1, StandardCharsets.ISO_8859_1);
+        title = new String(rom, 0x0134, titleLength(), StandardCharsets.ISO_8859_1);
         versionNumber = new String(rom, 0x014C, 1, StandardCharsets.ISO_8859_1);
         headerChecksum = rom[0x014D] & 0xFF;
         globalChecksum = ((rom[0x014E] & 0xFF) << 8) | (rom[0x014F] & 0xFF);
@@ -54,6 +54,9 @@ public class CartHeader {
     }
 
     private int titleLength() {
+        if (oldLicenseeCodeValue == 0x33) {
+            return 11;
+        }
         return isCgbCompatible() ? 15 : 16;
     }
 

@@ -71,6 +71,23 @@ class CartHeaderTest {
     }
 
     @Test
+    void newLicenseeHeaderDoesNotIncludeManufacturerCodeInDisplayedTitle() {
+        byte[] rom = baseRom();
+        byte[] title = "NEW TITLE!!".getBytes();
+        byte[] manufacturer = "ABCD".getBytes();
+        System.arraycopy(title, 0, rom, 0x0134, title.length);
+        System.arraycopy(manufacturer, 0, rom, 0x013F, manufacturer.length);
+        rom[0x0143] = (byte) 0x80;
+        rom[0x0144] = '0';
+        rom[0x0145] = '1';
+        rom[0x014B] = 0x33;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals("NEW TITLE!!", header.getTitle());
+    }
+
+    @Test
     void decodesStandardRomSizeCodeAsUnsignedValue() {
         byte[] rom = baseRom();
         rom[0x0148] = 0x05;
