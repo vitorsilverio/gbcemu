@@ -511,6 +511,54 @@ class CartTest {
         assertEquals(0x9A, cart.read(0xA000) & 0xFF);
     }
 
+    @Test
+    void huc3PersistsRtcSidecarSeparatelyFromRawRam() throws IOException {
+        File rom = writeRom(CartridgeType.HuC3, 0x02, 0x02);
+        File save = tempDir.resolve("huc3.sav").toFile();
+        File rtc = tempDir.resolve("huc3.huc3rtc").toFile();
+        Cart cart = CartFactory.fromFile(rom, save);
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0xA000, (byte) 0x77);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x42);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x53);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) 0x3B);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+        cart.flushSave();
+
+        assertEquals(0x8000, Files.size(save.toPath()));
+        assertEquals(true, rtc.isFile());
+
+        Cart loaded = CartFactory.fromFile(rom, save);
+        loaded.write(0x0000, (byte) 0x0B);
+        loaded.write(0xA000, (byte) 0x42);
+        loaded.write(0x0000, (byte) 0x0D);
+        loaded.write(0xA000, (byte) 0xFE);
+        loaded.write(0x0000, (byte) 0x0B);
+        loaded.write(0xA000, (byte) 0x53);
+        loaded.write(0x0000, (byte) 0x0D);
+        loaded.write(0xA000, (byte) 0xFE);
+        loaded.write(0x0000, (byte) 0x0B);
+        loaded.write(0xA000, (byte) 0x10);
+        loaded.write(0x0000, (byte) 0x0D);
+        loaded.write(0xA000, (byte) 0xFE);
+        loaded.write(0x0000, (byte) 0x0C);
+
+        assertEquals(0x9B, loaded.read(0xA000) & 0xFF);
+
+        loaded.write(0x0000, (byte) 0x0A);
+
+        assertEquals(0x77, loaded.read(0xA000) & 0xFF);
+    }
+
     private File writeRom(CartridgeType cartridgeType, byte bank0Value, byte bank1Value) throws IOException {
         byte[] rom = new byte[0x8000];
         rom[0] = bank0Value;

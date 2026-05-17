@@ -1,6 +1,12 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -23,6 +29,7 @@ public class Huc3Cart extends Cart {
     private int rtcResponse = 1;
     private int rtcAddress;
     private boolean infraredTransmitterEnabled;
+    private boolean rtcDirty;
 
     Huc3Cart(byte[] rom, File saveFile) {
         super(rom, saveFile);
@@ -75,6 +82,7 @@ public class Huc3Cart extends Cart {
             case MODE_RTC_SEMAPHORE -> {
                 if ((unsigned & 0x01) == 0) {
                     executeRtcCommand();
+                    rtcDirty = true;
                     markSaveDirty();
                 }
             }
@@ -82,6 +90,73 @@ public class Huc3Cart extends Cart {
             default -> {
             }
         }
+    }
+
+    @Override
+    protected void loadSave() {
+        super.loadSave();
+        loadRtcSidecar();
+    }
+
+    @Override
+    void flushSave() {
+        super.flushSave();
+        flushRtcSidecar();
+    }
+
+    private void loadRtcSidecar() {
+        File rtcFile = rtcFile();
+        if (rtcFile == null || !rtcFile.isFile()) {
+            return;
+        }
+        try (DataInputStream input = new DataInputStream(new FileInputStream(rtcFile))) {
+            rtcAddress = input.readUnsignedByte();
+            rtcResponse = input.readUnsignedByte();
+            for (int i = 0; i < rtcNibbles.length; i++) {
+                rtcNibbles[i] = input.readUnsignedByte() & 0x0F;
+            }
+            rtcDirty = false;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load HuC3 RTC file: " + rtcFile, e);
+        }
+    }
+
+    private void flushRtcSidecar() {
+        if (saveFile == null) {
+            return;
+        }
+        File rtcFile = rtcFile();
+        if (rtcFile == null) {
+            return;
+        }
+        try {
+            File parent = rtcFile.getParentFile();
+            if (parent != null) {
+                Files.createDirectories(parent.toPath());
+            }
+            try (DataOutputStream output = new DataOutputStream(new FileOutputStream(rtcFile))) {
+                output.writeByte(rtcAddress & 0xFF);
+                output.writeByte(rtcResponse & 0x0F);
+                for (int value : rtcNibbles) {
+                    output.writeByte(value & 0x0F);
+                }
+            }
+            rtcDirty = false;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to persist HuC3 RTC file: " + rtcFile, e);
+        }
+    }
+
+    private File rtcFile() {
+        if (saveFile == null) {
+            return null;
+        }
+        String path = saveFile.getAbsolutePath();
+        int dot = path.lastIndexOf('.');
+        if (dot >= 0) {
+            return new File(path.substring(0, dot) + ".huc3rtc");
+        }
+        return new File(path + ".huc3rtc");
     }
 
     private void executeRtcCommand() {
@@ -119,6 +194,7 @@ public class Huc3Cart extends Cart {
         state.put("rtcAddress", rtcAddress);
         state.put("rtcNibbles", rtcNibbles.clone());
         state.put("infraredTransmitterEnabled", infraredTransmitterEnabled);
+        state.put("rtcDirty", rtcDirty);
     }
 
     @Override
@@ -136,6 +212,7 @@ public class Huc3Cart extends Cart {
             System.arraycopy(values, 0, rtcNibbles, 0, Math.min(values.length, rtcNibbles.length));
         }
         infraredTransmitterEnabled = (boolean) state.getOrDefault("infraredTransmitterEnabled", false);
+        rtcDirty = (boolean) state.getOrDefault("rtcDirty", false);
     }
 
     @Override
