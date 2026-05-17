@@ -193,7 +193,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Mascaras de leitura/escrita do RP.
 - Object priority mode (`OPRI`).
 - [x] PCM registers (`FF76/FF77`) para saida digital da APU.
-- MBC1, MBC2, MBC3 com RTC, MBC5 e RAM externa.
+- ROM+RAM, MBC1, MBC2, MBC3 com RTC, MBC5 e RAM externa.
 
 ### Faltante / Incerto
 

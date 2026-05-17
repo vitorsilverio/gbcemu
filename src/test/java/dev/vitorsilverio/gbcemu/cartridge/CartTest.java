@@ -46,6 +46,33 @@ class CartTest {
     }
 
     @Test
+    void romRamMapsExternalRamWithoutBankController() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.ROM_RAM, 0x02, 0x02));
+
+        cart.write(0x0000, (byte) 0x00);
+        cart.write(0xA123, (byte) 0x5A);
+
+        assertEquals(0x5A, cart.read(0xA123) & 0xFF);
+        assertEquals(0x01, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void romRamBatteryPersistsRawRam() throws IOException {
+        File rom = writeRom(CartridgeType.ROM_RAM_BATTERY, 0x02, 0x02);
+        File save = tempDir.resolve("rom-ram.sav").toFile();
+        Cart cart = CartFactory.fromFile(rom, save);
+
+        cart.write(0xA123, (byte) 0x44);
+        cart.flushSave();
+
+        assertEquals(0x2000, Files.size(save.toPath()));
+
+        Cart loaded = CartFactory.fromFile(rom, save);
+
+        assertEquals(0x44, loaded.read(0xA123) & 0xFF);
+    }
+
+    @Test
     void mbc3CanSelectRomBankTwenty() throws IOException {
         Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC3, 0x40, 0x00));
 
