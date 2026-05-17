@@ -1,6 +1,6 @@
 # GBC EMU
 
-Emulador de Game Boy Color em Java, com foco em compatibilidade CGB, ferramentas de debug integradas e uso pratico fora da IDE.
+Emulador de Game Boy Color em Java, com foco em compatibilidade CGB, ferramentas de debug integradas.
 
 ## Requisitos
 
@@ -96,9 +96,9 @@ Observacoes:
 - Dumps de debug para investigacao externa.
 - Multiplayer/link cable experimental.
 
-## Limitacoes Conhecidas
+## Limitações Conhecidas
 
-- `cgb_sound`, `cgb_timing`, `halt_bug`, `interrupt_time` e partes de `oam_bug` ainda precisam ser corrigidos.
+- `cgb_sound`, `cgb_timing` e partes de `oam_bug` ainda precisam ser corrigidos.
 - Link cable ainda tem problemas de negociacao master/slave.
 - Gamepad ainda nao foi integrado.
 - Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.
