@@ -22,6 +22,7 @@ public class CartHeader {
     private final String versionNumber;
     private final int headerChecksum;
     private final int globalChecksum;
+    private final int computedGlobalChecksum;
 
 
     public CartHeader(byte[] rom) {
@@ -49,6 +50,7 @@ public class CartHeader {
         versionNumber = new String(rom, 0x014C, 1, StandardCharsets.ISO_8859_1);
         headerChecksum = rom[0x014D] & 0xFF;
         globalChecksum = ((rom[0x014E] & 0xFF) << 8) | (rom[0x014F] & 0xFF);
+        computedGlobalChecksum = computeGlobalChecksum(rom);
     }
 
     private int titleLength() {
@@ -126,6 +128,14 @@ public class CartHeader {
         return globalChecksum;
     }
 
+    public int getComputedGlobalChecksum() {
+        return computedGlobalChecksum;
+    }
+
+    public boolean isGlobalChecksumValid() {
+        return globalChecksum == computedGlobalChecksum;
+    }
+
     public boolean isNintendoLicensedForCgbCompatibilityPalettes() {
         if (oldLicenseeCodeValue == 0x33) {
             return "01".equals(newLicenseeCode);
@@ -163,6 +173,17 @@ public class CartHeader {
         };
     }
 
+    private int computeGlobalChecksum(byte[] rom) {
+        int checksum = 0;
+        for (int address = 0; address < rom.length; address++) {
+            if (address == 0x014E || address == 0x014F) {
+                continue;
+            }
+            checksum = (checksum + (rom[address] & 0xFF)) & 0xFFFF;
+        }
+        return checksum;
+    }
+
     @Override
     public String toString() {
         return String.format("""
@@ -180,7 +201,7 @@ public class CartHeader {
                 oldLicenseeCode: %s
                 versionNumber: %s
                 headerChecksum: %02X (computed %02X, valid: %s)
-                globalChecksum: %04X
+                globalChecksum: %04X (computed %04X, valid: %s)
                 """,
                 entryPoint,
                 new String(nintendoLogo),
@@ -198,6 +219,8 @@ public class CartHeader {
                 headerChecksum,
                 getComputedHeaderChecksum(),
                 isHeaderChecksumValid(),
-                globalChecksum);
+                globalChecksum,
+                computedGlobalChecksum,
+                isGlobalChecksumValid());
     }
 }

@@ -159,6 +159,23 @@ class CartHeaderTest {
         assertEquals(0x1234, header.getGlobalChecksum());
     }
 
+    @Test
+    void computesGlobalChecksumIgnoringStoredGlobalChecksumBytes() {
+        byte[] rom = baseRom();
+        rom[0x0000] = 0x11;
+        rom[0x0100] = 0x22;
+        rom[0x014E] = 0x12;
+        rom[0x014F] = 0x34;
+        int checksum = computedGlobalChecksum(rom);
+        rom[0x014E] = (byte) (checksum >> 8);
+        rom[0x014F] = (byte) checksum;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals(checksum, header.getComputedGlobalChecksum());
+        assertTrue(header.isGlobalChecksumValid());
+    }
+
     private byte[] baseRom() {
         byte[] rom = new byte[0x150];
         rom[0x0147] = 0x00;
@@ -171,6 +188,17 @@ class CartHeaderTest {
         int checksum = 0;
         for (int address = 0x0134; address <= 0x014C; address++) {
             checksum = (checksum - ((rom[address] & 0xFF) + 1)) & 0xFF;
+        }
+        return checksum;
+    }
+
+    private int computedGlobalChecksum(byte[] rom) {
+        int checksum = 0;
+        for (int address = 0; address < rom.length; address++) {
+            if (address == 0x014E || address == 0x014F) {
+                continue;
+            }
+            checksum = (checksum + (rom[address] & 0xFF)) & 0xFFFF;
         }
         return checksum;
     }
