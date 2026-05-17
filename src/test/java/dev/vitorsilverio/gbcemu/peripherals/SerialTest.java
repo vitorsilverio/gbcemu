@@ -21,19 +21,19 @@ class SerialTest {
         serial.write(0xFF01, (byte) 0xC7);
         serial.write(0xFF02, (byte) 0x81);
 
-        assertEquals(0x81, serial.read(0xFF02) & 0xFF);
+        assertEquals(0xFD, serial.read(0xFF02) & 0xFF);
         assertEquals(0xC7, serial.read(0xFF01) & 0xFF);
         bus.write(0xFFFF, (byte) Interrupt.SERIAL.getMask());
         assertTrue(bus.getPendingInterrupt().isEmpty());
 
         tick(serial, 4095);
 
-        assertEquals(0x81, serial.read(0xFF02) & 0xFF);
+        assertEquals(0xFD, serial.read(0xFF02) & 0xFF);
         assertTrue(bus.getPendingInterrupt().isEmpty());
 
         serial.tick();
 
-        assertEquals(0x01, serial.read(0xFF02) & 0xFF);
+        assertEquals(0x7D, serial.read(0xFF02) & 0xFF);
         assertEquals(0xFF, serial.read(0xFF01) & 0xFF);
         assertEquals(Interrupt.SERIAL, bus.getPendingInterrupt().orElseThrow());
     }
@@ -49,11 +49,11 @@ class SerialTest {
 
         tick(serial, 127);
 
-        assertEquals(0x83, serial.read(0xFF02) & 0xFF);
+        assertEquals(0xFF, serial.read(0xFF02) & 0xFF);
 
         serial.tick();
 
-        assertEquals(0x03, serial.read(0xFF02) & 0xFF);
+        assertEquals(0x7F, serial.read(0xFF02) & 0xFF);
     }
 
     @Test
@@ -71,11 +71,11 @@ class SerialTest {
 
         tick(serial, 2047);
 
-        assertEquals(0x81, serial.read(0xFF02) & 0xFF);
+        assertEquals(0xFD, serial.read(0xFF02) & 0xFF);
 
         serial.tick();
 
-        assertEquals(0x01, serial.read(0xFF02) & 0xFF);
+        assertEquals(0x7D, serial.read(0xFF02) & 0xFF);
     }
 
     @Test
@@ -89,7 +89,7 @@ class SerialTest {
 
         tick(serial, 5000);
 
-        assertEquals(0x80, serial.read(0xFF02) & 0xFF);
+        assertEquals(0xFC, serial.read(0xFF02) & 0xFF);
         assertEquals(0xC7, serial.read(0xFF01) & 0xFF);
         assertTrue(bus.getPendingInterrupt().isEmpty());
     }

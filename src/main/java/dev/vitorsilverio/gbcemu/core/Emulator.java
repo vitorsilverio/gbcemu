@@ -864,6 +864,7 @@ public class Emulator {
     }
 
     public void skipBios() {
+        applyCgbBootHardwareDefaults();
         if (cartridgeCgbCompatible) {
             key0.write(0xFF4C, cart.getHeader().getCgbFlag());
         } else {
@@ -895,6 +896,19 @@ public class Emulator {
         cpu.setDe(0x0008);
         cpu.setHl(b == 0x43 || b == 0x58 ? 0x991A : 0x007C);
 
+    }
+
+    private void applyCgbBootHardwareDefaults() {
+        bus.write(0xFF0F, (byte) 0xE1);
+        bus.write(0xFFFF, (byte) 0x00);
+        bus.write(0xFF02, (byte) 0x03);
+        ppu.write(0xFF42, (byte) 0x00);
+        ppu.write(0xFF43, (byte) 0x00);
+        ppu.write(0xFF45, (byte) 0x00);
+        ppu.write(0xFF47, (byte) 0xFC);
+        ppu.write(0xFF4A, (byte) 0x00);
+        ppu.write(0xFF4B, (byte) 0x00);
+        ppu.write(0xFF40, (byte) 0x91);
     }
 
     public SaveStateFile createSaveStateFile() {

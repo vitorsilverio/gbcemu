@@ -48,7 +48,7 @@ public class DMA implements MemorySpace, MachineCycle, Stateful<DmaState> {
 
     @Override
     public byte read(int address) {
-        return 0;
+        return (byte) baseAddress;
     }
 
     @Override

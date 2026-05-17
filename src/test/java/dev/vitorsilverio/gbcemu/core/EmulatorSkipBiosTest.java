@@ -76,6 +76,26 @@ class EmulatorSkipBiosTest {
         );
     }
 
+    @Test
+    void skipBiosAppliesStableCgbBootHardwareDefaults() throws IOException {
+        Emulator emulator = new Emulator(null, romFile(0x80, 0x00, 0x00, "CGB GAME"), null, true);
+
+        emulator.skipBios();
+        var state = emulator.createSaveStateFile().state();
+        var ppu = state.ppu();
+
+        assertEquals(0x91, ppu.control() & 0xFF);
+        assertEquals(0xFC, ppu.bgPaletteDmg() & 0xFF);
+        assertEquals(0x00, ppu.scrollX());
+        assertEquals(0x00, ppu.scrollY());
+        assertEquals(0x00, ppu.windowX());
+        assertEquals(0x00, ppu.windowY());
+        assertEquals(0x00, ppu.lineCompare() & 0xFF);
+        assertEquals(0x03, state.serial().sc() & 0xFF);
+        assertEquals(0x01, state.interruptManager().ifReg() & 0x1F);
+        assertEquals(0x00, state.interruptManager().ieReg() & 0xFF);
+    }
+
     private File romFile(int cgbFlag, int oldLicensee, int romSize, String title) throws IOException {
         byte[] rom = new byte[32 * 1024];
         byte[] titleBytes = title.getBytes(StandardCharsets.ISO_8859_1);

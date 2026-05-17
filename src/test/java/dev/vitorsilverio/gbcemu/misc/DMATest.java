@@ -34,6 +34,17 @@ class DMATest {
         assertEquals(0x9F, ppu.read(0xFE9F) & 0xFF);
     }
 
+    @Test
+    void dmaRegisterReadsLastWrittenSourceHighByte() {
+        DMA dma = new DMA(new Bus());
+
+        assertEquals(0x00, dma.read(0xFF46) & 0xFF);
+
+        dma.write(0xFF46, (byte) 0xC0);
+
+        assertEquals(0xC0, dma.read(0xFF46) & 0xFF);
+    }
+
     private static class SourceRam implements MemorySpace {
         private final int start;
         private final int end;

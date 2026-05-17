@@ -22,6 +22,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private static final int TRANSFER_START = 0x80;
     private static final int CLOCK_SPEED = 0x02;
     private static final int CLOCK_SELECT = 0x01;
+    private static final int UNUSED_READ_BITS = 0x7C;
     private static final int NORMAL_SPEED_CYCLES_PER_TRANSFER = 4096;
     private static final int FAST_SPEED_CYCLES_PER_TRANSFER = 128;
 
@@ -102,7 +103,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
                         value &= ~CLOCK_SELECT;
                     }
                 }
-                yield value;
+                yield value | UNUSED_READ_BITS;
             }
             default -> 0;
         };

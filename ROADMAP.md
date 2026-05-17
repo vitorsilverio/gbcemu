@@ -219,6 +219,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] OAM durante mode 2/3.
   - [x] Paletas durante modos bloqueados.
   - [x] Wave RAM durante CH3 ativo.
+  - [x] `FF46/DMA` le o ultimo byte alto de origem escrito.
 
 - [ ] PPU CGB edge cases.
   - Prioridade BG/window/sprite em CGB e modo compatibilidade DMG.
@@ -233,6 +234,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] `KEY0` trava quando a BIOS e desmapeada em `FF50`.
   - [x] `FF50` desmapeia a BIOS apenas em escrita nao-zero e uma unica vez.
   - [x] Sem BIOS configurada, abrir ROM usa skip-bios por padrao.
+  - [x] `--skip-bios` aplica defaults estaveis de hardware CGB em `$0100` (`LCDC`, `BGP`, scroll/window, `SC`, `IF`, `IE`).
   - Confirmar estado pos-BIOS completo dos registradores de hardware.
   - Confirmar mapeamento RGB555/BGR555 e conversao para RGB host.
   - Confirmar comportamento de jogos DMG rodando em modo CGB.
