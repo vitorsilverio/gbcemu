@@ -385,6 +385,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     private void setAudioEnabled(boolean enabled) {
+        if (audioEnabled == enabled) {
+            return;
+        }
         audioEnabled = enabled;
         registers.write(ApuAddress.NR52_AUDIO_MASTER_CONTROL, (byte) (enabled ? 0x80 : 0x00));
         if (enabled) {

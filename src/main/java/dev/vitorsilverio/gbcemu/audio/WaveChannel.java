@@ -38,7 +38,7 @@ class WaveChannel extends SoundChannel {
             return;
         }
         enabled = true;
-        timer = waveTimerPeriod();
+        timer = waveTimerPeriod() + 6;
         sampleIndex = 0;
     }
 
