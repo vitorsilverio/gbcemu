@@ -1,5 +1,7 @@
 package dev.vitorsilverio.gbcemu.cartridge;
 
+import java.nio.charset.StandardCharsets;
+
 public class CartHeader {
 
     private final Integer entryPoint;
@@ -27,20 +29,24 @@ public class CartHeader {
         System.arraycopy(rom, 262, nintendoLogo, 0, nintendoLogo.length);
         titleBytes = new byte[16];
         System.arraycopy(rom, 0x0134, titleBytes, 0, titleBytes.length);
-        title = new String(rom, 0x0134, 16);
-        manufacturerCode = new String(rom, 0x013F, 4);
         cgbFlag = rom[0x0143];
-        newLicenseeCode = new String(rom, 0x0144, 2);
-        sgbFlag = new String(rom, 0x0146, 1);
+        title = new String(rom, 0x0134, titleLength(), StandardCharsets.ISO_8859_1);
+        manufacturerCode = new String(rom, 0x013F, 4, StandardCharsets.ISO_8859_1);
+        newLicenseeCode = new String(rom, 0x0144, 2, StandardCharsets.ISO_8859_1);
+        sgbFlag = new String(rom, 0x0146, 1, StandardCharsets.ISO_8859_1);
         cartridgeType = CartridgeType.fromCode(rom[0x0147]);
         romSize = (1 << rom[0x0148]) * 32 * 1024;
         ramSize = rom[0x0149];
-        destinationCode = new String(rom, 0x014A, 1);
+        destinationCode = new String(rom, 0x014A, 1, StandardCharsets.ISO_8859_1);
         oldLicenseeCodeValue = rom[0x014B] & 0xFF;
-        oldLicenseeCode = new String(rom, 0x014B, 1);
-        versionNumber = new String(rom, 0x014C, 1);
-        headerChecksum = new String(rom, 0x014D, 1);
-        globalChecksum = new String(rom, 0x014E, 2);
+        oldLicenseeCode = new String(rom, 0x014B, 1, StandardCharsets.ISO_8859_1);
+        versionNumber = new String(rom, 0x014C, 1, StandardCharsets.ISO_8859_1);
+        headerChecksum = new String(rom, 0x014D, 1, StandardCharsets.ISO_8859_1);
+        globalChecksum = new String(rom, 0x014E, 2, StandardCharsets.ISO_8859_1);
+    }
+
+    private int titleLength() {
+        return isCgbCompatible() ? 15 : 16;
     }
 
     public CartridgeType getCartridgeType() {
@@ -48,7 +54,11 @@ public class CartHeader {
     }
 
     public String getTitle() {
-        return title.strip();
+        int end = title.length();
+        while (end > 0 && (title.charAt(end - 1) == '\0' || Character.isWhitespace(title.charAt(end - 1)))) {
+            end--;
+        }
+        return title.substring(0, end);
     }
 
     public boolean isCgbCompatible() {
@@ -73,6 +83,13 @@ public class CartHeader {
             checksum = (checksum + (titleByte & 0xFF)) & 0xFF;
         }
         return checksum;
+    }
+
+    public int getTitleByte(int index) {
+        if (index < 0 || index >= titleBytes.length) {
+            throw new IllegalArgumentException("Title byte index must be between 0 and 15");
+        }
+        return titleBytes[index] & 0xFF;
     }
 
     public boolean isNintendoLicensedForCgbCompatibilityPalettes() {

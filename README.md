@@ -36,8 +36,8 @@ Opcoes disponiveis:
 
 ```text
 --rom <path>              ROM para carregar.
---bios <path>             BIOS para carregar. Padrao: cgb_bios.bin ou BIOS configurada na UI.
---no-bios                 Nao carrega BIOS. Requer --skip-bios.
+--bios <path>             BIOS para carregar. Padrao: BIOS configurada na UI.
+--no-bios                 Nao carrega BIOS; implica --skip-bios.
 --save-file <path>        Arquivo .sav. Padrao: mesmo nome da ROM com extensao .sav.
 --no-save                 Desativa persistencia de save.
 --skip-bios               Inicia direto em 0x0100.
@@ -79,6 +79,7 @@ Observacoes:
 ## Recursos Atuais
 
 - Emulacao inicial de Game Boy Color com BIOS CGB.
+- Skip-bios automatico quando nenhuma BIOS padrao esta configurada.
 - MBC1, MBC3 com RTC, MBC5 e ROM-only.
 - RAM externa e save `.sav`.
 - Save states por jogo e slots `.sa0`, `.sa1`, `.saN`, com metadata e preview.

@@ -15,6 +15,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Janela unica de emulador sem launcher separado.
 - Menu para abrir ROM, configurar BIOS padrao, pausar, retomar e parar.
 - Argumentos de linha de comando: `--rom`, `--bios`, `--save-file`, `--headless`, `--skip-bios`, `--no-save`, `--no-bios`.
+- Sem BIOS configurada, o emulador usa `--skip-bios` automaticamente.
 - Configuracoes persistentes para tela, som, rewind e teclado.
 - Remapeamento de teclado.
 - Overlay visual para `PLAY`, `PAUSE`, `STOP` e `REW`.
@@ -231,16 +232,24 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] `--skip-bios` aplica a ordem basica da BIOS CGB para `KEY0`/`OPRI` antes de desmapear `FF50`.
   - [x] `KEY0` trava quando a BIOS e desmapeada em `FF50`.
   - [x] `FF50` desmapeia a BIOS apenas em escrita nao-zero e uma unica vez.
+  - [x] Sem BIOS configurada, abrir ROM usa skip-bios por padrao.
   - Confirmar estado pos-BIOS completo dos registradores de hardware.
   - Confirmar mapeamento RGB555/BGR555 e conversao para RGB host.
   - Confirmar comportamento de jogos DMG rodando em modo CGB.
   - Separar no PPU o modo de CPU/compatibilidade DMG (`KEY0`) do uso de paletas CGB.
     - No CGB real em compatibilidade DMG, as paletas CGB continuam ativas; `BGP`, `OBP0` e `OBP1` indexam as cores CGB escolhidas pela BIOS.
-    - `Ppu.cgbMode=false` hoje tambem desliga o caminho de paletas CGB, entao precisa virar um estado mais especifico antes de considerar `--skip-bios` DMG equivalente ao CGB real.
+    - [x] Renderizacao principal usa paleta CGB mesmo em compatibilidade DMG.
+    - [x] Debug de tilemap usa paleta CGB mesmo em compatibilidade DMG.
+    - Tile viewer cru ainda mostra indices em escala de cinza porque nao tem contexto de tilemap/paleta.
   - Implementar/validar a tabela de compatibilidade da BIOS CGB para colorizacao automatica de jogos DMG.
     - [x] Expor no `CartHeader` licensee codes e checksum de titulo usados pelo algoritmo da BIOS CGB.
+    - [x] Implementar seletor de ID de paleta por checksum/licenca e desempate pela quarta letra.
+    - [x] Mapear ID selecionado para grupo e offsets de palavras de cor OBJ0/OBJ1/BG.
+    - [x] Tabela de cores RGB555 da BIOS CGB exposta por offset de palavra.
+    - [x] Expor ID selecionado e necessidade do tilemap do logo no dump de debug.
+    - [x] Tratar titulo exibido de ROM CGB sem incluir o byte de flag CGB.
+    - [x] `--skip-bios` em jogos DMG no modo CGB aplica as paletas selecionadas na palette RAM da PPU.
     - A escolha de paletas depende do header do cartucho, incluindo licenca, checksum do titulo e casos especiais por quarta letra do titulo.
-    - `--skip-bios` em jogos DMG no modo CGB precisa aplicar essas paletas para ficar equivalente ao hardware real.
 
 - [ ] Infrared real.
   - Registro existe, mas falta comportamento fisico e transporte externo.

@@ -82,6 +82,17 @@ public class CgbPalette implements Serializable {
         return paletteData.clone();
     }
 
+    public void setPaletteBytes(int paletteIndex, byte[] data) {
+        if (paletteIndex < 0 || paletteIndex > 7) {
+            throw new IllegalArgumentException("Palette index must be between 0 and 7");
+        }
+        int length = 4 * 2;
+        if (data.length != length) {
+            throw new IllegalArgumentException("Palette data must contain " + length + " bytes");
+        }
+        System.arraycopy(data, 0, paletteData, paletteIndex * length, length);
+    }
+
     public void restoreData(byte[] data, byte index) {
         System.arraycopy(data, 0, paletteData, 0, Math.min(data.length, paletteData.length));
         setPaletteIndex(index);

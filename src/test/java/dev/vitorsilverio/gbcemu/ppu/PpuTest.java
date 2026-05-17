@@ -5,7 +5,9 @@ import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -185,6 +187,49 @@ class PpuTest {
 
         renderFirstPixel(ppu);
         assertEquals(0xFF00FF00, getRenderedPixel(ppu, 0, 0));
+    }
+
+    @Test
+    void debugTileMapUsesCgbPaletteWhenPpuIsInDmgCompatibilityMode() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        ppu.setCgbMode(false);
+        ppu.write(0xFF47, (byte) 0x04);
+        setBgPaletteColor(ppu, 1, 0x001F);
+        ppu.write(0x9800, (byte) 0);
+        setTilePixel(ppu, 256, 0, 1);
+
+        BufferedImage image = ppu.debugTileMapImage(TileMapArea.IN_9800);
+
+        assertEquals(0xFFFF0000, image.getRGB(0, 0));
+    }
+
+    @Test
+    void appliesCgbCompatibilityPalettesToBackgroundAndObjectPaletteSlots() {
+        Ppu ppu = new Ppu(new Bus(), true);
+        CgbCompatibilityPaletteSelection selection = new CgbCompatibilityPaletteSelection(
+                0,
+                0,
+                16,
+                24,
+                116,
+                false
+        );
+
+        ppu.applyCgbCompatibilityPalettes(selection);
+        PpuState state = ppu.saveState();
+
+        assertArrayEquals(
+                CgbCompatibilityPaletteColors.littleEndianBytes(116),
+                Arrays.copyOfRange(state.bgPalette(), 0, 8)
+        );
+        assertArrayEquals(
+                CgbCompatibilityPaletteColors.littleEndianBytes(16),
+                Arrays.copyOfRange(state.objPalette(), 0, 8)
+        );
+        assertArrayEquals(
+                CgbCompatibilityPaletteColors.littleEndianBytes(24),
+                Arrays.copyOfRange(state.objPalette(), 8, 16)
+        );
     }
 
     @Test

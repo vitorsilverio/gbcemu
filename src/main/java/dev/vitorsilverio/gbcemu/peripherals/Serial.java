@@ -198,9 +198,18 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
 
     private int cyclesPerTransfer() {
         int cycles = (SC & CLOCK_SPEED) == 0
-                ? 4096
-                : 128;
+                ? NORMAL_SPEED_CYCLES_PER_TRANSFER
+                : FAST_SPEED_CYCLES_PER_TRANSFER;
+        if (isInternalClockSelected() && isDoubleSpeed()) {
+            cycles /= 2;
+        }
         return cycles;
+    }
+
+    private boolean isDoubleSpeed() {
+        return bus.findMemorySpace(Key1.class)
+                .map(Key1::isDoubleSpeed)
+                .orElse(false);
     }
 
     private void appendText(byte value) {

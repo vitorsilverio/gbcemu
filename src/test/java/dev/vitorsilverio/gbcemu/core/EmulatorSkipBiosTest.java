@@ -9,7 +9,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EmulatorSkipBiosTest {
@@ -55,6 +57,23 @@ class EmulatorSkipBiosTest {
 
         assertEquals(0x4300, cpu.bc());
         assertEquals(0x991A, cpu.hl());
+    }
+
+    @Test
+    void skipBiosAppliesDefaultCgbCompatibilityPalettesForNonNintendoDmgRom() throws IOException {
+        Emulator emulator = new Emulator(null, romFile(0x00, 0x00, 0x00, "HOME GAME"), null, true);
+
+        emulator.skipBios();
+        var ppu = emulator.createSaveStateFile().state().ppu();
+
+        assertArrayEquals(
+                new byte[]{(byte) 0xFF, 0x7F, (byte) 0xEF, 0x1B, (byte) 0x80, 0x61, 0x00, 0x00},
+                Arrays.copyOfRange(ppu.bgPalette(), 0, 8)
+        );
+        assertArrayEquals(
+                new byte[]{(byte) 0xFF, 0x7F, 0x1F, 0x42, (byte) 0xF2, 0x1C, 0x00, 0x00},
+                Arrays.copyOfRange(ppu.objPalette(), 0, 8)
+        );
     }
 
     private File romFile(int cgbFlag, int oldLicensee, int romSize, String title) throws IOException {

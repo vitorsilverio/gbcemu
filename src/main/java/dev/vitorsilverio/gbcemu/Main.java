@@ -65,8 +65,8 @@ public class Main {
 
                 Options:
                   --rom <path>        ROM file to load. Required.
-                  --bios <path>       BIOS file to load. Defaults to cgb_bios.bin.
-                  --no-bios           Do not load a BIOS file. Requires --skip-bios.
+                  --bios <path>       BIOS file to load. Defaults to the configured BIOS.
+                  --no-bios           Do not load a BIOS file; implies --skip-bios.
                   --save-file <path>  Save file path. Defaults to ROM name with .sav extension.
                   --no-save           Disable save file persistence.
                   --skip-bios         Start directly at 0x0100 using default boot registers.
@@ -389,7 +389,7 @@ public class Main {
 
     private static File defaultBiosFile() {
         String configured = settings.defaultBiosPath();
-        return configured == null || configured.isBlank() ? new File("cgb_bios.bin") : new File(configured);
+        return configured == null || configured.isBlank() ? null : new File(configured);
     }
 
     private static File currentDirectory() {
@@ -411,7 +411,8 @@ public class Main {
             String failSerial
     ) {
         static Options empty() {
-            return new Options(null, defaultBiosFile(), null, false, false, false, false, false, -1, false, "", "");
+            File biosFile = defaultBiosFile();
+            return new Options(null, biosFile, null, false, biosFile == null, false, false, false, -1, false, "", "");
         }
 
         static Options parse(String[] args) {
@@ -453,9 +454,6 @@ public class Main {
             if (help) {
                 return new Options(romFile, biosFile, saveFile, headless, skipBios, true, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
             }
-            if (noBios && !skipBios) {
-                throw new IllegalArgumentException("--no-bios requires --skip-bios");
-            }
             if (noSave && explicitSaveFile) {
                 throw new IllegalArgumentException("--no-save and --save-file cannot be used together");
             }
@@ -464,6 +462,9 @@ public class Main {
             }
             if (noBios) {
                 biosFile = null;
+            }
+            if (biosFile == null) {
+                skipBios = true;
             }
             return new Options(romFile, biosFile, noSave ? null : saveFile, headless, skipBios, false, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
         }
@@ -501,7 +502,11 @@ public class Main {
         private Options withRomFile(File romFile) {
             File resolvedSaveFile = noSave ? null : defaultSaveFile(romFile);
             File resolvedBiosFile = noBios ? null : defaultBiosFile();
-            return new Options(romFile, resolvedBiosFile, resolvedSaveFile, headless, skipBios, help, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
+            boolean skipBiosWasImpliedByMissingBios = skipBios && biosFile == null && !noBios;
+            boolean resolvedSkipBios = skipBiosWasImpliedByMissingBios
+                    ? resolvedBiosFile == null
+                    : skipBios || resolvedBiosFile == null;
+            return new Options(romFile, resolvedBiosFile, resolvedSaveFile, headless, resolvedSkipBios, help, noSave, noBios, maxFrames, dumpDebugOnExit, expectSerial, failSerial);
         }
 
     }

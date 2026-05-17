@@ -861,9 +861,9 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                     int tileX = cgbMode && map.isFlipX() ? 7 - x : x;
                     int tileY = cgbMode && map.isFlipY() ? 7 - y : y;
                     int colorIndex = tile.getPixel(tileX, tileY);
-                    int color = cgbMode
-                            ? bgPalette.getColor(map.getPaletteIndex(), colorIndex)
-                            : grayColor(bgPaletteDmg.getColor(colorIndex));
+                    int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
+                    int mappedColorIndex = cgbMode ? colorIndex : bgPaletteDmg.getColor(colorIndex);
+                    int color = bgPalette.getColor(paletteIndex, mappedColorIndex);
                     image.setRGB(baseX + x, baseY + y, color);
                 }
             }
@@ -886,6 +886,20 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             graphics.dispose();
         }
         return image;
+    }
+
+    public void setCgbBackgroundPaletteBytes(int paletteIndex, byte[] data) {
+        bgPalette.setPaletteBytes(paletteIndex, data);
+    }
+
+    public void setCgbObjectPaletteBytes(int paletteIndex, byte[] data) {
+        objPalette.setPaletteBytes(paletteIndex, data);
+    }
+
+    public void applyCgbCompatibilityPalettes(CgbCompatibilityPaletteSelection selection) {
+        setCgbObjectPaletteBytes(0, CgbCompatibilityPaletteColors.littleEndianBytes(selection.obj0PaletteWordOffset()));
+        setCgbObjectPaletteBytes(1, CgbCompatibilityPaletteColors.littleEndianBytes(selection.obj1PaletteWordOffset()));
+        setCgbBackgroundPaletteBytes(0, CgbCompatibilityPaletteColors.littleEndianBytes(selection.bgPaletteWordOffset()));
     }
 
     private int grayColor(int colorIndex) {

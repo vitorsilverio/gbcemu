@@ -58,6 +58,18 @@ class CartHeaderTest {
         assertEquals(0x88, header.getTitleChecksum());
     }
 
+    @Test
+    void cgbFlagIsNotIncludedInDisplayedTitle() {
+        byte[] rom = baseRom();
+        byte[] title = "CGB GAME".getBytes();
+        System.arraycopy(title, 0, rom, 0x0134, title.length);
+        rom[0x0143] = (byte) 0x80;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals("CGB GAME", header.getTitle());
+    }
+
     private byte[] baseRom() {
         byte[] rom = new byte[0x150];
         rom[0x0147] = 0x00;

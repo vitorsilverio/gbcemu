@@ -21,6 +21,8 @@ import dev.vitorsilverio.gbcemu.misc.*;
 import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import dev.vitorsilverio.gbcemu.peripherals.*;
+import dev.vitorsilverio.gbcemu.ppu.CgbCompatibilityPaletteSelection;
+import dev.vitorsilverio.gbcemu.ppu.CgbCompatibilityPaletteSelector;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.ppu.PpuMode;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
@@ -454,6 +456,7 @@ public class Emulator {
         Key0State key0State = key0.saveState();
         Key1State key1State = key1.saveState();
         CgbUndocumentedRegistersState cgbUndocumentedState = cgbUndocumentedRegisters.saveState();
+        CgbCompatibilityPaletteSelection compatibilityPaletteSelection = CgbCompatibilityPaletteSelector.select(cart.getHeader());
         StringBuilder builder = new StringBuilder();
         builder.append("{\n");
         builder.append("  \"metadata\": {\n");
@@ -520,7 +523,7 @@ public class Emulator {
         builder.append("  },\n");
         appendLinkDebugJson(builder);
         appendDmaDebugJson(builder, dmaState, hdmaState);
-        appendCgbRegistersDebugJson(builder, key0State, key1State, cgbUndocumentedState);
+        appendCgbRegistersDebugJson(builder, key0State, key1State, cgbUndocumentedState, compatibilityPaletteSelection);
         builder.append("  \"ppu\": {\n");
         DebugJson.appendBoolean(builder, "cgbMode", ppuSnapshot.cgbMode(), true, 4);
         DebugJson.appendHex(builder, "lcdc", ppuSnapshot.lcdc(), true, 4, 2);
@@ -596,7 +599,8 @@ public class Emulator {
             StringBuilder builder,
             Key0State key0State,
             Key1State key1State,
-            CgbUndocumentedRegistersState cgbUndocumentedState
+            CgbUndocumentedRegistersState cgbUndocumentedState,
+            CgbCompatibilityPaletteSelection compatibilityPaletteSelection
     ) {
         builder.append("  \"cgbRegisters\": {\n");
         DebugJson.appendHex(builder, "key0", key0State.key0() & 0xFF, true, 4, 2);
@@ -610,7 +614,18 @@ public class Emulator {
         DebugJson.appendHex(builder, "ff72", cgbUndocumentedState.ff72() & 0xFF, true, 4, 2);
         DebugJson.appendHex(builder, "ff73", cgbUndocumentedState.ff73() & 0xFF, true, 4, 2);
         DebugJson.appendHex(builder, "ff74", cgbUndocumentedState.ff74() & 0xFF, true, 4, 2);
-        DebugJson.appendHex(builder, "ff75", (0x8F | (cgbUndocumentedState.ff75() & 0x70)), false, 4, 2);
+        DebugJson.appendHex(builder, "ff75", (0x8F | (cgbUndocumentedState.ff75() & 0x70)), true, 4, 2);
+        DebugJson.appendBoolean(builder, "compatibilityNintendoLicensed", cart.getHeader().isNintendoLicensedForCgbCompatibilityPalettes(), true, 4);
+        DebugJson.appendHex(builder, "compatibilityOldLicensee", cart.getHeader().getOldLicenseeCode(), true, 4, 2);
+        DebugJson.appendString(builder, "compatibilityNewLicensee", cart.getHeader().getNewLicenseeCode(), true, 4);
+        DebugJson.appendHex(builder, "compatibilityTitleChecksum", cart.getHeader().getTitleChecksum(), true, 4, 2);
+        DebugJson.appendHex(builder, "compatibilityTitleFourthByte", cart.getHeader().getTitleByte(3), true, 4, 2);
+        DebugJson.appendNumber(builder, "compatibilityPaletteId", compatibilityPaletteSelection.paletteId(), true, 4);
+        DebugJson.appendNumber(builder, "compatibilityPaletteGroup", compatibilityPaletteSelection.paletteGroup(), true, 4);
+        DebugJson.appendNumber(builder, "compatibilityObj0PaletteWordOffset", compatibilityPaletteSelection.obj0PaletteWordOffset(), true, 4);
+        DebugJson.appendNumber(builder, "compatibilityObj1PaletteWordOffset", compatibilityPaletteSelection.obj1PaletteWordOffset(), true, 4);
+        DebugJson.appendNumber(builder, "compatibilityBgPaletteWordOffset", compatibilityPaletteSelection.bgPaletteWordOffset(), true, 4);
+        DebugJson.appendBoolean(builder, "compatibilityLogoTilemapRequired", compatibilityPaletteSelection.logoTilemapRequired(), false, 4);
         builder.append("  },\n");
     }
 
@@ -869,6 +884,8 @@ public class Emulator {
             cpu.setHl(0x000D);
             return;
         }
+        CgbCompatibilityPaletteSelection compatibilityPaletteSelection = CgbCompatibilityPaletteSelector.select(cart.getHeader());
+        ppu.applyCgbCompatibilityPalettes(compatibilityPaletteSelection);
         int b = cart.getHeader().isNintendoLicensedForCgbCompatibilityPalettes()
                 ? cart.getHeader().getTitleChecksum()
                 : 0x00;

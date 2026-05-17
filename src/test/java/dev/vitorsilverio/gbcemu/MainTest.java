@@ -58,17 +58,23 @@ class MainTest {
     }
 
     @Test
-    void noBiosRequiresSkipBiosAndClearsBiosFile() {
+    void noBiosImpliesSkipBiosAndClearsBiosFile() {
         Main.Options options = Main.Options.parse(new String[]{
                 "--headless",
-                "--skip-bios",
                 "--no-bios",
                 "--rom", "test-roms/instr_timing.gb"
         });
 
         assertNull(options.biosFile());
-        assertThrows(IllegalArgumentException.class, () ->
-                Main.Options.parse(new String[]{"--no-bios", "--rom", "test-roms/instr_timing.gb"}));
+        assertTrue(options.skipBios());
+    }
+
+    @Test
+    void missingConfiguredBiosDefaultsToSkipBios() {
+        Main.Options options = Main.Options.parse(new String[]{"--rom", "test-roms/pokemon.gbc"});
+
+        assertNull(options.biosFile());
+        assertTrue(options.skipBios());
     }
 
     @Test
@@ -84,7 +90,8 @@ class MainTest {
         Main.Options options = Main.Options.parse(new String[]{});
 
         assertNull(options.romFile());
-        assertEquals(new File("cgb_bios.bin"), options.biosFile());
+        assertNull(options.biosFile());
+        assertTrue(options.skipBios());
         assertNull(options.saveFile());
     }
 }
