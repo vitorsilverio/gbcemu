@@ -197,6 +197,52 @@ class CartTest {
     }
 
     @Test
+    void mbc3RtcPersistsToSidecarWithoutChangingRawSaveRam() throws IOException {
+        AtomicLong now = new AtomicLong(1_000);
+        File rom = writeRom(CartridgeType.MBC3_TIMER_RAM_BATTERY, 0x02, 0x02);
+        File save = tempDir.resolve("rtc-game.sav").toFile();
+        File rtc = tempDir.resolve("rtc-game.rtc").toFile();
+        Cart cart = CartFactory.fromFile(rom, save, now::get);
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x08);
+        cart.write(0xA000, (byte) 0x2A);
+        cart.write(0x4000, (byte) 0x00);
+        cart.write(0xA000, (byte) 0x55);
+        cart.flushSave();
+
+        assertEquals(0x2000, Files.size(save.toPath()));
+        assertEquals(true, rtc.isFile());
+
+        now.set(2_000);
+        Cart loaded = CartFactory.fromFile(rom, save, now::get);
+        loaded.write(0x0000, (byte) 0x0A);
+        loaded.write(0x4000, (byte) 0x08);
+
+        assertEquals(0x2A, loaded.read(0xA000) & 0xFF);
+
+        loaded.write(0x4000, (byte) 0x00);
+
+        assertEquals(0x55, loaded.read(0xA000) & 0xFF);
+    }
+
+    @Test
+    void mbc3TimerBatteryWithoutRamOnlyPersistsRtcSidecar() throws IOException {
+        File rom = writeRom(CartridgeType.MBC3_TIMER_BATTERY, 0x02, 0x00);
+        File save = tempDir.resolve("rtc-only.sav").toFile();
+        File rtc = tempDir.resolve("rtc-only.rtc").toFile();
+        Cart cart = CartFactory.fromFile(rom, save);
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x08);
+        cart.write(0xA000, (byte) 0x11);
+        cart.flushSave();
+
+        assertEquals(false, save.exists());
+        assertEquals(true, rtc.isFile());
+    }
+
+    @Test
     void mbc2UsesAddressBitEightToSelectRamEnableOrRomBank() throws IOException {
         Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC2, 0x04, 0x00));
 

@@ -127,6 +127,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Permitir testar eventos dependentes de horario sem alterar o relogio do sistema.
   - [x] Aplicar em cartuchos com RTC, especialmente MBC3.
   - [x] Persistir offset nas configuracoes, nao no save state nem no `.sav`.
+  - [x] Persistir estado do RTC de MBC3 em sidecar `.rtc`, mantendo `.sav` bruto e intercambiavel.
 
 - [ ] Infrared com hardware real.
   - Criar camada de transporte.

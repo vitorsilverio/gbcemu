@@ -3,7 +3,10 @@ package dev.vitorsilverio.gbcemu.cartridge;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.LongSupplier;
@@ -17,6 +20,7 @@ public class Mbc3Cart extends Cart {
     private int ramOrRtcSelect;
     private int latchValue = 0xFF;
     private boolean ramAndTimerEnabled;
+    private boolean rtcDirty;
 
     Mbc3Cart(byte[] rom, File saveFile, LongSupplier currentEpochSeconds) {
         super(rom, saveFile);
@@ -73,6 +77,7 @@ public class Mbc3Cart extends Cart {
         }
         if (ramOrRtcSelect >= 0x08 && ramOrRtcSelect <= 0x0C) {
             rtc.write(ramOrRtcSelect, value);
+            rtcDirty = true;
             markSaveDirty();
             return;
         }
@@ -80,13 +85,75 @@ public class Mbc3Cart extends Cart {
     }
 
     @Override
+    protected void loadSave() {
+        super.loadSave();
+        loadRtcSidecar();
+    }
+
+    @Override
+    void flushSave() {
+        if (ram.size() > 0) {
+            super.flushSave();
+        }
+        flushRtcSidecar();
+    }
+
+    @Override
     protected void loadExtraSaveData(DataInputStream input) throws IOException {
         rtc.load(input);
+        rtcDirty = true;
     }
 
     @Override
     protected void writeExtraSaveData(DataOutputStream output) throws IOException {
         rtc.save(output);
+    }
+
+    private void loadRtcSidecar() {
+        File rtcFile = rtcFile();
+        if (rtcFile == null || !rtcFile.isFile()) {
+            return;
+        }
+        try (DataInputStream input = new DataInputStream(new FileInputStream(rtcFile))) {
+            rtc.load(input);
+            rtcDirty = false;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load MBC3 RTC file: " + rtcFile, e);
+        }
+    }
+
+    private void flushRtcSidecar() {
+        if (saveFile == null || !header.getCartridgeType().hasTimer()) {
+            return;
+        }
+        File rtcFile = rtcFile();
+        if (rtcFile == null) {
+            return;
+        }
+        try {
+            File parent = rtcFile.getParentFile();
+            if (parent != null) {
+                Files.createDirectories(parent.toPath());
+            }
+            try (DataOutputStream output = new DataOutputStream(new FileOutputStream(rtcFile))) {
+                rtc.save(output);
+            }
+            rtcDirty = false;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to persist MBC3 RTC file: " + rtcFile, e);
+        }
+    }
+
+    private File rtcFile() {
+        if (saveFile == null) {
+            return null;
+        }
+        String path = saveFile.getAbsolutePath();
+        int dot = path.lastIndexOf('.');
+        if (dot >= 0) {
+            return new File(path.substring(0, dot) + ".rtc");
+        }
+        return new File(path + ".rtc");
     }
 
     private void latchRtc(int value) {
