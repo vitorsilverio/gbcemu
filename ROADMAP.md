@@ -197,6 +197,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [x] PCM registers (`FF76/FF77`) para saida digital da APU.
 - ROM+RAM, MBC1, MBC2, MBC3 com RTC, MBC5 e RAM externa.
 - MBC1 com registrador secundario, modo simple/advanced, ROM banking grande e RAM banking.
+- MBC3 limita selecao RAM/RTC a `$00-$07` e `$08-$0C`; valores invalidos nao acessam RAM por acidente.
 - Header de cartucho decodifica tamanho de ROM/RAM como unsigned e trata codigos especiais `$52`-`$54`.
 
 ### Faltante / Incerto

@@ -205,6 +205,23 @@ class CartTest {
     }
 
     @Test
+    void mbc3InvalidRamOrRtcSelectDoesNotAccessPreviousRamBank() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC3_RAM, 0x02, 0x02));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x00);
+        cart.write(0xA000, (byte) 0x44);
+        cart.write(0x4000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0x66);
+
+        assertEquals(0xFF, cart.read(0xA000) & 0xFF);
+
+        cart.write(0x4000, (byte) 0x00);
+
+        assertEquals(0x44, cart.read(0xA000) & 0xFF);
+    }
+
+    @Test
     void mbc3RtcLatchesCurrentTimeOnZeroToOneTransition() throws IOException {
         AtomicLong now = new AtomicLong(1_000);
         Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC3_TIMER_BATTERY, 0x02, 0x00), null, now::get);

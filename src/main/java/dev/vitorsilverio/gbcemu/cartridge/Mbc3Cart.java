@@ -64,8 +64,11 @@ public class Mbc3Cart extends Cart {
         if (!ramAndTimerEnabled) {
             return (byte) 0xFF;
         }
-        if (ramOrRtcSelect >= 0x08 && ramOrRtcSelect <= 0x0C) {
+        if (isRtcRegisterSelected()) {
             return rtc.read(ramOrRtcSelect);
+        }
+        if (!isRamBankSelected()) {
+            return (byte) 0xFF;
         }
         return readRam(ramBank, address);
     }
@@ -75,13 +78,24 @@ public class Mbc3Cart extends Cart {
         if (!ramAndTimerEnabled) {
             return;
         }
-        if (ramOrRtcSelect >= 0x08 && ramOrRtcSelect <= 0x0C) {
+        if (isRtcRegisterSelected()) {
             rtc.write(ramOrRtcSelect, value);
             rtcDirty = true;
             markSaveDirty();
             return;
         }
+        if (!isRamBankSelected()) {
+            return;
+        }
         writeRam(ramBank, address, value);
+    }
+
+    private boolean isRamBankSelected() {
+        return ramOrRtcSelect >= 0x00 && ramOrRtcSelect <= 0x07;
+    }
+
+    private boolean isRtcRegisterSelected() {
+        return ramOrRtcSelect >= 0x08 && ramOrRtcSelect <= 0x0C;
     }
 
     @Override
