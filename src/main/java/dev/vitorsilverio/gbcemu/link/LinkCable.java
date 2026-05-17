@@ -268,13 +268,16 @@ public class LinkCable implements MachineCycle, PacketListener {
             multiplayer.setLinkPollMode(LinkPollMode.IDLE);
             return;
         }
-        boolean transferWindow = localState.transferActive()
+        multiplayer.setLinkPollMode(isTransferWindow() ? LinkPollMode.TRANSFER : LinkPollMode.CONNECTED);
+    }
+
+    private boolean isTransferWindow() {
+        return localState.transferActive()
                 || localState.masterWaitingResponse()
                 || peerState.transferActive()
                 || pendingMasterTx != null
                 || pendingPartnerByte != null
                 || awaitingTransferResponse;
-        multiplayer.setLinkPollMode(transferWindow ? LinkPollMode.TRANSFER : LinkPollMode.CONNECTED);
     }
 
     private void drainPacketQueue() {

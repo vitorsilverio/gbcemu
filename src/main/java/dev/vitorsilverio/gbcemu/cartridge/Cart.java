@@ -209,7 +209,7 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
     protected void loadExtraSaveData(DataInputStream input) throws IOException {
     }
 
-    void flushSave() {
+    public void flushSave() {
         if (!saveDirty) {
             return;
         }

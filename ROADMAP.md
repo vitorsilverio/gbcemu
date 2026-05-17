@@ -14,12 +14,16 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - Janela unica de emulador sem launcher separado.
 - Menu para abrir ROM, configurar BIOS padrao, pausar, retomar e parar.
+- Menu para reiniciar a ROM atual sem reabrir arquivo, com atalho `F12`.
+- Dialogo de abrir ROM lembra a ultima pasta usada.
+- Titulo da janela volta para estado neutro ao parar a emulacao.
 - Argumentos de linha de comando: `--rom`, `--bios`, `--save-file`, `--headless`, `--skip-bios`, `--no-save`, `--no-bios`.
 - Sem BIOS configurada, o emulador usa `--skip-bios` automaticamente.
 - Configuracoes persistentes para tela, som, rewind e teclado.
 - Remapeamento de teclado.
-- Overlay visual para `PLAY`, `PAUSE`, `STOP` e `REW`.
+- Overlay visual para `PLAY`, `PAUSE`, `STOP`, `REW`, `SAVE` e `LOAD`.
 - Save states por jogo e por slot (`.sa0`, `.sa1`, `.saN`) com metadata, frame, PC e preview.
+- Save RAM e gravado ao parar/reiniciar a emulacao, nao apenas ao fechar a aplicacao.
 - Rewind inicial em memoria por snapshots intervalados.
 - GameShark com UI para colar listas grandes de codigos.
 - Debug separado por area:
@@ -48,6 +52,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Som.
   - [x] Controle.
   - [x] Mover configuracao de BIOS padrao para a janela de configuracoes.
+  - [x] Persistir posicao da janela principal e abrir multiplas instancias em cascata.
 
 - [ ] Gamepad.
   - Usar `input4j` ou alternativas de preferencia que não adicionem dependencia a JNI.
@@ -109,8 +114,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
       - [x] Barreira de 2 frames de diferenca implementada em `LinkCable.tick()`.
       - [x] Suficiente para trocas e batalhas sem pausar o emulador inteiro entre bytes.
     - [ ] **Fase 5 — I/O do transporte (`Multiplayer`), incluindo `drainReceive`.**
-      - **`drainReceive`:** apos `send()` do master, loop non-blocking em `read()` ate esvaziar buffer e entregar ao `Serial` na hora (nao esperar `tick()` com intervalo 4096).
-      - **Polling adaptativo:** intervalo grande quando idle (conectado sem transferencia quente); intervalo curto ou drain apenas em estado hot (`transferActive`, `masterWaitingResponse`, slave aguardando clock).
+      - [x] **`drainReceive`:** apos `send()` do master, loop non-blocking em `read()` ate esvaziar buffer e entregar ao `Serial` na hora (nao esperar `tick()` com intervalo 4096).
+      - [ ] **Polling adaptativo:** intervalo grande quando idle (conectado sem transferencia quente); intervalo curto ou drain apenas em estado hot (`transferActive`, `masterWaitingResponse`, slave aguardando clock).
       - Nao fazer poll a cada poucos ciclos durante toda a sessao (causa lentidao); clock CGB rapido (128 ciclos) exige resposta rapida so na janela da troca.
       - `drainReceive` e polling adaptativo entram aqui, apos o hub/protocolo/sync; o hub chama `drainReceive` no mesmo ponto em que hoje o master faz `send()`.
     - [ ] **Fase 6 — Testes.**
@@ -234,10 +239,21 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - [ ] PPU CGB edge cases.
   - Prioridade BG/window/sprite em CGB e modo compatibilidade DMG.
+    - [x] Prioridade CGB por ordem de OAM quando `OPRI=0`.
+    - [x] Modo compatibilidade DMG por coordenada X/ordem de OAM quando `OPRI=1`.
+    - [x] Atributo de prioridade OBJ respeita `LCDC.0` em CGB.
   - [x] Window usa contador interno de linha e so avanca quando a Window realmente inicia na scanline.
   - [x] Condicao `WY == LY` da Window fica latched no frame mesmo se `WY` mudar depois.
-  - Window edge cases restantes (`WX`, `WY`, reinicio por linha e glitches mid-scanline).
+  - [x] `LCDC.0` no CGB desliga prioridade BG/window contra sprites, mas nao apaga o BG.
+  - [x] Busca OAM em CGB coleta candidatos mesmo com `LCDC.1=0`; mistura final ainda respeita `LCDC.1`.
+  - Window edge cases restantes.
+    - `WX=0` com `SCX&7>0` encurta mode 3 em 1 dot.
+    - [x] `WX=166` permite disparo no fim da scanline; `WX=167` nao inicia Window.
+    - Alteracoes mid-scanline de `WX`, `WY` e `LCDC.5` ainda precisam de validacao visual.
   - Penalidades de fetch e impacto de sprites/window.
+    - Penalidade inicial por `SCX&7`.
+    - Penalidades por sprites encontrados no fetcher.
+    - Reinicio do fetcher quando Window inicia.
   - [x] Nao implementar corrupcao do `oam_bug`: Pan Docs documenta que CGB/AGB nao sao afetados, inclusive rodando software DMG.
   - [x] Manter apenas bloqueios CGB reais de OAM durante mode 2/3.
 

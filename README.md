@@ -20,7 +20,7 @@ Menus principais:
 
 - `Emulator > Start ROM...`: abre uma ROM `.gb` ou `.gbc`.
 - `Emulator > Settings...`: abre configuracoes em abas de geral, graficos, som e controles.
-- `Emulator > Pause`, `Resume`, `Stop`: controla a execucao.
+- `Emulator > Pause`, `Resume`, `Stop`, `Restart`: controla a execucao.
 - `Emulator > Save states`: salva/carrega slots por jogo e gerencia estados.
 - `Emulator > Cheats`: abre a janela de GameShark.
 - `Emulator > Multiplayer`: configura link cable experimental.
@@ -80,13 +80,14 @@ Observacoes:
 
 - Emulacao inicial de Game Boy Color com BIOS CGB.
 - Skip-bios automatico quando nenhuma BIOS padrao esta configurada.
-- MBC1, MBC3 com RTC, MBC5 e ROM-only.
-- RAM externa e save `.sav`.
+- MBC1, MBC2, MBC3 com RTC, MBC5, HuC1, HuC3, MMM01 e ROM-only.
+- RAM externa e save `.sav` bruto/intercambiavel com outros emuladores.
 - Save states por jogo e slots `.sa0`, `.sa1`, `.saN`, com metadata e preview.
 - Rewind por snapshots.
 - GameShark.
 - Filtros de tela, incluindo xBRZ.
 - Turbo configuravel por tecla segurada ou toggle, com audio silenciado e frameskip automatico durante a aceleracao.
+- Link cable experimental por TCP ou socket local.
 - Debug separado por area:
   - CPU/disassembly e breakpoints.
   - Memoria, bancos e edicao segura.
@@ -94,11 +95,12 @@ Observacoes:
   - Audio por canal.
   - Cart/MBC.
 - Dumps de debug para investigacao externa.
-- Multiplayer/link cable experimental.
+- Overlays visuais para pause, resume, stop, rewind, save e load.
 
 ## Limitações Conhecidas
 
-- `cgb_sound`, `cgb_timing` e partes de `oam_bug` ainda precisam ser corrigidos.
+- `cgb_sound` e `cgb_timing` ainda precisam ser corrigidos.
+- A corrupcao testada por `oam_bug` e DMG-only; o foco atual e manter os bloqueios CGB reais de OAM/VRAM.
 - Link cable ainda tem problemas de negociacao master/slave.
 - Gamepad ainda nao foi integrado.
 - Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.

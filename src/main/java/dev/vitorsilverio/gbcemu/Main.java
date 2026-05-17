@@ -18,6 +18,7 @@ import java.util.prefs.Preferences;
 public class Main {
 
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(Main.class);
+    private static final String LAST_ROM_DIRECTORY = "lastRomDirectory";
     private static AppSettings settings = AppSettings.load(PREFERENCES);
     private static Emulator activeEmulator;
     private static Options activeOptions;
@@ -89,6 +90,7 @@ public class Main {
                 Main::pauseEmulator,
                 Main::resumeEmulator,
                 Main::stopEmulator,
+                Main::restartEmulator,
                 Main::saveSnapshot,
                 Main::restoreSnapshot,
                 Main::rewindSnapshot,
@@ -214,7 +216,10 @@ public class Main {
         }
         SAVE_STATE_STORE.load(activeOptions.romFile(), 0)
                 .ifPresentOrElse(
-                        slot -> activeEmulator.restoreSaveStateFile(slot.saveStateFile()),
+                        slot -> {
+                            activeEmulator.restoreSaveStateFile(slot.saveStateFile());
+                            showOverlay(EmulatorWindow.OverlayIcon.LOAD);
+                        },
                         () -> JOptionPane.showMessageDialog(null,
                                 "Slot 0 is empty for this ROM.",
                                 "Save states",
@@ -252,6 +257,7 @@ public class Main {
         }
         try {
             SAVE_STATE_STORE.save(activeOptions.romFile(), 0, activeEmulator.createSaveStateFile());
+            showOverlay(EmulatorWindow.OverlayIcon.SAVE);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null,
                     "Failed to save slot 0: " + e.getMessage(),
@@ -311,8 +317,23 @@ public class Main {
         if (activeEmulator != null) {
             activeEmulator.stop();
             activeEmulator = null;
+            if (window != null) {
+                window.resetTitle();
+            }
             showOverlay(EmulatorWindow.OverlayIcon.STOP);
         }
+    }
+
+    private static void restartEmulator() {
+        if (activeOptions == null || activeOptions.romFile() == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Load a ROM before restarting.",
+                    "Restart",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        startEmulator(activeOptions);
+        showOverlay(EmulatorWindow.OverlayIcon.PLAY);
     }
 
     private static void showOverlay(EmulatorWindow.OverlayIcon icon) {
@@ -322,13 +343,18 @@ public class Main {
     }
 
     private static File chooseRomFile() {
-        JFileChooser chooser = new JFileChooser(currentDirectory());
+        JFileChooser chooser = new JFileChooser(lastRomDirectory());
         chooser.setDialogTitle("Open ROM");
         chooser.setFileFilter(new FileNameExtensionFilter("Games", "gb", "gbc"));
         if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
             return null;
         }
-        return chooser.getSelectedFile();
+        File selected = chooser.getSelectedFile();
+        File parent = selected.getParentFile();
+        if (parent != null) {
+            PREFERENCES.put(LAST_ROM_DIRECTORY, parent.getAbsolutePath());
+        }
+        return selected;
     }
 
     private static synchronized void startEmulator(Options options) {
@@ -394,6 +420,15 @@ public class Main {
 
     private static File currentDirectory() {
         return new File(System.getProperty("user.dir"));
+    }
+
+    private static File lastRomDirectory() {
+        String configured = PREFERENCES.get(LAST_ROM_DIRECTORY, "");
+        if (configured.isBlank()) {
+            return currentDirectory();
+        }
+        File directory = new File(configured);
+        return directory.isDirectory() ? directory : currentDirectory();
     }
 
     record Options(

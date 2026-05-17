@@ -105,7 +105,7 @@ public class Mbc3Cart extends Cart {
     }
 
     @Override
-    void flushSave() {
+    public void flushSave() {
         if (ram.size() > 0) {
             super.flushSave();
         }

@@ -99,7 +99,7 @@ public class Huc3Cart extends Cart {
     }
 
     @Override
-    void flushSave() {
+    public void flushSave() {
         super.flushSave();
         flushRtcSidecar();
     }

@@ -6,6 +6,7 @@ public record EmulatorMenuActions(
         Runnable pause,
         Runnable resume,
         Runnable stop,
+        Runnable restart,
         Runnable saveSnapshoot,
         Runnable restoreSnapshot,
         Runnable rewindSnapshot,

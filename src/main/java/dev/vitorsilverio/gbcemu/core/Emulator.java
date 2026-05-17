@@ -193,6 +193,9 @@ public class Emulator {
                 continue;
             }
             synchronized (stateLock) {
+                if (stopped) {
+                    break;
+                }
                 if (hdmaBlocksCpu()) {
                     tickSystemCycle();
                 } else {
@@ -279,6 +282,9 @@ public class Emulator {
     public void stop() {
         stopped = true;
         paused = false;
+        synchronized (stateLock) {
+            cart.flushSave();
+        }
         apu.close();
         if(multiplayer != null && multiplayer.isConnected()) {
             multiplayer.disconnect();

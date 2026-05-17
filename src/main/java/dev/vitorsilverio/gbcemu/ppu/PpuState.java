@@ -32,6 +32,7 @@ public record PpuState(
         boolean frameReady,
         boolean windowYCondition,
         int windowLineCounter,
-        boolean windowStartedOnLine
+        boolean windowStartedOnLine,
+        int spriteCandidateCount
 ) implements Serializable {
 }

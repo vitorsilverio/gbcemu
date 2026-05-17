@@ -6,15 +6,24 @@ import io.github.stanio.xbrz.awt.AwtXbrz;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.prefs.Preferences;
 
 public class EmulatorWindow {
 
     private static final int WIDTH = 160;
     private static final int HEIGHT = 144;
+    private static final Preferences PREFERENCES = Preferences.userNodeForPackage(EmulatorWindow.class);
+    private static final String WINDOW_X = "mainWindowX";
+    private static final String WINDOW_Y = "mainWindowY";
+    private static final String WINDOW_CASCADE = "mainWindowCascade";
+    private static final int WINDOW_CASCADE_STEP = 32;
+    private static final int WINDOW_CASCADE_SLOTS = 8;
 
     private final JFrame window = new JFrame("GBC EMU");
     private final JPanel screen;
@@ -28,6 +37,7 @@ public class EmulatorWindow {
     private Ppu ppu;
     private KeyListener keyListener;
     private OverlayIcon overlayIcon;
+    private boolean windowLocationInitialized;
 
     public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings) {
         int scale = settings.screenScale();
@@ -57,6 +67,7 @@ public class EmulatorWindow {
         installMenu(menuActions);
         installRewindHoldKey(menuActions);
         installWindowLifecycle(menuActions);
+        installWindowPositionPersistence();
         applyWindowMode();
     }
 
@@ -101,6 +112,7 @@ public class EmulatorWindow {
         } else {
             window.setExtendedState(JFrame.NORMAL);
             window.pack();
+            restoreWindowLocationIfNeeded();
         }
         if (visible) {
             window.setVisible(true);
@@ -159,6 +171,10 @@ public class EmulatorWindow {
         );
     }
 
+    public void resetTitle() {
+        SwingUtilities.invokeLater(() -> window.setTitle("GBC EMU"));
+    }
+
     private void detachKeyListener() {
         if (keyListener != null) {
             screen.removeKeyListener(keyListener);
@@ -189,6 +205,11 @@ public class EmulatorWindow {
         JMenuItem stop = new JMenuItem("Stop");
         stop.addActionListener(event -> menuActions.stop().run());
         emulatorMenu.add(stop);
+
+        JMenuItem restart = new JMenuItem("Restart");
+        restart.addActionListener(event -> menuActions.restart().run());
+        restart.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F12, 0));
+        emulatorMenu.add(restart);
 
         emulatorMenu.addSeparator();
 
@@ -302,6 +323,7 @@ public class EmulatorWindow {
         window.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent event) {
+                saveWindowLocation();
                 rewindHoldTimer.stop();
                 menuActions.stop().run();
             }
@@ -311,6 +333,57 @@ public class EmulatorWindow {
                 rewindHoldTimer.stop();
             }
         });
+    }
+
+    private void installWindowPositionPersistence() {
+        window.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent event) {
+                saveWindowLocation();
+            }
+        });
+    }
+
+    private void restoreWindowLocationIfNeeded() {
+        if (windowLocationInitialized) {
+            return;
+        }
+        windowLocationInitialized = true;
+        int x = PREFERENCES.getInt(WINDOW_X, Integer.MIN_VALUE);
+        int y = PREFERENCES.getInt(WINDOW_Y, Integer.MIN_VALUE);
+        if (x == Integer.MIN_VALUE || y == Integer.MIN_VALUE) {
+            window.setLocationByPlatform(true);
+            return;
+        }
+
+        int cascade = PREFERENCES.getInt(WINDOW_CASCADE, 0);
+        PREFERENCES.putInt(WINDOW_CASCADE, (cascade + 1) % WINDOW_CASCADE_SLOTS);
+        Rectangle bounds = new Rectangle(
+                x + cascade * WINDOW_CASCADE_STEP,
+                y + cascade * WINDOW_CASCADE_STEP,
+                window.getWidth(),
+                window.getHeight()
+        );
+        window.setLocation(clampToScreen(bounds).getLocation());
+    }
+
+    private void saveWindowLocation() {
+        if (fullscreen || !window.isShowing()) {
+            return;
+        }
+        Point location = window.getLocation();
+        PREFERENCES.putInt(WINDOW_X, location.x);
+        PREFERENCES.putInt(WINDOW_Y, location.y);
+    }
+
+    private Rectangle clampToScreen(Rectangle bounds) {
+        Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getMaximumWindowBounds();
+        int maxX = Math.max(screenBounds.x, screenBounds.x + screenBounds.width - bounds.width);
+        int maxY = Math.max(screenBounds.y, screenBounds.y + screenBounds.height - bounds.height);
+        int x = Math.max(screenBounds.x, Math.min(bounds.x, maxX));
+        int y = Math.max(screenBounds.y, Math.min(bounds.y, maxY));
+        return new Rectangle(x, y, bounds.width, bounds.height);
     }
 
     private void drawFrame(Graphics g) {
@@ -338,7 +411,9 @@ public class EmulatorWindow {
         Graphics2D g2 = (Graphics2D) g.create();
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int width = overlayIcon == OverlayIcon.PAUSE ? 96 : 88;
+            int width = overlayIcon == OverlayIcon.PAUSE
+                    || overlayIcon == OverlayIcon.SAVE
+                    || overlayIcon == OverlayIcon.LOAD ? 96 : 88;
             int x = screen.getWidth() - width - 16;
             int y = 14;
             int height = 42;
@@ -383,6 +458,17 @@ public class EmulatorWindow {
                 right.addPoint(x + 8, y + 11);
                 g2.fillPolygon(right);
             }
+            case SAVE -> {
+                g2.drawRect(x - 1, y + 1, 20, 18);
+                g2.drawLine(x + 3, y + 6, x + 15, y + 6);
+                g2.drawLine(x + 4, y + 15, x + 14, y + 15);
+            }
+            case LOAD -> {
+                g2.drawRect(x - 1, y + 1, 20, 18);
+                g2.drawLine(x + 9, y + 5, x + 9, y + 16);
+                g2.drawLine(x + 4, y + 11, x + 9, y + 16);
+                g2.drawLine(x + 14, y + 11, x + 9, y + 16);
+            }
         }
     }
 
@@ -390,7 +476,9 @@ public class EmulatorWindow {
         PLAY("PLAY"),
         PAUSE("PAUSE"),
         STOP("STOP"),
-        REWIND("REW");
+        REWIND("REW"),
+        SAVE("SAVE"),
+        LOAD("LOAD");
 
         private final String label;
 

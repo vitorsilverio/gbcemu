@@ -303,7 +303,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     private void prepareSpriteCandidatesForLine() {
         spriteCandidateCount = 0;
-        if (!control.isSpriteEnabled()) {
+        if (!cgbMode && !control.isSpriteEnabled()) {
             return;
         }
         currentSpriteHeight = control.getSpriteSize() == 0 ? 8 : 16;
@@ -684,7 +684,8 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 frameReady,
                 windowYCondition,
                 windowLineCounter,
-                windowStartedOnLine
+                windowStartedOnLine,
+                spriteCandidateCount
         );
     }
 
@@ -719,6 +720,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         windowYCondition = state.windowYCondition();
         windowLineCounter = state.windowLineCounter();
         windowStartedOnLine = state.windowStartedOnLine();
+        spriteCandidateCount = Math.max(0, Math.min(state.spriteCandidateCount(), spriteCandidates.length));
         normalizeRestoredState();
     }
 

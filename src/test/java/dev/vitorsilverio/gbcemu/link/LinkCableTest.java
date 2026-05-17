@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.link;
 
 import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
+import dev.vitorsilverio.gbcemu.multiplayer.LinkPollMode;
 import dev.vitorsilverio.gbcemu.multiplayer.PacketListener;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,5 +53,29 @@ class LinkCableTest {
         SerialLinkSnapshot peer = new SerialLinkSnapshot(true, false, false, false, 0x42, 0x80, 0);
         linkCable.onPacket(LinkProtocol.state(peer));
         assertEquals(peer, linkCable.peerState());
+    }
+
+    @Test
+    void hotTransferStateUsesTransferPolling() {
+        Multiplayer multiplayer = mock(Multiplayer.class);
+        when(multiplayer.isConnected()).thenReturn(true);
+        LinkCable linkCable = new LinkCable(multiplayer);
+        clearInvocations(multiplayer);
+
+        linkCable.reportLocalState(new SerialLinkSnapshot(true, true, false, true, 0xAA, 0x81, 0));
+
+        verify(multiplayer).setLinkPollMode(LinkPollMode.TRANSFER);
+    }
+
+    @Test
+    void idleStateUsesConnectedPolling() {
+        Multiplayer multiplayer = mock(Multiplayer.class);
+        when(multiplayer.isConnected()).thenReturn(true);
+        LinkCable linkCable = new LinkCable(multiplayer);
+        clearInvocations(multiplayer);
+
+        linkCable.reportLocalState(SerialLinkSnapshot.idle());
+
+        verify(multiplayer).setLinkPollMode(LinkPollMode.CONNECTED);
     }
 }

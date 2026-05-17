@@ -86,6 +86,26 @@ class PpuTest {
     }
 
     @Test
+    void wx166StartsWindowOnLastVisiblePixel() {
+        Ppu ppu = createWindowEdgePpu(166);
+
+        renderPixel(ppu, 159, 0);
+
+        assertEquals(0xFFFF0000, getRenderedPixel(ppu, 158, 0));
+        assertEquals(0xFF0000FF, getRenderedPixel(ppu, 159, 0));
+    }
+
+    @Test
+    void wx167DoesNotStartWindow() {
+        Ppu ppu = createWindowEdgePpu(167);
+
+        renderPixel(ppu, 159, 0);
+
+        assertEquals(0xFFFF0000, getRenderedPixel(ppu, 159, 0));
+        assertFalse(ppu.saveState().windowStartedOnLine());
+    }
+
+    @Test
     void spriteRendersOverBackgroundAndTreatsColorZeroAsTransparent() {
         Ppu ppu = new Ppu(new Bus());
         setBgPaletteColor(ppu, 1, 0x001F);
@@ -121,6 +141,57 @@ class PpuTest {
         renderFirstPixel(ppu);
 
         assertEquals(0xFFFF0000, getRenderedPixel(ppu, 0, 0));
+    }
+
+    @Test
+    void cgbLcdcBitZeroDisablesBgPriorityButKeepsBgVisible() {
+        Ppu ppu = new Ppu(new Bus());
+        setBgPaletteColor(ppu, 1, 0x001F);
+        setObjPaletteColor(ppu, 1, 0x03E0);
+        setTilePixel(ppu, 0, 0, 1);
+        setTilePixel(ppu, 2, 0, 1);
+        ppu.write(0x9800, (byte) 0);
+        ppu.write(0xFE00, (byte) 16);
+        ppu.write(0xFE01, (byte) 8);
+        ppu.write(0xFE02, (byte) 2);
+        ppu.write(0xFE03, (byte) 0x80);
+        ppu.write(0xFF40, (byte) 0x92);
+
+        renderPixel(ppu, 0, 0);
+        assertEquals(0xFF00FF00, getRenderedPixel(ppu, 0, 0));
+
+        ppu = new Ppu(new Bus());
+        setBgPaletteColor(ppu, 1, 0x7C00);
+        setTilePixel(ppu, 0, 0, 1);
+        ppu.write(0x9800, (byte) 0);
+        ppu.write(0xFF40, (byte) 0x90);
+
+        renderPixel(ppu, 0, 0);
+        assertEquals(0xFF0000FF, getRenderedPixel(ppu, 0, 0));
+    }
+
+    @Test
+    void cgbOamSearchKeepsSpriteCandidatesWhenSpritesAreDisabled() {
+        Ppu ppu = new Ppu(new Bus());
+        ppu.write(0xFE00, (byte) 16);
+        ppu.write(0xFE01, (byte) 8);
+        ppu.write(0xFF40, (byte) 0x80);
+
+        tick(ppu, 80);
+
+        assertEquals(1, ppu.saveState().spriteCandidateCount());
+    }
+
+    @Test
+    void dmgOamSearchIgnoresSpriteCandidatesWhenSpritesAreDisabled() {
+        Ppu ppu = new Ppu(new Bus(), false);
+        ppu.write(0xFE00, (byte) 16);
+        ppu.write(0xFE01, (byte) 8);
+        ppu.write(0xFF40, (byte) 0x80);
+
+        tick(ppu, 80);
+
+        assertEquals(0, ppu.saveState().spriteCandidateCount());
     }
 
     @Test
@@ -462,6 +533,20 @@ class PpuTest {
         int bit = 7 - x;
         ppu.write(address, (byte) ((colorIndex & 0x01) << bit));
         ppu.write(address + 1, (byte) (((colorIndex >> 1) & 0x01) << bit));
+    }
+
+    private Ppu createWindowEdgePpu(int wx) {
+        Ppu ppu = new Ppu(new Bus());
+        setBgPaletteColor(ppu, 1, 0x001F);
+        setBgPaletteColor(ppu, 2, 0x7C00);
+        ppu.write(0x8000, (byte) 0xFF);
+        ppu.write(0x8001, (byte) 0x00);
+        setTilePixel(ppu, 1, 0, 0, 2);
+        ppu.write(0x9C00, (byte) 1);
+        ppu.write(0xFF4A, (byte) 0);
+        ppu.write(0xFF4B, (byte) wx);
+        ppu.write(0xFF40, (byte) 0xF1);
+        return ppu;
     }
 
     private void renderFirstPixel(Ppu ppu) {
