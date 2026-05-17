@@ -9,9 +9,10 @@ public record SerialLinkSnapshot(
         boolean masterWaitingResponse,
         boolean master,
         int outgoingByte,
-        int sc
+        int sc,
+        long frameNumber
 ) {
     public static SerialLinkSnapshot idle() {
-        return new SerialLinkSnapshot(false, false, false, false, 0, 0);
+        return new SerialLinkSnapshot(false, false, false, false, 0, 0, 0);
     }
 }

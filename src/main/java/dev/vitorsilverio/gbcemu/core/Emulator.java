@@ -563,7 +563,12 @@ public class Emulator {
         DebugJson.appendNumber(builder, "tcpPort", multiplayer.lastTcpPort(), true, 4);
         DebugJson.appendBoolean(builder, "localTransferActive", local.transferActive(), true, 4);
         DebugJson.appendBoolean(builder, "localInternalClock", local.internalClock(), true, 4);
-        DebugJson.appendBoolean(builder, "localMasterWaitingResponse", local.masterWaitingResponse(), false, 4);
+        DebugJson.appendBoolean(builder, "localMasterWaitingResponse", local.masterWaitingResponse(), true, 4);
+        DebugJson.appendBoolean(builder, "effectiveMaster", linkCable.isEffectiveMaster(), true, 4);
+        var peer = linkCable.peerState();
+        DebugJson.appendBoolean(builder, "peerTransferActive", peer.transferActive(), true, 4);
+        DebugJson.appendBoolean(builder, "peerInternalClock", peer.internalClock(), true, 4);
+        DebugJson.appendBoolean(builder, "bothReadyForTransfer", linkCable.bothSidesReadyForTransfer(), false, 4);
         builder.append("  },\n");
     }
 

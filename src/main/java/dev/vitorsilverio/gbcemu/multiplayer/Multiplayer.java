@@ -14,18 +14,20 @@ import java.nio.file.Path;
 public class Multiplayer implements MachineCycle, AutoCloseable {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Multiplayer.class);
-    private static final int CHECK_INTERVAL = 4096;
+    private static final int MAX_DRAIN_READS_PER_CALL = 32;
+    private static final int RECEIVE_BUFFER_CAPACITY = 2048;
 
     private boolean connected = false;
     private boolean hosting = false;
     private SocketChannel channel;
     private ServerSocketChannel serverChannel;
-    private final ByteBuffer sendBuffer = ByteBuffer.allocate(1);
-    private final ByteBuffer receiveBuffer = ByteBuffer.allocate(1);
+    private final ByteBuffer sendBuffer = ByteBuffer.allocate(RECEIVE_BUFFER_CAPACITY);
+    private final ByteBuffer receiveBuffer = ByteBuffer.allocate(RECEIVE_BUFFER_CAPACITY);
     private SocketAddress address;
     private ProtocolFamily protocolFamily;
-    private ByteReceivedListener listener;
+    private PacketListener listener;
     private int ticks = 0;
+    private LinkPollMode pollMode = LinkPollMode.IDLE;
     private String status = "Disconnected";
     private String lastLocalPath = Path.of(System.getProperty("user.dir"), "gbcemu.sock").toString();
     private String lastTcpHost = "localhost";
@@ -46,8 +48,12 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         lastHostMode = normalized.multiplayerHostMode();
     }
 
-    public void setListener(ByteReceivedListener listener) {
+    public void setListener(PacketListener listener) {
         this.listener = listener;
+    }
+
+    public void setLinkPollMode(LinkPollMode mode) {
+        pollMode = mode == null ? LinkPollMode.IDLE : mode;
     }
 
     public void hostLocal(String pathStr) {
@@ -123,7 +129,7 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         try {
             channel = SocketChannel.open(protocolFamily);
             channel.connect(address);
-            channel.configureBlocking(false);
+            configureSocket(channel);
             connected = true;
             hosting = false;
             status = "Connected to " + address;
@@ -138,18 +144,17 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
     public void tick() {
         try {
             ticks++;
-            if (ticks < CHECK_INTERVAL) return;
+            if (ticks < pollMode.interval()) {
+                return;
+            }
             ticks = 0;
 
             acceptPendingConnection();
-            if (!connected || listener == null) return;
-
-            receiveBuffer.clear();
-            int bytesRead = channel.read(receiveBuffer);
-            if (bytesRead > 0) {
-                receiveBuffer.flip();
-                listener.onByteReceived(receiveBuffer.get());
+            if (!connected || listener == null) {
+                return;
             }
+
+            drainReceiveBounded();
         } catch (IOException e) {
             checkConnection(e);
             e.printStackTrace();
@@ -165,12 +170,18 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
             return;
         }
         channel = accepted;
-        channel.configureBlocking(false);
+        configureSocket(channel);
         connected = true;
-        hosting = false;
         status = "Connected to " + channel.getRemoteAddress();
         serverChannel.close();
         serverChannel = null;
+    }
+
+    private void configureSocket(SocketChannel socketChannel) throws IOException {
+        socketChannel.configureBlocking(false);
+        if (protocolFamily == StandardProtocolFamily.INET) {
+            socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+        }
     }
 
     private void checkConnection(Exception e) {
@@ -181,24 +192,73 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         }
     }
 
-
-    public void send(byte data) {
-        if (!connected) return;
-
+    public void sendControlPacket(byte[] packet) {
+        writePacket(packet);
         try {
-            sendBuffer.clear();
-            sendBuffer.put(data);
-            sendBuffer.flip();
-            channel.write(sendBuffer);
+            drainReceiveBounded();
         } catch (IOException e) {
+            checkConnection(e);
+            e.printStackTrace();
+        }
+    }
+
+    public void sendTransferByte(byte data) {
+        writePacket(new byte[]{data});
+        try {
+            drainReceiveBounded();
+        } catch (IOException e) {
+            checkConnection(e);
             e.printStackTrace();
         }
     }
 
 
+    private void writePacket(byte[] packet) {
+        if (!connected || packet == null || packet.length == 0) {
+            return;
+        }
+
+        try {
+            sendBuffer.clear();
+            sendBuffer.put(packet);
+            sendBuffer.flip();
+            int attempts = 0;
+            while (sendBuffer.hasRemaining() && attempts < 100) {
+                int written = channel.write(sendBuffer);
+                if (written == 0) {
+                    attempts++;
+                    Thread.yield();
+                } else {
+                    attempts = 0;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void drainReceiveBounded() throws IOException {
+        if (!connected || listener == null || channel == null) {
+            return;
+        }
+
+        for (int read = 0; read < MAX_DRAIN_READS_PER_CALL; read++) {
+            receiveBuffer.clear();
+            int bytesRead = channel.read(receiveBuffer);
+            if (bytesRead <= 0) {
+                return;
+            }
+            byte[] packet = new byte[bytesRead];
+            receiveBuffer.flip();
+            receiveBuffer.get(packet);
+            listener.onPacket(packet);
+        }
+    }
+
     public void disconnect() {
         connected = false;
         hosting = false;
+        setLinkPollMode(LinkPollMode.IDLE);
         try {
             if (channel != null && channel.isOpen()) {
                 channel.close();

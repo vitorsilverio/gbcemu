@@ -89,19 +89,23 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
     - [x] **Fase 1 — Camada `LinkCable` (simular o cabo).**
       - [x] Inserir entre `Serial` e `Multiplayer`: `Serial` nao chama `send()` direto no socket.
       - [x] `Serial` reporta estado (`SB`, `SC`, transferencia ativa, clock interno/externo, byte de saida) via `SerialLinkSnapshot`.
-      - [ ] Hub devolve eventos: par pronto, byte recebido, clock do parceiro, abort (Fase 2+; hoje so encaminha byte).
+      - [x] Hub devolve eventos: par pronto, byte recebido, clock do parceiro (Fase 2); abort futuro se necessario.
       - [x] Regra: so clock interno avanca contador e inicia troca; clock externo so completa com clock/byte do parceiro (`Serial` + `InMemoryLinkCablePair` nos testes).
-    - [ ] **Fase 2 — Protocolo de link (substituir byte solto no socket).**
-      - Frames versionados (ex. `HELLO`, `TRANSFER_REQUEST`, `TRANSFER_RESPONSE`).
-      - Confirmar ambos os lados com `SC bit 7 = 1` antes de trocar.
-      - Modelar troca como master inicia byte + slave responde, nao dois `send()` independentes.
-    - [ ] **Fase 3 — Eleicao / arbitragem master-slave.**
-      - Corrigir cenario em que os dois jogos ficam com clock interno (`SC` bit 0 = 1).
-      - Hub usa host/guest da rede para decidir quem emula o clock; nao reescrever `SC` no `write()` do jogo.
-      - Opcional se Red/Silver ja estaveis com um master e um slave manualmente.
-    - [ ] **Fase 4 — `LinkSync` para trades e batalhas.**
-      - Barreira leve apos IRQ serial nos dois lados (nao lockstep frame-a-frame no inicio).
-      - Suficiente para trocas e batalhas sem pausar o emulador inteiro entre bytes.
+    - [x] **Fase 2 — Protocolo de link (substituir byte solto no socket).**
+      - [x] Frames versionados (`HELLO`, `STATE`, `TRANSFER_REQUEST`, `TRANSFER_RESPONSE` em `LinkProtocol`).
+      - [x] `STATE` sincroniza `SC bit 7` remoto; troca nao exige os dois prontos no mesmo instante (handshake Pokemon).
+      - [x] Modelar troca como master inicia byte (`TRANSFER_REQUEST`) + slave responde (`TRANSFER_RESPONSE`).
+      - [x] **Consolidacao:** Protocolo agora e estritamente baseado em frames; bytes soltos sao descartados para evitar conflito com MAGIC (`0x7C`).
+    - [x] **Fase 3 — Eleicao / arbitragem master-slave.**
+      - [x] Corrigir cenario em que os dois jogos ficam com clock interno (`SC` bit 0 = 1).
+      - [x] Hub usa host/guest da rede para decidir quem emula o clock; nao reescrever `SC` no `write()` do jogo.
+      - [x] **Update:** Arbitragem dinamica no `read()` do `SC` e no `tick()` do Serial para garantir compatibilidade com Pokemon e Tetris.
+      - [x] Validado via `SerialLinkIntegrationTest.dualMasterArbitration`.
+    - [x] **Fase 4 — `LinkSync` para trades e batalhas.**
+      - [x] Barreira leve apos IRQ serial nos dois lados (nao lockstep frame-a-frame no inicio).
+      - [x] Sincronizacao de frames baseada em `Ppu.frameNumber` para evitar drift entre instancias.
+      - [x] Barreira de 2 frames de diferenca implementada em `LinkCable.tick()`.
+      - [x] Suficiente para trocas e batalhas sem pausar o emulador inteiro entre bytes.
     - [ ] **Fase 5 — I/O do transporte (`Multiplayer`), incluindo `drainReceive`.**
       - **`drainReceive`:** apos `send()` do master, loop non-blocking em `read()` ate esvaziar buffer e entregar ao `Serial` na hora (nao esperar `tick()` com intervalo 4096).
       - **Polling adaptativo:** intervalo grande quando idle (conectado sem transferencia quente); intervalo curto ou drain apenas em estado hot (`transferActive`, `masterWaitingResponse`, slave aguardando clock).

@@ -71,6 +71,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private int currentColumn;
     private int scrollX;
     private int scrollY;
+    private long frameNumber;
     private int penaltyDelay = 0;
     private int hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
     private ObjectPriorityMode objectPriorityMode = ObjectPriorityMode.CGB;
@@ -373,6 +374,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             if (currentLine == 144) {
                 mode = PpuMode.VBLANK;
                 frameReady = true;
+                frameNumber++;
                 bus.requestInterrupt(Interrupt.VBLANK);
             } else {
                 mode = PpuMode.OAM_READ;
@@ -598,6 +600,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         }
         frameReady = false;
         return true;
+    }
+
+    public long getFrameNumber() {
+        return frameNumber;
     }
 
     public boolean isHBlank() {
