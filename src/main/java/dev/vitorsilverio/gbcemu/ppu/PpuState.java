@@ -29,6 +29,9 @@ public record PpuState(
         int windowX,
         int windowY,
         boolean previousStatSignal,
-        boolean frameReady
+        boolean frameReady,
+        boolean windowYCondition,
+        int windowLineCounter,
+        boolean windowStartedOnLine
 ) implements Serializable {
 }

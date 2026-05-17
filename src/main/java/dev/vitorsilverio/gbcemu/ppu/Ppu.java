@@ -91,6 +91,9 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private int bgPixelColor;
     private boolean bgPixelPriority;
     private int resolvedPixelColor;
+    private boolean windowYCondition;
+    private int windowLineCounter;
+    private boolean windowStartedOnLine;
 
 
 
@@ -199,10 +202,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         int pixelX = (x + scrollX) & 0xFF;
         int pixelY = (y + scrollY) & 0xFF;
 
-        if (isWindowVisibleAt(x, y)) {
+        if (isWindowVisibleAt(x)) {
+            windowStartedOnLine = true;
             tileMapArea = control.getWindowTileArea();
             pixelX = x - (windowX - 7);
-            pixelY = y - windowY;
+            pixelY = windowLineCounter;
         }
 
         int indexY = ((pixelY / 8) % 32);
@@ -228,10 +232,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         bgPixelPriority = cgbMode && map.isPriority();
     }
 
-    private boolean isWindowVisibleAt(int x, int y) {
+    private boolean isWindowVisibleAt(int x) {
         return control.isWindowEnabled() &&
-                y >= windowY &&
+                windowYCondition &&
                 x >= windowX - 7 &&
+                windowX >= 0 &&
                 windowX <= 166 &&
                 windowY <= 143;
     }
@@ -369,15 +374,18 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private void execHBlank() {
         // Execute HBlank
         if (cycles == hBlankCycles - 1) {
+            finishVisibleScanline();
             currentLine++;
             cycles = -1;
             if (currentLine == 144) {
                 mode = PpuMode.VBLANK;
+                resetWindowFrameState();
                 frameReady = true;
                 frameNumber++;
                 bus.requestInterrupt(Interrupt.VBLANK);
             } else {
                 mode = PpuMode.OAM_READ;
+                beginVisibleScanline();
             }
         }
     }
@@ -392,6 +400,8 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         if (currentLine > 153) {
             currentLine = 0;
             mode = PpuMode.OAM_READ;
+            resetWindowFrameState();
+            beginVisibleScanline();
         }
     }
 
@@ -557,8 +567,14 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     private void writeControl(byte value) {
         boolean wasEnabled = control.isEnabled();
+        boolean wasWindowEnabled = control.isWindowEnabled();
         control.setData(value);
         boolean enabled = control.isEnabled();
+        if (cgbMode && wasWindowEnabled && !control.isWindowEnabled()) {
+            windowYCondition = false;
+            windowLineCounter = 0;
+            windowStartedOnLine = false;
+        }
         if (wasEnabled && !enabled) {
             disableLcd();
         } else if (!wasEnabled && enabled) {
@@ -578,6 +594,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
         mode = PpuMode.HBLANK;
         previousStatSignal = false;
+        resetWindowFrameState();
     }
 
     private void enableLcd() {
@@ -588,6 +605,27 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
         mode = PpuMode.OAM_READ;
         previousStatSignal = false;
+        resetWindowFrameState();
+        beginVisibleScanline();
+    }
+
+    private void resetWindowFrameState() {
+        windowYCondition = false;
+        windowLineCounter = 0;
+        windowStartedOnLine = false;
+    }
+
+    private void beginVisibleScanline() {
+        windowStartedOnLine = false;
+        if (currentLine == windowY) {
+            windowYCondition = true;
+        }
+    }
+
+    private void finishVisibleScanline() {
+        if (windowStartedOnLine) {
+            windowLineCounter = (windowLineCounter + 1) & 0xFF;
+        }
     }
 
     public BufferedImage getFrameBuffer() {
@@ -643,7 +681,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 windowX,
                 windowY,
                 previousStatSignal,
-                frameReady
+                frameReady,
+                windowYCondition,
+                windowLineCounter,
+                windowStartedOnLine
         );
     }
 
@@ -675,6 +716,9 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         windowY = state.windowY();
         previousStatSignal = state.previousStatSignal();
         frameReady = state.frameReady();
+        windowYCondition = state.windowYCondition();
+        windowLineCounter = state.windowLineCounter();
+        windowStartedOnLine = state.windowStartedOnLine();
         normalizeRestoredState();
     }
 

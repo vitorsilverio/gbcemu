@@ -53,6 +53,39 @@ class PpuTest {
     }
 
     @Test
+    void disablingWindowResetsCgbWindowLineCounter() {
+        Ppu ppu = new Ppu(new Bus());
+        ppu.write(0x9C00, (byte) 1);
+        ppu.write(0xFF4A, (byte) 0);
+        ppu.write(0xFF4B, (byte) 7);
+        ppu.write(0xFF40, (byte) 0xF1);
+
+        renderPixel(ppu, 159, 0);
+        tick(ppu, 204);
+        assertEquals(1, ppu.saveState().windowLineCounter());
+
+        ppu.write(0xFF40, (byte) 0x91);
+
+        assertEquals(0, ppu.saveState().windowLineCounter());
+    }
+
+    @Test
+    void windowYConditionStaysSetAfterWyChangesLaterInFrame() {
+        Ppu ppu = new Ppu(new Bus());
+        ppu.write(0xFF4A, (byte) 0);
+        ppu.write(0xFF4B, (byte) 7);
+        ppu.write(0xFF40, (byte) 0xF1);
+
+        renderPixel(ppu, 159, 0);
+        tick(ppu, 204);
+        assertTrue(ppu.saveState().windowYCondition());
+
+        ppu.write(0xFF4A, (byte) 16);
+
+        assertTrue(ppu.saveState().windowYCondition());
+    }
+
+    @Test
     void spriteRendersOverBackgroundAndTreatsColorZeroAsTransparent() {
         Ppu ppu = new Ppu(new Bus());
         setBgPaletteColor(ppu, 1, 0x001F);

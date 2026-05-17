@@ -234,9 +234,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - [ ] PPU CGB edge cases.
   - Prioridade BG/window/sprite em CGB e modo compatibilidade DMG.
-  - Window edge cases (`WX`, `WY`, reinicio por linha).
+  - [x] Window usa contador interno de linha e so avanca quando a Window realmente inicia na scanline.
+  - [x] Condicao `WY == LY` da Window fica latched no frame mesmo se `WY` mudar depois.
+  - Window edge cases restantes (`WX`, `WY`, reinicio por linha e glitches mid-scanline).
   - Penalidades de fetch e impacto de sprites/window.
-  - OAM bug apenas se afetar CGB real ou jogos CGB.
+  - [x] Nao implementar corrupcao do `oam_bug`: Pan Docs documenta que CGB/AGB nao sao afetados, inclusive rodando software DMG.
+  - [x] Manter apenas bloqueios CGB reais de OAM durante mode 2/3.
 
 - [ ] Paletas e boot behavior.
   - [x] `--skip-bios` usa registradores pos-BIOS CGB para ROMs CGB-compatible.
@@ -287,7 +290,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [x] `mem_timing`.
 - [x] `mem_timing-2`.
 - [x] `halt_bug`.
-- [ ] `oam_bug` apenas no que afetar CGB real.
+- [x] `oam_bug` ignorado como bug DMG-only; CGB real nao sofre a corrupcao testada por essa suite.
 - [x] `interrupt_time`.
 - [ ] `cgb_sound`.
 - [x] Automatizar execucao headless de test ROMs com leitura de serial.
