@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,6 +79,19 @@ class CartTest {
         cart.write(0x2000, (byte) 0x01);
 
         assertEquals(0x22, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void debugPropertiesExposeHeaderSizeAndChecksumValidation() throws IOException {
+        File rom = writeRom(CartridgeType.ROM_ONLY, (byte) 0x11, (byte) 0x22);
+        Cart cart = CartFactory.fromFile(rom);
+
+        Map<String, String> properties = cart.debugProperties();
+
+        assertEquals("32768 bytes", properties.get("Header ROM size"));
+        assertEquals("0 bytes", properties.get("Header RAM size"));
+        assertEquals("false", properties.get("Header checksum valid"));
+        assertEquals("false", properties.get("Global checksum valid"));
     }
 
     @Test

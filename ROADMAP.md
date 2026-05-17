@@ -203,6 +203,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Header de cartucho le exatamente 48 bytes do logo Nintendo em `$0104-$0133`.
 - Header de cartucho expoe checksum/global checksum como inteiros e valida header checksum oficial.
 - Header de cartucho calcula e valida global checksum ignorando `$014E-$014F`.
+- Debug de Cart/MBC expoe tamanho declarado pelo header e validade dos checksums.
 
 ### Faltante / Incerto
 
