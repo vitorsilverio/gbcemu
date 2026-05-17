@@ -24,7 +24,10 @@ public class CartHeader {
 
 
     public CartHeader(byte[] rom) {
-        entryPoint = ((rom[0x0104] & 0xFF) << 8) | (rom[0x0105] & 0xFF);
+        entryPoint = ((rom[0x0100] & 0xFF) << 24)
+                | ((rom[0x0101] & 0xFF) << 16)
+                | ((rom[0x0102] & 0xFF) << 8)
+                | (rom[0x0103] & 0xFF);
         nintendoLogo = new byte[0x3f];
         System.arraycopy(rom, 262, nintendoLogo, 0, nintendoLogo.length);
         titleBytes = new byte[16];
@@ -51,6 +54,10 @@ public class CartHeader {
 
     public CartridgeType getCartridgeType() {
         return cartridgeType;
+    }
+
+    public int getEntryPoint() {
+        return entryPoint;
     }
 
     public String getTitle() {
@@ -132,7 +139,7 @@ public class CartHeader {
     @Override
     public String toString() {
         return String.format("""
-                entryPoint: %04X
+                entryPoint: %08X
                 nintendoLogo: %s
                 title: %s
                 manufacturerCode: %s

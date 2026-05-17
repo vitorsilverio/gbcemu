@@ -105,6 +105,21 @@ class CartHeaderTest {
         assertEquals(0, header.getRamSizeBytes());
     }
 
+    @Test
+    void readsEntryPointFromHeaderEntryPointBytesNotNintendoLogo() {
+        byte[] rom = baseRom();
+        rom[0x0100] = (byte) 0xC3;
+        rom[0x0101] = 0x50;
+        rom[0x0102] = 0x01;
+        rom[0x0103] = 0x00;
+        rom[0x0104] = (byte) 0xCE;
+        rom[0x0105] = (byte) 0xED;
+
+        CartHeader header = new CartHeader(rom);
+
+        assertEquals(0xC3500100, header.getEntryPoint());
+    }
+
     private byte[] baseRom() {
         byte[] rom = new byte[0x150];
         rom[0x0147] = 0x00;
