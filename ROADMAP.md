@@ -55,6 +55,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Mapear botoes.
   - Persistir perfil por controle quando possivel.
   - Suportar rumble para cartuchos/jogos compativeis.
+  - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e futura integracao com controle.
 
 - [ ] Configuracao de audio mais completa.
   - Latencia/buffer.
@@ -268,7 +269,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] HuC3 inicial com ROM/RAM banking, selecao de modos e mailbox RTC minimo.
   - [x] HuC3 persiste mailbox/registradores RTC internos em sidecar `.huc3rtc`, mantendo `.sav` bruto.
   - [x] MMM01 inicial com modo unmapped mapeando o menu nos ultimos 32 KiB e entrada em modo mapped estilo MBC1.
-  - Possiveis proximos: MBC1M, MMM01 masks/multiplex completo, Pocket Camera, rumble nuances.
+  - [x] MMM01 aplica mascaras basicas de ROM/RAM para bits reservados pela selecao de jogo.
+  - Possiveis proximos: MBC1M, MMM01 multiplex completo, Pocket Camera, rumble nuances.
   - HuC3 ainda precisa RTC completo e speaker.
 
 ## Testes

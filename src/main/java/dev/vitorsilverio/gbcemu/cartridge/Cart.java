@@ -79,10 +79,20 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
         properties.put("RAM size", String.format("%d bytes", ram.size()));
         properties.put("RAM banks", String.valueOf(ram.bankCount()));
         properties.put("Current RAM bank", String.valueOf(ram.currentBank()));
+        properties.put("Rumble supported", String.valueOf(isRumbleSupported()));
+        properties.put("Rumble active", String.valueOf(isRumbleActive()));
         properties.put("Save file", saveFile == null ? "(none)" : saveFile.getAbsolutePath());
         properties.put("Save dirty", String.valueOf(saveDirty));
         putDebugProperties(properties);
         return properties;
+    }
+
+    public boolean isRumbleSupported() {
+        return header.getCartridgeType().hasRumble();
+    }
+
+    public boolean isRumbleActive() {
+        return false;
     }
 
     protected byte readFixedRom(int address) {

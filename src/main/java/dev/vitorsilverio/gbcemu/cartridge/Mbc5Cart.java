@@ -58,8 +58,13 @@ public class Mbc5Cart extends Cart {
         writeRam(ramBank, address, value);
     }
 
-    boolean isRumbleEnabled() {
+    @Override
+    public boolean isRumbleActive() {
         return rumbleEnabled;
+    }
+
+    boolean isRumbleEnabled() {
+        return isRumbleActive();
     }
 
     private int selectedRomBank() {

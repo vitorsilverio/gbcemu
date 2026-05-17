@@ -8,6 +8,8 @@ public class Mmm01Cart extends Cart {
     private int romBankLow;
     private int secondaryBank;
     private int ramBank;
+    private int romBankMask;
+    private int ramBankMask;
     private boolean ramEnabled;
     private boolean mapped;
     private boolean advancedBankingMode;
@@ -21,21 +23,27 @@ public class Mmm01Cart extends Cart {
         int unsigned = value & 0xFF;
         if (address < 0x2000) {
             ramEnabled = (unsigned & 0x0F) == 0x0A;
+            if (!mapped) {
+                ramBankMask = (unsigned >> 4) & 0x03;
+            }
             if (!mapped && (unsigned & 0x40) != 0) {
                 mapped = true;
             }
         } else if (address < 0x4000) {
-            romBankLow = unsigned & 0x1F;
+            romBankLow = mergeMaskedBits(romBankLow, unsigned & 0x1F, romBankMask);
             if (!mapped) {
                 secondaryBank = (unsigned >> 5) & 0x03;
             }
         } else if (address < 0x6000) {
-            ramBank = unsigned & 0x03;
+            ramBank = mergeMaskedBits(ramBank, unsigned & 0x03, ramBankMask);
             if (!mapped) {
                 secondaryBank = (unsigned >> 4) & 0x03;
             }
         } else if (address < 0x8000) {
             advancedBankingMode = (unsigned & 0x01) != 0;
+            if (!mapped) {
+                romBankMask = (unsigned >> 1) & 0x1E;
+            }
         } else if (address >= 0xA000 && address < 0xC000) {
             writeExternal(address, value);
         }
@@ -90,7 +98,8 @@ public class Mmm01Cart extends Cart {
     }
 
     private int selectedRomBank() {
-        int low = romBankLow == 0 ? 1 : romBankLow;
+        int unmaskedLow = romBankLow & ~romBankMask;
+        int low = unmaskedLow == 0 ? romBankLow | 1 : romBankLow;
         return (secondaryBank << 5) | low;
     }
 
@@ -98,11 +107,17 @@ public class Mmm01Cart extends Cart {
         return advancedBankingMode ? ramBank : 0;
     }
 
+    private int mergeMaskedBits(int previous, int next, int mask) {
+        return (previous & mask) | (next & ~mask);
+    }
+
     @Override
     protected void putMapperState(Map<String, Object> state) {
         state.put("romBankLow", romBankLow);
         state.put("secondaryBank", secondaryBank);
         state.put("ramBank", ramBank);
+        state.put("romBankMask", romBankMask);
+        state.put("ramBankMask", ramBankMask);
         state.put("ramEnabled", ramEnabled);
         state.put("mapped", mapped);
         state.put("advancedBankingMode", advancedBankingMode);
@@ -113,6 +128,8 @@ public class Mmm01Cart extends Cart {
         romBankLow = (int) state.getOrDefault("romBankLow", 0);
         secondaryBank = (int) state.getOrDefault("secondaryBank", 0);
         ramBank = (int) state.getOrDefault("ramBank", 0);
+        romBankMask = (int) state.getOrDefault("romBankMask", 0);
+        ramBankMask = (int) state.getOrDefault("ramBankMask", 0);
         ramEnabled = (boolean) state.getOrDefault("ramEnabled", false);
         mapped = (boolean) state.getOrDefault("mapped", false);
         advancedBankingMode = (boolean) state.getOrDefault("advancedBankingMode", false);
@@ -124,6 +141,8 @@ public class Mmm01Cart extends Cart {
         properties.put("MMM01 ROM low register", String.valueOf(romBankLow));
         properties.put("MMM01 secondary register", String.valueOf(secondaryBank));
         properties.put("MMM01 RAM register", String.valueOf(ramBank));
+        properties.put("MMM01 ROM mask", String.format("%02X", romBankMask));
+        properties.put("MMM01 RAM mask", String.format("%02X", ramBankMask));
         properties.put("MMM01 banking mode", advancedBankingMode ? "advanced" : "simple");
         properties.put("RAM enabled", String.valueOf(ramEnabled));
     }

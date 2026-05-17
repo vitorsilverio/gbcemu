@@ -145,6 +145,32 @@ class CartTest {
     }
 
     @Test
+    void mmm01RomMaskLocksSelectedLowRomBankBits() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MMM01, 0x20, 0x00));
+
+        cart.write(0x2000, (byte) 0x10);
+        cart.write(0x6000, (byte) 0x20);
+        cart.write(0x0000, (byte) 0x40);
+        cart.write(0x2000, (byte) 0x01);
+
+        assertEquals(0x11, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void mmm01RamMaskLocksSelectedRamBankBits() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MMM01_RAM, 0x02, 0x03));
+
+        cart.write(0x4000, (byte) 0x02);
+        cart.write(0x0000, (byte) 0x6A);
+        cart.write(0x6000, (byte) 0x01);
+        cart.write(0x4000, (byte) 0x00);
+        cart.write(0xA123, (byte) 0x37);
+        cart.write(0x4000, (byte) 0x02);
+
+        assertEquals(0x37, cart.read(0xA123) & 0xFF);
+    }
+
+    @Test
     void mbc3CanSelectRomBankTwenty() throws IOException {
         Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC3, 0x40, 0x00));
 
@@ -428,6 +454,8 @@ class CartTest {
         cart.write(0xA000, (byte) 0x99);
 
         assertEquals(0x99, cart.read(0xA000) & 0xFF);
+        assertEquals(true, cart.isRumbleSupported());
+        assertEquals(true, cart.isRumbleActive());
         assertEquals(true, ((Mbc5Cart) cart).isRumbleEnabled());
     }
 
