@@ -37,6 +37,41 @@ class CartTest {
     }
 
     @Test
+    void mbc1UsesSecondaryRegisterAsUpperRomBankBits() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC1, 0x40, 0x00));
+
+        cart.write(0x2000, (byte) 0x02);
+        cart.write(0x4000, (byte) 0x01);
+
+        assertEquals(0x22, cart.read(0x4000) & 0xFF);
+    }
+
+    @Test
+    void mbc1AdvancedModeMapsSecondaryRegisterIntoFixedRomArea() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC1, 0x40, 0x00));
+
+        cart.write(0x4000, (byte) 0x01);
+        cart.write(0x6000, (byte) 0x01);
+
+        assertEquals(0x20, cart.read(0x0000) & 0xFF);
+    }
+
+    @Test
+    void mbc1RamBankingUsesSecondaryRegisterOnlyInAdvancedMode() throws IOException {
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.MBC1_RAM, 0x02, 0x03));
+
+        cart.write(0x0000, (byte) 0x0A);
+        cart.write(0x4000, (byte) 0x01);
+        cart.write(0xA123, (byte) 0x44);
+
+        assertEquals(0x44, cart.read(0xA123) & 0xFF);
+
+        cart.write(0x6000, (byte) 0x01);
+
+        assertEquals(0x00, cart.read(0xA123) & 0xFF);
+    }
+
+    @Test
     void romOnlyIgnoresBankSwitchWrites() throws IOException {
         Cart cart = CartFactory.fromFile(writeRom(CartridgeType.ROM_ONLY, (byte) 0x11, (byte) 0x22));
 

@@ -194,6 +194,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Object priority mode (`OPRI`).
 - [x] PCM registers (`FF76/FF77`) para saida digital da APU.
 - ROM+RAM, MBC1, MBC2, MBC3 com RTC, MBC5 e RAM externa.
+- MBC1 com registrador secundario, modo simple/advanced, ROM banking grande e RAM banking.
 - Header de cartucho decodifica tamanho de ROM/RAM como unsigned e trata codigos especiais `$52`-`$54`.
 
 ### Faltante / Incerto
@@ -262,7 +263,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Priorizar conforme jogos reais.
   - [x] MBC2 com ROM banking, RAM interna 512 x 4-bit e save bruto de 512 bytes.
   - [x] HuC1 inicial com ROM/RAM banking e modo IR basico.
-  - Possiveis proximos: MMM01, HuC3, Pocket Camera, rumble nuances.
+  - Possiveis proximos: MBC1M, MMM01, HuC3, Pocket Camera, rumble nuances.
 
 ## Testes
 
