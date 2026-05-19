@@ -2,6 +2,8 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.controller.CompositeController;
+import dev.vitorsilverio.gbcemu.controller.GamepadController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.core.Emulator;
 import dev.vitorsilverio.gbcemu.gui.EmulatorMenuActions;
@@ -331,13 +333,15 @@ public class Main {
         }
         KeyboardController player1Controller = new KeyboardController(settings);
         KeyboardController player2Controller = new KeyboardController(player2KeyCodes(), 0, false);
+        CompositeController player1Input = new CompositeController(player1Controller, new GamepadController(0));
+        CompositeController player2Input = new CompositeController(player2Controller, new GamepadController(1));
         activeEmulator = Emulator.linked(
                 new Emulator.PlayerConfig(
                         player1Options.biosFile(),
                         player1Options.romFile(),
                         player1Options.saveFile(),
                         window,
-                        player1Controller,
+                        player1Input,
                         player1Controller,
                         player1Options.skipBios(),
                         false
@@ -347,7 +351,7 @@ public class Main {
                         player2Options.romFile(),
                         player2Options.saveFile(),
                         window,
-                        player2Controller,
+                        player2Input,
                         player2Controller,
                         player2Options.skipBios(),
                         true

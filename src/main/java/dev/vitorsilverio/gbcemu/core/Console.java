@@ -6,7 +6,9 @@ import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.connection.DisconnectedPhysicalConnection;
+import dev.vitorsilverio.gbcemu.controller.CompositeController;
 import dev.vitorsilverio.gbcemu.controller.Controller;
+import dev.vitorsilverio.gbcemu.controller.GamepadController;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
@@ -63,6 +65,8 @@ public class Console {
     private final CgbUndocumentedRegisters cgbUndocumentedRegisters;
     private final EmulatorWindow window;
     private final KeyboardController keyboardController;
+    private final GamepadController gamepadController;
+    private final Controller controller;
     private final GameSharkDevice gameSharkDevice;
     private final Cart cart;
     private final File romFile;
@@ -183,11 +187,12 @@ public class Console {
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
         keyboardController = headless || controllerOverride != null ? null : new KeyboardController(this.settings);
+        gamepadController = headless || controllerOverride != null ? null : new GamepadController(0);
         this.externallyThrottled = externallyThrottled;
-        Controller controller = controllerOverride != null
+        this.controller = controllerOverride != null
                 ? controllerOverride
-                : headless ? new IdleController() : keyboardController;
-        var joypad = new Joypad(bus, controller);
+                : headless ? new IdleController() : new CompositeController(keyboardController, gamepadController);
+        var joypad = new Joypad(bus, this.controller);
         bus.addMemorySpace(joypad);
         workRam = new WorkRam();
         bus.addMemorySpace(workRam);
@@ -393,6 +398,14 @@ public class Console {
         paused = false;
         synchronized (stateLock) {
             cart.flushSave();
+        }
+        if (controller instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception ignored) {
+            }
+        } else if (gamepadController != null) {
+            gamepadController.close();
         }
         apu.close();
     }

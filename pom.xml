@@ -67,6 +67,12 @@
             <version>1.8.2</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>de.gurkenlabs</groupId>
+            <artifactId>input4j</artifactId>
+            <version>1.2.0</version>
+            <scope>runtime</scope>
+        </dependency>
 
     </dependencies>
     <build>

@@ -55,11 +55,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Persistir posicao da janela principal e abrir multiplas instancias em cascata.
 
 - [ ] Gamepad.
-  - Usar `input4j` ou alternativas de preferencia que não adicionem dependencia a JNI.
-  - Detectar controles.
-  - Mapear botoes.
-  - Persistir perfil por controle quando possivel.
-  - Suportar rumble para cartuchos/jogos compativeis.
+  - [x] Integrar `input4j` de forma opcional em runtime.
+  - [x] Detectar controles.
+  - [x] Mapear botoes/eixos comuns para Player 1 e Player 2.
+  - [ ] UI para escolher dispositivo e remapear botoes/eixos do gamepad.
+  - [ ] Persistir perfil por controle quando possivel.
+  - [ ] Suportar rumble para cartuchos/jogos compativeis.
   - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e futura integracao com controle.
 
 - [ ] Configuracao de audio mais completa.
