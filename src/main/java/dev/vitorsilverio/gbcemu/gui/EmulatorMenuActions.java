@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.gui;
 
 public record EmulatorMenuActions(
         Runnable openRom,
+        Runnable openLinkedSession,
         Runnable openSettings,
         Runnable pause,
         Runnable resume,
@@ -19,7 +20,6 @@ public record EmulatorMenuActions(
         Runnable cpuDebugger,
         Runnable cartDebugger,
         Runnable dumpDebugBundle,
-        Runnable dumpMemoryBanks,
-        Runnable multiplayer
+        Runnable dumpMemoryBanks
 ) {
 }

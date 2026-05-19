@@ -1,9 +1,9 @@
 package dev.vitorsilverio.gbcemu.multiplayer;
 
 public enum LinkPollMode {
-    IDLE(4096),
-    CONNECTED(1024),
-    TRANSFER(64);
+    IDLE(2048),
+    CONNECTED(128),
+    TRANSFER(8);
 
     private final int interval;
 

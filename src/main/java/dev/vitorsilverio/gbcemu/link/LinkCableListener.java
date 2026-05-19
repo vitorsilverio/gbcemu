@@ -1,6 +1,12 @@
 package dev.vitorsilverio.gbcemu.link;
 
-@FunctionalInterface
+import java.util.OptionalInt;
+
 public interface LinkCableListener {
-    void onPeerByteReceived(int value);
+    OptionalInt onExternalClockedByte(int value);
+
+    void onInternalClockResult(int value);
+
+    default void onLinkDisconnected() {
+    }
 }

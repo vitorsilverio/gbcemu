@@ -3,7 +3,8 @@ package dev.vitorsilverio.gbcemu.peripherals;
 import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.link.LinkCable;
-import dev.vitorsilverio.gbcemu.link.SerialLinkSnapshot;
+import dev.vitorsilverio.gbcemu.link.LinkCableListener;
+import dev.vitorsilverio.gbcemu.link.SerialLinkState;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> {
 
@@ -25,6 +27,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private static final int UNUSED_READ_BITS = 0x7C;
     private static final int NORMAL_SPEED_CYCLES_PER_TRANSFER = 4096;
     private static final int FAST_SPEED_CYCLES_PER_TRANSFER = 128;
+    private static final int TRANSFER_HISTORY_SIZE = 32;
 
     private final List<Integer> registers = List.of(SB_REGISTER, SC_REGISTER);
     private final Bus bus;
@@ -36,6 +39,15 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private int SC = 0;
     private int transferCyclesRemaining = 0;
     private int outgoingByte = 0;
+    private int lastCompletedOutgoingByte = 0xFF;
+    private int lastCompletedIncomingByte = 0xFF;
+    private long completedTransfers = 0;
+    private final int[] transferHistoryOutgoing = new int[TRANSFER_HISTORY_SIZE];
+    private final int[] transferHistoryIncoming = new int[TRANSFER_HISTORY_SIZE];
+    private final boolean[] transferHistoryInternalClock = new boolean[TRANSFER_HISTORY_SIZE];
+    private final boolean[] transferHistoryCompletedAsMaster = new boolean[TRANSFER_HISTORY_SIZE];
+    private int transferHistoryCursor = 0;
+    private int transferHistoryCount = 0;
     private boolean isTransferActive = false;
     private boolean isMasterWaitingResponse = false;
 
@@ -43,25 +55,60 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         this.bus = bus;
         this.linkCable = linkCable;
         if (linkCable != null) {
-            linkCable.attachSerial(this::onPeerByteReceived);
+            linkCable.attachSerial(new LinkCableListener() {
+                @Override
+                public OptionalInt onExternalClockedByte(int value) {
+                    return Serial.this.onExternalClockedByte(value);
+                }
+
+                @Override
+                public void onInternalClockResult(int value) {
+                    Serial.this.onInternalClockResult(value);
+                }
+
+                @Override
+                public void onLinkDisconnected() {
+                    Serial.this.onLinkDisconnected();
+                }
+            });
         }
     }
 
-    private void onPeerByteReceived(int received) {
+    private void onLinkDisconnected() {
+        if (isTransferActive && isMasterWaitingResponse) {
+            completeMasterTransfer(0xFF);
+        }
+    }
+
+    private OptionalInt onExternalClockedByte(int received) {
         if (!isTransferActive) {
+            return OptionalInt.empty();
+        }
+
+        int response = outgoingByte & 0xFF;
+        if (usesInternalClock()) {
+            if (linkCable != null && !linkCable.isEffectiveMaster()) {
+                completeSlaveTransfer(received);
+                return OptionalInt.of(response);
+            }
+            if (linkCable == null || linkCable.shouldCompleteInternalClockTransfer(isMasterWaitingResponse)) {
+                completeMasterTransfer(received);
+                return OptionalInt.of(response);
+            }
+            return OptionalInt.empty();
+        } else {
+            completeSlaveTransfer(received);
+            return OptionalInt.of(response);
+        }
+    }
+
+    private void onInternalClockResult(int received) {
+        if (!isTransferActive || !usesInternalClock()) {
             return;
         }
 
-        if (isMaster()) {
-            boolean isEffectiveMaster = linkCable == null || !linkCable.isConnected() || linkCable.isEffectiveMaster();
-            if (isMasterWaitingResponse || !isEffectiveMaster) {
-                completeMasterTransfer(received);
-            }
-        } else {
-            if (linkCable != null && linkCable.isConnected()) {
-                linkCable.onExternalClockRespond(outgoingByte);
-            }
-            completeSlaveTransfer(received);
+        if (linkCable == null || linkCable.shouldCompleteInternalClockTransfer(isMasterWaitingResponse)) {
+            completeMasterTransfer(received);
         }
     }
 
@@ -94,17 +141,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     public byte read(int address) {
         return (byte) switch (address) {
             case (SB_REGISTER) -> SB;
-            case (SC_REGISTER) -> {
-                int value = SC;
-                // Arbitration override: If both want to be Master, 
-                // the effective slave sees itself as Slave.
-                if (linkCable != null && linkCable.isConnected() && isInternalClockSelected()) {
-                    if (!linkCable.isEffectiveMaster()) {
-                        value &= ~CLOCK_SELECT;
-                    }
-                }
-                yield value | UNUSED_READ_BITS;
-            }
+            case (SC_REGISTER) -> visibleSerialControl() | UNUSED_READ_BITS;
             default -> 0;
         };
     }
@@ -115,10 +152,12 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
             SB = value & 0xFF;
         } else if (address == SC_REGISTER) {
             int previousSC = SC;
-            SC = value & (TRANSFER_START | CLOCK_SPEED | CLOCK_SELECT);
+            int written = value & (TRANSFER_START | CLOCK_SPEED | CLOCK_SELECT);
+            SC = linkCable == null ? written : linkCable.normalizeSerialControlWrite(written);
 
             boolean transferStartSet = (SC & TRANSFER_START) != 0;
             boolean wasTransferActive = (previousSC & TRANSFER_START) != 0;
+            boolean serialControlChanged = SC != previousSC;
 
             if (transferStartSet && !wasTransferActive) {
                 startTransfer();
@@ -127,16 +166,17 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
                 isMasterWaitingResponse = false;
                 isTransferActive = false;
                 publishLinkState();
+            } else if (isTransferActive && serialControlChanged) {
+                publishLinkState();
             }
         }
     }
 
     @Override
     public void tick() {
-        if (!isTransferActive || !isMaster() || isMasterWaitingResponse) return;
+        if (!isTransferActive || !usesInternalClock() || isMasterWaitingResponse) return;
 
-        // Effective Slave does not drive the clock
-        if (linkCable != null && linkCable.isConnected() && !linkCable.isEffectiveMaster()) {
+        if (linkCable != null && !linkCable.shouldDriveInternalClock()) {
             return;
         }
 
@@ -154,6 +194,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     }
 
     private void completeMasterTransfer(int received) {
+        recordCompletedTransfer(received, true);
         SB = received & 0xFF;
         SC &= ~TRANSFER_START;
         isTransferActive = false;
@@ -163,11 +204,25 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     }
 
     private void completeSlaveTransfer(int received) {
+        recordCompletedTransfer(received, false);
         SB = received & 0xFF;
         SC &= ~TRANSFER_START;
         isTransferActive = false;
+        isMasterWaitingResponse = false;
         publishLinkState();
         bus.requestInterrupt(Interrupt.SERIAL);
+    }
+
+    private void recordCompletedTransfer(int received, boolean completedAsMaster) {
+        lastCompletedOutgoingByte = outgoingByte & 0xFF;
+        lastCompletedIncomingByte = received & 0xFF;
+        transferHistoryOutgoing[transferHistoryCursor] = lastCompletedOutgoingByte;
+        transferHistoryIncoming[transferHistoryCursor] = lastCompletedIncomingByte;
+        transferHistoryInternalClock[transferHistoryCursor] = usesInternalClock();
+        transferHistoryCompletedAsMaster[transferHistoryCursor] = completedAsMaster;
+        transferHistoryCursor = (transferHistoryCursor + 1) % TRANSFER_HISTORY_SIZE;
+        transferHistoryCount = Math.min(transferHistoryCount + 1, TRANSFER_HISTORY_SIZE);
+        completedTransfers++;
     }
 
     private void startTransfer() {
@@ -183,17 +238,12 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
         if (linkCable == null) {
             return;
         }
-        long frameNumber = bus.findMemorySpace(dev.vitorsilverio.gbcemu.ppu.Ppu.class)
-                .map(dev.vitorsilverio.gbcemu.ppu.Ppu::getFrameNumber)
-                .orElse(0L);
-        linkCable.reportLocalState(new SerialLinkSnapshot(
+        linkCable.reportLocalState(new SerialLinkState(
                 isTransferActive,
                 isInternalClockSelected(),
                 isMasterWaitingResponse,
-                isMaster(),
                 outgoingByte,
-                SC,
-                frameNumber
+                SC
         ));
     }
 
@@ -231,7 +281,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     }
 
     public boolean isMaster() {
-        return isInternalClockSelected();
+        return usesInternalClock() && (linkCable == null || linkCable.isEffectiveMaster());
     }
 
     public boolean isTransferActive() {
@@ -243,10 +293,57 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     }
 
     public boolean isInternalClockSelected() {
+        return usesInternalClock();
+    }
+
+    private boolean usesInternalClock() {
         return (SC & CLOCK_SELECT) != 0;
+    }
+
+    private int visibleSerialControl() {
+        return linkCable == null ? SC : linkCable.visibleSerialControl(SC);
     }
 
     public boolean isFastClockSelected() {
         return (SC & CLOCK_SPEED) != 0;
+    }
+
+    public int lastCompletedOutgoingByte() {
+        return lastCompletedOutgoingByte;
+    }
+
+    public int lastCompletedIncomingByte() {
+        return lastCompletedIncomingByte;
+    }
+
+    public long completedTransfers() {
+        return completedTransfers;
+    }
+
+    public int transferHistoryCount() {
+        return transferHistoryCount;
+    }
+
+    public int transferHistoryOutgoing(int index) {
+        return transferHistoryOutgoing[historySlot(index)];
+    }
+
+    public int transferHistoryIncoming(int index) {
+        return transferHistoryIncoming[historySlot(index)];
+    }
+
+    public boolean transferHistoryInternalClock(int index) {
+        return transferHistoryInternalClock[historySlot(index)];
+    }
+
+    public boolean transferHistoryCompletedAsMaster(int index) {
+        return transferHistoryCompletedAsMaster[historySlot(index)];
+    }
+
+    private int historySlot(int index) {
+        if (index < 0 || index >= transferHistoryCount) {
+            throw new IndexOutOfBoundsException(index);
+        }
+        return Math.floorMod(transferHistoryCursor - transferHistoryCount + index, TRANSFER_HISTORY_SIZE);
     }
 }

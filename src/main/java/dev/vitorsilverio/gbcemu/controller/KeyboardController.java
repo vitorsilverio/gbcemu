@@ -26,17 +26,45 @@ public class KeyboardController implements Controller, KeyListener {
         applySettings(settings);
     }
 
+    public KeyboardController(int[] controllerKeyCodes, int turboKeyCode, boolean turboToggleMode) {
+        applyKeyCodes(controllerKeyCodes, turboKeyCode, turboToggleMode);
+    }
+
     public void applySettings(AppSettings settings) {
         int[] updated = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length + 1];
         for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {
             updated[i] = settings.controllerKeyCode(i);
         }
         updated[AppSettings.CONTROLLER_BUTTON_NAMES.length] = settings.turboKeyCode();
+        applyKeyCodes(updated, settings.turboKeyCode(), settings.turboToggleMode());
+    }
+
+    private void applyKeyCodes(int[] controllerKeyCodes, int turboKeyCode, boolean turboToggleMode) {
+        int[] updated = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length + 1];
+        int[] defaults = defaultKeyCodes();
+        for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {
+            int value = controllerKeyCodes != null && i < controllerKeyCodes.length ? controllerKeyCodes[i] : 0;
+            updated[i] = value > 0 ? value : defaults[i];
+        }
+        updated[AppSettings.CONTROLLER_BUTTON_NAMES.length] = turboKeyCode;
         keyCodes = updated;
-        turboToggleMode = settings.turboToggleMode();
+        this.turboToggleMode = turboToggleMode;
         turboPressed = false;
         turboKeyDown = false;
         releaseAll();
+    }
+
+    private int[] defaultKeyCodes() {
+        return new int[]{
+                KeyEvent.VK_Z,
+                KeyEvent.VK_X,
+                KeyEvent.VK_ENTER,
+                KeyEvent.VK_SPACE,
+                KeyEvent.VK_UP,
+                KeyEvent.VK_DOWN,
+                KeyEvent.VK_LEFT,
+                KeyEvent.VK_RIGHT
+        };
     }
 
     @Override
@@ -174,7 +202,7 @@ public class KeyboardController implements Controller, KeyListener {
     private int settingsTurboKey() {
         return keyCodes.length > AppSettings.CONTROLLER_BUTTON_NAMES.length
                 ? keyCodes[AppSettings.CONTROLLER_BUTTON_NAMES.length]
-                : KeyEvent.VK_TAB;
+                : 0;
     }
 
     private void emit(ButtonType buttonType) {

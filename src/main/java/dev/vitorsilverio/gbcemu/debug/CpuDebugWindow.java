@@ -6,6 +6,7 @@ import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.cpu.CpuState;
+import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
@@ -41,6 +42,7 @@ public class CpuDebugWindow {
     private final Bus bus;
     private final Ppu ppu;
     private final DebugController debugController;
+    private final LinkCable linkCable;
     private final DisassemblyCache disassemblyCache;
     private final JFrame window = new JFrame("CPU / Disassembly");
     private final Map<String, JTextField> stateFields = new LinkedHashMap<>();
@@ -54,11 +56,12 @@ public class CpuDebugWindow {
     private final JTextField watchAddress = new JTextField(4);
     private final JTextField watchValue = new JTextField(2);
 
-    public CpuDebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController) {
+    public CpuDebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, LinkCable linkCable) {
         this.cpu = cpu;
         this.bus = bus;
         this.ppu = ppu;
         this.debugController = debugController;
+        this.linkCable = linkCable;
         this.disassemblyCache = new DisassemblyCache(bus);
         initialize();
         refresh();
@@ -155,6 +158,9 @@ public class CpuDebugWindow {
         addStateField(panel, "LY");
         addStateField(panel, "LX");
         addStateField(panel, "Cycles");
+        addStateField(panel, "Link");
+        addStateField(panel, "LinkRole");
+        addStateField(panel, "LinkCollision");
         return panel;
     }
 
@@ -230,6 +236,19 @@ public class CpuDebugWindow {
         setState("LY", "%02X", ppuSnapshot.line());
         setState("LX", "%03d", ppuSnapshot.column());
         setState("Cycles", "%03d", ppuSnapshot.cycles());
+        refreshLinkFields();
+    }
+
+    private void refreshLinkFields() {
+        if (linkCable == null) {
+            stateFields.get("Link").setText("false");
+            stateFields.get("LinkRole").setText("-");
+            stateFields.get("LinkCollision").setText("false");
+            return;
+        }
+        stateFields.get("Link").setText(Boolean.toString(linkCable.isActive()));
+        stateFields.get("LinkRole").setText(linkCable.isEffectiveMaster() ? "master" : "slave");
+        stateFields.get("LinkCollision").setText(Boolean.toString(linkCable.hasDualMasterCollision()));
     }
 
     private void setState(String name, String format, Object... args) {
@@ -445,15 +464,19 @@ public class CpuDebugWindow {
         DebugJson.appendHex(builder, "sb", serialState.sb(), true, 4, 2);
         DebugJson.appendHex(builder, "sc", serialState.sc(), true, 4, 2);
         DebugJson.appendBoolean(builder, "transferActive", serial != null && serial.isTransferActive(), true, 4);
-        DebugJson.appendBoolean(builder, "master", serial != null && serial.isMaster(), true, 4);
         DebugJson.appendBoolean(builder, "internalClock", serial != null && serial.isInternalClockSelected(), true, 4);
         DebugJson.appendBoolean(builder, "fastClock", serial != null && serial.isFastClockSelected(), true, 4);
         DebugJson.appendBoolean(builder, "masterWaitingResponse", serial != null && serial.isMasterWaitingResponse(), true, 4);
         DebugJson.appendNumber(builder, "transferCyclesRemaining", serialState.transferCyclesRemaining(), true, 4);
         DebugJson.appendHex(builder, "outgoingByte", serialState.outgoingByte(), true, 4, 2);
+        DebugJson.appendHex(builder, "lastCompletedOutgoingByte", serial == null ? 0xFF : serial.lastCompletedOutgoingByte(), true, 4, 2);
+        DebugJson.appendHex(builder, "lastCompletedIncomingByte", serial == null ? 0xFF : serial.lastCompletedIncomingByte(), true, 4, 2);
+        DebugJson.appendLong(builder, "completedTransfers", serial == null ? 0L : serial.completedTransfers(), true, 4);
         DebugJson.appendString(builder, "pendingText", serialState.pendingText(), true, 4);
-        DebugJson.appendString(builder, "transcript", serial == null ? "" : serial.transcript(), false, 4);
+        DebugJson.appendString(builder, "transcript", serial == null ? "" : serial.transcript(), true, 4);
+        appendSerialTransferHistoryJson(builder, serial, 4);
         builder.append("  },\n");
+        appendLinkJson(builder);
         appendCartJson(builder, cart);
         appendMemoryBanksJson(builder);
         DebugJson.appendString(builder, "breakReason", debugController.breakReason(), true, 2);
@@ -475,6 +498,66 @@ public class CpuDebugWindow {
         builder.append("  ]\n");
         builder.append("}\n");
         return builder.toString();
+    }
+
+    private void appendLinkJson(StringBuilder builder) {
+        builder.append("  \"link\": ");
+        if (linkCable == null) {
+            builder.append("null,\n");
+            return;
+        }
+        var local = linkCable.localState();
+        var peer = linkCable.peerState();
+        builder.append("{\n");
+        DebugJson.appendBoolean(builder, "active", linkCable.isActive(), true, 4);
+        DebugJson.appendBoolean(builder, "connected", linkCable.isConnected(), true, 4);
+        DebugJson.appendBoolean(builder, "hosting", linkCable.isHosting(), true, 4);
+        DebugJson.appendBoolean(builder, "effectiveMaster", linkCable.isEffectiveMaster(), true, 4);
+        DebugJson.appendBoolean(builder, "dualMasterCollision", linkCable.hasDualMasterCollision(), true, 4);
+        DebugJson.appendLong(builder, "clockPulsesSent", linkCable.clockPulsesSent(), true, 4);
+        DebugJson.appendLong(builder, "clockPulsesReceived", linkCable.clockPulsesReceived(), true, 4);
+        DebugJson.appendLong(builder, "clockResponsesSent", linkCable.clockResponsesSent(), true, 4);
+        DebugJson.appendLong(builder, "clockResponsesReceived", linkCable.clockResponsesReceived(), true, 4);
+        DebugJson.appendLong(builder, "clockPulsesDiscarded", linkCable.clockPulsesDiscarded(), true, 4);
+        DebugJson.appendNumber(builder, "pendingIncomingClockCount", linkCable.pendingIncomingClockCount(), true, 4);
+        DebugJson.appendBoolean(builder, "pendingInternalClockByte", linkCable.hasPendingInternalClockByte(), true, 4);
+        DebugJson.appendBoolean(builder, "inFlightTransfer", linkCable.hasInFlightTransfer(), true, 4);
+        DebugJson.appendHex(builder, "lastClockPulseSent", linkCable.lastClockPulseSent(), true, 4, 2);
+        DebugJson.appendHex(builder, "lastClockPulseReceived", linkCable.lastClockPulseReceived(), true, 4, 2);
+        DebugJson.appendHex(builder, "lastClockResponseSent", linkCable.lastClockResponseSent(), true, 4, 2);
+        DebugJson.appendHex(builder, "lastClockResponseReceived", linkCable.lastClockResponseReceived(), true, 4, 2);
+        DebugJson.appendBoolean(builder, "localTransferActive", local.transferActive(), true, 4);
+        DebugJson.appendBoolean(builder, "localInternalClock", local.internalClock(), true, 4);
+        DebugJson.appendBoolean(builder, "localMasterWaitingResponse", local.masterWaitingResponse(), true, 4);
+        DebugJson.appendHex(builder, "localSc", local.sc(), true, 4, 2);
+        DebugJson.appendHex(builder, "localOutgoingByte", local.outgoingByte(), true, 4, 2);
+        DebugJson.appendBoolean(builder, "peerTransferActive", peer.transferActive(), true, 4);
+        DebugJson.appendBoolean(builder, "peerInternalClock", peer.internalClock(), true, 4);
+        DebugJson.appendHex(builder, "peerSc", peer.sc(), true, 4, 2);
+        DebugJson.appendHex(builder, "peerOutgoingByte", peer.outgoingByte(), false, 4, 2);
+        builder.append("  },\n");
+    }
+
+    private void appendSerialTransferHistoryJson(StringBuilder builder, Serial serial, int indent) {
+        DebugJson.appendIndent(builder, indent);
+        builder.append("\"recentTransfers\": [\n");
+        int count = serial == null ? 0 : serial.transferHistoryCount();
+        for (int index = 0; index < count; index++) {
+            DebugJson.appendIndent(builder, indent + 2);
+            builder.append("{\n");
+            DebugJson.appendHex(builder, "out", serial.transferHistoryOutgoing(index), true, indent + 4, 2);
+            DebugJson.appendHex(builder, "in", serial.transferHistoryIncoming(index), true, indent + 4, 2);
+            DebugJson.appendBoolean(builder, "internalClock", serial.transferHistoryInternalClock(index), true, indent + 4);
+            DebugJson.appendBoolean(builder, "completedAsMaster", serial.transferHistoryCompletedAsMaster(index), false, indent + 4);
+            DebugJson.appendIndent(builder, indent + 2);
+            builder.append('}');
+            if (index < count - 1) {
+                builder.append(',');
+            }
+            builder.append('\n');
+        }
+        DebugJson.appendIndent(builder, indent);
+        builder.append("]\n");
     }
 
     private void appendCartJson(StringBuilder builder, Cart cart) {

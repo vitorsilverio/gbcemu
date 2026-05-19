@@ -46,6 +46,7 @@ public class SettingsDialog extends JDialog {
     private final JSlider[] channelVolumes = new JSlider[4];
     private final JCheckBox[] channelMuted = new JCheckBox[4];
     private final KeyCaptureButton[] controllerKeys = new KeyCaptureButton[AppSettings.CONTROLLER_BUTTON_NAMES.length];
+    private final KeyCaptureButton[] player2ControllerKeys = new KeyCaptureButton[AppSettings.CONTROLLER_BUTTON_NAMES.length];
 
     public SettingsDialog(Frame owner, AppSettings settings, Consumer<AppSettings> onSave) {
         super(owner, "Settings", true);
@@ -73,6 +74,7 @@ public class SettingsDialog extends JDialog {
         }
         for (int i = 0; i < controllerKeys.length; i++) {
             controllerKeys[i] = new KeyCaptureButton(settings.controllerKeyCode(i));
+            player2ControllerKeys[i] = new KeyCaptureButton(settings.player2ControllerKeyCode(i));
         }
         initialize();
     }
@@ -161,10 +163,43 @@ public class SettingsDialog extends JDialog {
 
     private JPanel controlsPanel() {
         JPanel fields = new JPanel(new GridBagLayout());
+        addControlHeader(fields, 1, "Player 1");
+        addControlHeader(fields, 2, "Player 2");
         for (int i = 0; i < controllerKeys.length; i++) {
-            addRow(fields, i, "Button " + AppSettings.CONTROLLER_BUTTON_NAMES[i], controllerKeys[i]);
+            int row = i + 1;
+            addControlLabel(fields, row, AppSettings.CONTROLLER_BUTTON_NAMES[i]);
+            addControlButton(fields, row, 1, controllerKeys[i]);
+            addControlButton(fields, row, 2, player2ControllerKeys[i]);
         }
         return wrapPanel(fields);
+    }
+
+    private void addControlHeader(JPanel panel, int column, String text) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = column;
+        constraints.gridy = 0;
+        constraints.insets = new Insets(4, 6, 8, 6);
+        constraints.anchor = GridBagConstraints.WEST;
+        panel.add(new JLabel(text), constraints);
+    }
+
+    private void addControlLabel(JPanel panel, int row, String text) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = row;
+        constraints.insets = new Insets(4, 6, 4, 10);
+        constraints.anchor = GridBagConstraints.WEST;
+        panel.add(new JLabel(text), constraints);
+    }
+
+    private void addControlButton(JPanel panel, int row, int column, KeyCaptureButton button) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = column;
+        constraints.gridy = row;
+        constraints.insets = new Insets(4, 6, 4, 6);
+        constraints.weightx = 1;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(button, constraints);
     }
 
     private JPanel wrapPanel(JPanel fields) {
@@ -200,12 +235,14 @@ public class SettingsDialog extends JDialog {
         int[] channelValues = new int[4];
         boolean[] mutedValues = new boolean[4];
         int[] keyValues = new int[controllerKeys.length];
+        int[] player2KeyValues = new int[player2ControllerKeys.length];
         for (int i = 0; i < channelValues.length; i++) {
             channelValues[i] = channelVolumes[i].getValue();
             mutedValues[i] = channelMuted[i].isSelected();
         }
         for (int i = 0; i < keyValues.length; i++) {
             keyValues[i] = controllerKeys[i].keyCode();
+            player2KeyValues[i] = player2ControllerKeys[i].keyCode();
         }
         onSave.accept(new AppSettings(
                 (int) screenScale.getValue(),
@@ -219,6 +256,7 @@ public class SettingsDialog extends JDialog {
                 channelValues,
                 mutedValues,
                 keyValues,
+                player2KeyValues,
                 (int) turboMultiplier.getValue(),
                 turboKey.keyCode(),
                 turboToggleMode.isSelected(),

@@ -35,17 +35,23 @@ public class EmulatorWindow {
     private boolean xbrzFiltering;
     private boolean fullscreen;
     private Ppu ppu;
+    private Ppu secondaryPpu;
     private KeyListener keyListener;
+    private KeyListener secondaryKeyListener;
     private OverlayIcon overlayIcon;
     private boolean windowLocationInitialized;
 
     public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings) {
+        this(menuActions, settings, JFrame.EXIT_ON_CLOSE);
+    }
+
+    public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings, int closeOperation) {
         int scale = settings.screenScale();
         this.scale = Math.max(1, Math.min(8, scale));
         this.smoothScaling = settings.smoothScaling();
         this.xbrzFiltering = settings.xBrzFiltering();
         this.fullscreen = settings.fullscreen();
-        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setDefaultCloseOperation(closeOperation);
         window.setLocationByPlatform(true);
         screen = new JPanel() {
             @Override
@@ -61,7 +67,7 @@ public class EmulatorWindow {
         });
         overlayTimer.setRepeats(false);
         screen.setFocusable(true);
-        screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
+        updateScreenPreferredSize();
         window.setContentPane(screen);
         window.setResizable(false);
         installMenu(menuActions);
@@ -82,7 +88,7 @@ public class EmulatorWindow {
     public void setScale(int scale) {
         this.scale = Math.max(1, Math.min(8, scale));
         SwingUtilities.invokeLater(() -> {
-            screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
+            updateScreenPreferredSize();
             applyWindowMode();
             screen.repaint();
         });
@@ -94,7 +100,7 @@ public class EmulatorWindow {
         this.xbrzFiltering = settings.xBrzFiltering();
         this.fullscreen = settings.fullscreen();
         SwingUtilities.invokeLater(() -> {
-            screen.setPreferredSize(new Dimension(WIDTH * this.scale, HEIGHT * this.scale));
+            updateScreenPreferredSize();
             applyWindowMode();
             screen.repaint();
         });
@@ -134,24 +140,52 @@ public class EmulatorWindow {
         });
     }
 
+    public void attachSecondary(Ppu ppu, KeyListener keyListener) {
+        this.secondaryPpu = ppu;
+        SwingUtilities.invokeLater(() -> {
+            if (this.secondaryPpu != ppu) {
+                return;
+            }
+            detachSecondaryKeyListener();
+            this.secondaryKeyListener = keyListener;
+            if (keyListener != null) {
+                screen.addKeyListener(keyListener);
+            }
+            updateScreenPreferredSize();
+            applyWindowMode();
+            screen.repaint();
+        });
+    }
+
     public void detach(Ppu expectedPpu) {
-        if (expectedPpu != null && ppu != expectedPpu) {
+        if (expectedPpu != null && ppu != expectedPpu && secondaryPpu != expectedPpu) {
             return;
         }
-        ppu = null;
+        if (expectedPpu == null || ppu == expectedPpu) {
+            ppu = null;
+        }
+        if (expectedPpu == null || secondaryPpu == expectedPpu) {
+            secondaryPpu = null;
+        }
         SwingUtilities.invokeLater(() -> {
-            if (expectedPpu != null && ppu != null && ppu != expectedPpu) {
+            if (expectedPpu != null
+                    && ppu != null
+                    && secondaryPpu != null
+                    && ppu != expectedPpu
+                    && secondaryPpu != expectedPpu) {
                 return;
             }
             detachKeyListener();
+            detachSecondaryKeyListener();
             repaintTimer.stop();
             rewindHoldTimer.stop();
+            updateScreenPreferredSize();
             screen.repaint();
         });
     }
 
     public void renderFrame(Ppu source) {
-        if (source == null || source != ppu) {
+        if (source == null || (source != ppu && source != secondaryPpu)) {
             return;
         }
         SwingUtilities.invokeLater(screen::repaint);
@@ -182,6 +216,18 @@ public class EmulatorWindow {
         }
     }
 
+    private void detachSecondaryKeyListener() {
+        if (secondaryKeyListener != null) {
+            screen.removeKeyListener(secondaryKeyListener);
+            secondaryKeyListener = null;
+        }
+    }
+
+    private void updateScreenPreferredSize() {
+        int screens = secondaryPpu == null ? 1 : 2;
+        screen.setPreferredSize(new Dimension(WIDTH * scale * screens, HEIGHT * scale));
+    }
+
 
     private void installMenu(EmulatorMenuActions menuActions) {
         JMenuBar menuBar = new JMenuBar();
@@ -191,6 +237,10 @@ public class EmulatorWindow {
         openRom.addActionListener(event -> menuActions.openRom().run());
         openRom.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         emulatorMenu.add(openRom);
+
+        JMenuItem openLinkedSession = new JMenuItem("Start linked session...");
+        openLinkedSession.addActionListener(event -> menuActions.openLinkedSession().run());
+        emulatorMenu.add(openLinkedSession);
 
         JMenuItem pause = new JMenuItem("Pause");
         pause.addActionListener(event -> menuActions.pause().run());
@@ -282,12 +332,6 @@ public class EmulatorWindow {
         openCheatsMenu.addActionListener(event -> menuActions.cheats().run());
         cheatMenu.add(openCheatsMenu);
         menuBar.add(cheatMenu);
-
-        JMenu multiplayerMenu = new JMenu("Multiplayer");
-        JMenuItem openMultiplayerMenu = new JMenuItem("Configure multiplayer");
-        openMultiplayerMenu.addActionListener(event -> menuActions.multiplayer().run());
-        multiplayerMenu.add(openMultiplayerMenu);
-        menuBar.add(multiplayerMenu);
 
         window.setJMenuBar(menuBar);
 
@@ -387,21 +431,31 @@ public class EmulatorWindow {
     }
 
     private void drawFrame(Graphics g) {
-        if(ppu!=null) {
-            Graphics2D graphics = (Graphics2D) g;
-            graphics.setRenderingHint(
-                    RenderingHints.KEY_INTERPOLATION,
-                    smoothScaling ? RenderingHints.VALUE_INTERPOLATION_BILINEAR : RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
-            );
-            Image frame = ppu.getFrameBuffer();
-            int drawWidth = fullscreen ? screen.getWidth() : WIDTH * scale;
+        Graphics2D graphics = (Graphics2D) g;
+        graphics.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                smoothScaling ? RenderingHints.VALUE_INTERPOLATION_BILINEAR : RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
+        );
+        if (secondaryPpu == null) {
+            drawPpuFrame(graphics, ppu, 0, fullscreen ? screen.getWidth() : WIDTH * scale, fullscreen ? screen.getHeight() : HEIGHT * scale);
+        } else {
+            int drawWidth = fullscreen ? screen.getWidth() / 2 : WIDTH * scale;
             int drawHeight = fullscreen ? screen.getHeight() : HEIGHT * scale;
-            if (xbrzFiltering) {
-                frame = AwtXbrz.scaleImage(frame, scale);
-            }
-            graphics.drawImage(frame, 0, 0, drawWidth, drawHeight, null);
+            drawPpuFrame(graphics, ppu, 0, drawWidth, drawHeight);
+            drawPpuFrame(graphics, secondaryPpu, drawWidth, drawWidth, drawHeight);
         }
         drawOverlay(g);
+    }
+
+    private void drawPpuFrame(Graphics2D graphics, Ppu source, int x, int drawWidth, int drawHeight) {
+        if (source == null) {
+            return;
+        }
+        Image frame = source.getFrameBuffer();
+        if (xbrzFiltering) {
+            frame = AwtXbrz.scaleImage(frame, scale);
+        }
+        graphics.drawImage(frame, x, 0, drawWidth, drawHeight, null);
     }
 
     private void drawOverlay(Graphics g) {

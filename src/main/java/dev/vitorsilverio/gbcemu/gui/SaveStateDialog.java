@@ -142,6 +142,8 @@ public class SaveStateDialog extends JDialog {
             selectSlot(slotIndex);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Failed to save state: " + e.getMessage(), "Save states", JOptionPane.ERROR_MESSAGE);
+        } catch (RuntimeException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Save states", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -150,8 +152,12 @@ public class SaveStateDialog extends JDialog {
         if (selected == null || selected.slot() == null) {
             return;
         }
-        restoreAction.accept(selected.slot().saveStateFile());
-        dispose();
+        try {
+            restoreAction.accept(selected.slot().saveStateFile());
+            dispose();
+        } catch (RuntimeException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Save states", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     private void selectSlot(int slotIndex) {

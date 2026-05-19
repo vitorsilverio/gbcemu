@@ -16,6 +16,7 @@ public record AppSettings(
         int[] audioChannelVolumes,
         boolean[] audioChannelMuted,
         int[] controllerKeyCodes,
+        int[] player2ControllerKeyCodes,
         int turboMultiplier,
         int turboKeyCode,
         boolean turboToggleMode,
@@ -42,6 +43,7 @@ public record AppSettings(
     private static final String AUDIO_CHANNEL_VOLUME_PREFIX = "audioChannelVolume";
     private static final String AUDIO_CHANNEL_MUTED_PREFIX = "audioChannelMuted";
     private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
+    private static final String PLAYER2_CONTROLLER_KEY_PREFIX = "player2ControllerKey";
     private static final String TURBO_MULTIPLIER = "turboMultiplier";
     private static final String TURBO_KEY = "turboKey";
     private static final String TURBO_TOGGLE_MODE = "turboToggleMode";
@@ -69,6 +71,7 @@ public record AppSettings(
                 new int[]{100, 100, 100, 100},
                 new boolean[4],
                 defaultControllerKeyCodes(),
+                defaultPlayer2ControllerKeyCodes(),
                 3,
                 KeyEvent.VK_TAB,
                 false,
@@ -90,12 +93,14 @@ public record AppSettings(
         int[] channelVolumes = new int[4];
         boolean[] channelMuted = new boolean[4];
         int[] controllerKeyCodes = new int[CONTROLLER_BUTTON_NAMES.length];
+        int[] player2ControllerKeyCodes = new int[CONTROLLER_BUTTON_NAMES.length];
         for (int i = 0; i < channelVolumes.length; i++) {
             channelVolumes[i] = clampPercent(preferences.getInt(AUDIO_CHANNEL_VOLUME_PREFIX + (i + 1), defaults.audioChannelVolumes[i]));
             channelMuted[i] = preferences.getBoolean(AUDIO_CHANNEL_MUTED_PREFIX + (i + 1), defaults.audioChannelMuted[i]);
         }
         for (int i = 0; i < controllerKeyCodes.length; i++) {
             controllerKeyCodes[i] = preferences.getInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.controllerKeyCodes[i]);
+            player2ControllerKeyCodes[i] = preferences.getInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.player2ControllerKeyCodes[i]);
         }
         return new AppSettings(
                 clamp(preferences.getInt(SCREEN_SCALE, defaults.screenScale), 1, 8),
@@ -109,6 +114,7 @@ public record AppSettings(
                 channelVolumes,
                 channelMuted,
                 controllerKeyCodes,
+                player2ControllerKeyCodes,
                 clamp(preferences.getInt(TURBO_MULTIPLIER, defaults.turboMultiplier), 1, 10),
                 preferences.getInt(TURBO_KEY, defaults.turboKeyCode),
                 preferences.getBoolean(TURBO_TOGGLE_MODE, defaults.turboToggleMode),
@@ -141,6 +147,7 @@ public record AppSettings(
         }
         for (int i = 0; i < controllerKeyCodes.length; i++) {
             preferences.putInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], controllerKeyCodes[i]);
+            preferences.putInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], player2ControllerKeyCodes[i]);
         }
         preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
         preferences.putInt(TURBO_KEY, turboKeyCode);
@@ -179,26 +186,30 @@ public record AppSettings(
         return controllerKeyCodes[index];
     }
 
+    public int player2ControllerKeyCode(int index) {
+        return player2ControllerKeyCodes[index];
+    }
+
     public long rtcOffsetTotalSeconds() {
         return (rtcOffsetHours * 3600L) + (rtcOffsetMinutes * 60L) + rtcOffsetSeconds;
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withMultiplayerConfig(
@@ -208,20 +219,25 @@ public record AppSettings(
             String tcpHost,
             int tcpPort
     ) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
     }
 
     public AppSettings normalized() {
         int[] volumes = Arrays.copyOf(audioChannelVolumes, 4);
         boolean[] muted = Arrays.copyOf(audioChannelMuted, 4);
         int[] keys = Arrays.copyOf(controllerKeyCodes, CONTROLLER_BUTTON_NAMES.length);
+        int[] player2Keys = Arrays.copyOf(player2ControllerKeyCodes, CONTROLLER_BUTTON_NAMES.length);
         for (int i = 0; i < volumes.length; i++) {
             volumes[i] = clampPercent(volumes[i]);
         }
         int[] defaults = defaultControllerKeyCodes();
+        int[] player2Defaults = defaultPlayer2ControllerKeyCodes();
         for (int i = 0; i < keys.length; i++) {
             if (keys[i] <= 0) {
                 keys[i] = defaults[i];
+            }
+            if (player2Keys[i] <= 0) {
+                player2Keys[i] = player2Defaults[i];
             }
         }
         return new AppSettings(
@@ -236,6 +252,7 @@ public record AppSettings(
                 volumes,
                 muted,
                 keys,
+                player2Keys,
                 clamp(turboMultiplier, 1, 10),
                 turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode,
                 turboToggleMode,
@@ -262,6 +279,19 @@ public record AppSettings(
                 KeyEvent.VK_DOWN,
                 KeyEvent.VK_LEFT,
                 KeyEvent.VK_RIGHT
+        };
+    }
+
+    private static int[] defaultPlayer2ControllerKeyCodes() {
+        return new int[]{
+                KeyEvent.VK_NUMPAD1,
+                KeyEvent.VK_NUMPAD2,
+                KeyEvent.VK_NUMPAD3,
+                KeyEvent.VK_NUMPAD0,
+                KeyEvent.VK_W,
+                KeyEvent.VK_S,
+                KeyEvent.VK_A,
+                KeyEvent.VK_D
         };
     }
 

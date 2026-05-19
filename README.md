@@ -19,12 +19,15 @@ Ao abrir sem argumentos, o emulador mostra a janela principal sem exigir ROM ime
 Menus principais:
 
 - `Emulator > Start ROM...`: abre uma ROM `.gb` ou `.gbc`.
+- `Emulator > Start linked session...`: abre duas ROMs lado a lado em uma sessao local de link cable em memoria.
+  - Player 1 usa o mapeamento configurado.
+  - Player 2 tem mapeamento proprio em `Settings > Controls`.
+  - Internamente, cada jogo roda como um `Console` dentro da mesma sessao `Emulator`, que coordena o tick dos dois.
 - `Emulator > Settings...`: abre configuracoes em abas de geral, graficos, som e controles.
 - `Emulator > Pause`, `Resume`, `Stop`, `Restart`: controla a execucao.
 - `Emulator > Save states`: salva/carrega slots por jogo e gerencia estados.
 - `Emulator > Cheats`: abre a janela de GameShark.
-- `Emulator > Multiplayer`: configura link cable experimental.
-- `Debug`: abre janelas separadas de CPU, memoria, PPU, audio, cart/MBC e dumps.
+- `Debug`: abre janelas separadas de CPU, memoria, PPU, audio, cart/MBC e dumps. Em sessao local de link, o debug pergunta qual console visualizar e o dump gera um indice da sessao com dumps separados por console.
 
 ## Linha De Comando
 
@@ -87,7 +90,6 @@ Observacoes:
 - GameShark.
 - Filtros de tela, incluindo xBRZ.
 - Turbo configuravel por tecla segurada ou toggle, com audio silenciado e frameskip automatico durante a aceleracao.
-- Link cable experimental por TCP ou socket local.
 - Debug separado por area:
   - CPU/disassembly e breakpoints.
   - Memoria, bancos e edicao segura.
@@ -99,9 +101,9 @@ Observacoes:
 
 ## Limitações Conhecidas
 
-- `cgb_sound` e `cgb_timing` ainda precisam ser corrigidos.
+- cgb timing ainda precisa ser corrigido.
 - A corrupcao testada por `oam_bug` e DMG-only; o foco atual e manter os bloqueios CGB reais de OAM/VRAM.
-- Link cable ainda tem problemas de negociacao master/slave.
+- Link cable local ainda e experimental: a sessao abre dois emuladores lado a lado na mesma instancia e usa cabo em memoria. TCP/netplay fica para o futuro.
 - Gamepad ainda nao foi integrado.
 - Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.
 - Build nativo com GraalVM no Windows ainda pode exigir ajustes de metadata AWT/Swing.

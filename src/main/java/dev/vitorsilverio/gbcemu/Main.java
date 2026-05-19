@@ -2,6 +2,7 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.controller.KeyboardController;
 import dev.vitorsilverio.gbcemu.core.Emulator;
 import dev.vitorsilverio.gbcemu.gui.EmulatorMenuActions;
 import dev.vitorsilverio.gbcemu.gui.EmulatorWindow;
@@ -86,6 +87,7 @@ public class Main {
     private static EmulatorMenuActions menuActions() {
         return new EmulatorMenuActions(
                 Main::openRomFromMenu,
+                Main::openLinkedSessionFromMenu,
                 Main::openSettings,
                 Main::pauseEmulator,
                 Main::resumeEmulator,
@@ -103,15 +105,8 @@ public class Main {
                 Main::openCpuDebugger,
                 Main::openCartDebugger,
                 Main::dumpDebugBundle,
-                Main::dumpMemoryBanks,
-                Main::configureMultiplayer
+                Main::dumpMemoryBanks
         );
-    }
-
-    private static void configureMultiplayer() {
-        if (activeEmulator != null) {
-            activeEmulator.openMultiplayerDialog(Main::applySettings);
-        }
     }
 
     private static void dumpMemoryBanks() {
@@ -214,6 +209,9 @@ public class Main {
         if (!hasActiveRomForSaveStates()) {
             return;
         }
+        if (isLinkOperationBlocked("Load state")) {
+            return;
+        }
         SAVE_STATE_STORE.load(activeOptions.romFile(), 0)
                 .ifPresentOrElse(
                         slot -> {
@@ -239,6 +237,12 @@ public class Main {
         if (activeEmulator == null) {
             return;
         }
+        if (activeEmulator.isLinkConnectionActive()) {
+            if (notifyWhenUnavailable) {
+                showLinkBlockedMessage("Rewind");
+            }
+            return;
+        }
         if (!activeEmulator.rewindOneSnapshot()) {
             if (notifyWhenUnavailable) {
                 JOptionPane.showMessageDialog(null,
@@ -253,6 +257,9 @@ public class Main {
 
     private static void saveSnapshot() {
         if (!hasActiveRomForSaveStates()) {
+            return;
+        }
+        if (isLinkOperationBlocked("Save state")) {
             return;
         }
         try {
@@ -281,6 +288,9 @@ public class Main {
         if (!hasActiveRomForSaveStates()) {
             return;
         }
+        if (isLinkOperationBlocked("Save states")) {
+            return;
+        }
         SaveStateDialog dialog = new SaveStateDialog(
                 activeOptions.romFile(),
                 SAVE_STATE_STORE,
@@ -299,9 +309,72 @@ public class Main {
         startEmulator(baseOptions.withRomFile(romFile));
     }
 
+    private static void openLinkedSessionFromMenu() {
+        File player1Rom = chooseRomFile("Open Player 1 ROM");
+        if (player1Rom == null) {
+            return;
+        }
+        File player2Rom = chooseRomFile("Open Player 2 ROM");
+        if (player2Rom == null) {
+            return;
+        }
+
+        Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
+        Options player1Options = baseOptions.withRomFile(player1Rom);
+        Options player2Options = baseOptions.withRomFile(player2Rom);
+        stopCurrentRuntime();
+        activeOptions = null;
+
+        if (window == null) {
+            window = new EmulatorWindow(menuActions(), settings);
+            window.show();
+        }
+        KeyboardController player1Controller = new KeyboardController(settings);
+        KeyboardController player2Controller = new KeyboardController(player2KeyCodes(), 0, false);
+        activeEmulator = Emulator.linked(
+                new Emulator.PlayerConfig(
+                        player1Options.biosFile(),
+                        player1Options.romFile(),
+                        player1Options.saveFile(),
+                        window,
+                        player1Controller,
+                        player1Controller,
+                        player1Options.skipBios(),
+                        false
+                ),
+                new Emulator.PlayerConfig(
+                        player2Options.biosFile(),
+                        player2Options.romFile(),
+                        player2Options.saveFile(),
+                        window,
+                        player2Controller,
+                        player2Controller,
+                        player2Options.skipBios(),
+                        true
+                ),
+                settings
+        );
+        Thread thread = new Thread(activeEmulator::start, "gbcemu-runtime");
+        thread.setDaemon(false);
+        thread.start();
+        showOverlay(EmulatorWindow.OverlayIcon.PLAY);
+    }
+
+    private static int[] player2KeyCodes() {
+        int[] keyCodes = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length];
+        for (int i = 0; i < keyCodes.length; i++) {
+            keyCodes[i] = settings.player2ControllerKeyCode(i);
+        }
+        return keyCodes;
+    }
+
     private static void pauseEmulator() {
         if (activeEmulator != null) {
-            activeEmulator.pause();
+            if (activeEmulator.isLinkConnectionActive()) {
+                activeEmulator.pauseSession();
+            } else {
+                activeEmulator.pause();
+            }
             showOverlay(EmulatorWindow.OverlayIcon.PAUSE);
         }
     }
@@ -342,9 +415,28 @@ public class Main {
         }
     }
 
+    private static boolean isLinkOperationBlocked(String operation) {
+        if (activeEmulator == null || !activeEmulator.isLinkConnectionActive()) {
+            return false;
+        }
+        showLinkBlockedMessage(operation);
+        return true;
+    }
+
+    private static void showLinkBlockedMessage(String operation) {
+        JOptionPane.showMessageDialog(null,
+                operation + " is disabled while a link connection is active.",
+                "Link cable",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private static File chooseRomFile() {
+        return chooseRomFile("Open ROM");
+    }
+
+    private static File chooseRomFile(String title) {
         JFileChooser chooser = new JFileChooser(lastRomDirectory());
-        chooser.setDialogTitle("Open ROM");
+        chooser.setDialogTitle(title);
         chooser.setFileFilter(new FileNameExtensionFilter("Games", "gb", "gbc"));
         if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
             return null;
@@ -358,9 +450,7 @@ public class Main {
     }
 
     private static synchronized void startEmulator(Options options) {
-        if (activeEmulator != null) {
-            activeEmulator.stop();
-        }
+        stopCurrentRuntime();
         activeOptions = options;
         Emulator emulator = new Emulator(
                 options.biosFile(),
@@ -384,6 +474,13 @@ public class Main {
         Thread thread = new Thread(emulator::start, "gbcemu-runtime");
         thread.setDaemon(false);
         thread.start();
+    }
+
+    private static void stopCurrentRuntime() {
+        if (activeEmulator != null) {
+            activeEmulator.stop();
+            activeEmulator = null;
+        }
     }
 
     private static void dumpDebugOnExit(Options options, Emulator emulator) {

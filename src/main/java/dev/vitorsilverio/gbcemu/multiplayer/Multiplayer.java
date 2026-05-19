@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.multiplayer;
 
 import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.connection.PhysicalConnectionListener;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -10,22 +11,25 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 
-public class Multiplayer implements MachineCycle, AutoCloseable {
+public class Multiplayer implements LinkPollingConnection {
 
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Multiplayer.class);
     private static final int MAX_DRAIN_READS_PER_CALL = 32;
+    private static final int MAX_DRAIN_WRITES_PER_CALL = 32;
     private static final int RECEIVE_BUFFER_CAPACITY = 2048;
 
     private boolean connected = false;
     private boolean hosting = false;
+    private boolean connecting = false;
     private SocketChannel channel;
     private ServerSocketChannel serverChannel;
-    private final ByteBuffer sendBuffer = ByteBuffer.allocate(RECEIVE_BUFFER_CAPACITY);
     private final ByteBuffer receiveBuffer = ByteBuffer.allocate(RECEIVE_BUFFER_CAPACITY);
+    private final ArrayDeque<ByteBuffer> outboundFrames = new ArrayDeque<>();
     private SocketAddress address;
     private ProtocolFamily protocolFamily;
-    private PacketListener listener;
+    private PhysicalConnectionListener listener;
     private int ticks = 0;
     private LinkPollMode pollMode = LinkPollMode.IDLE;
     private String status = "Disconnected";
@@ -48,10 +52,12 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         lastHostMode = normalized.multiplayerHostMode();
     }
 
-    public void setListener(PacketListener listener) {
+    @Override
+    public void setListener(PhysicalConnectionListener listener) {
         this.listener = listener;
     }
 
+    @Override
     public void setLinkPollMode(LinkPollMode mode) {
         pollMode = mode == null ? LinkPollMode.IDLE : mode;
     }
@@ -128,13 +134,15 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         disconnect();
         try {
             channel = SocketChannel.open(protocolFamily);
-            channel.connect(address);
             configureSocket(channel);
-            connected = true;
+            connected = channel.connect(address);
             hosting = false;
-            status = "Connected to " + address;
-            logger.info("Joined {}", address);
+            connecting = !connected;
+            status = connected ? "Connected to " + address : "Connecting to " + address;
+            logger.info("{} {}", connected ? "Joined" : "Connecting to", address);
         } catch (IOException e) {
+            connected = false;
+            connecting = false;
             status = "Failed to join: " + e.getMessage();
             throw new RuntimeException("Failed to join multiplayer", e);
         }
@@ -150,10 +158,12 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
             ticks = 0;
 
             acceptPendingConnection();
+            finishPendingConnection();
             if (!connected || listener == null) {
                 return;
             }
 
+            drainOutboundBounded();
             drainReceiveBounded();
         } catch (IOException e) {
             checkConnection(e);
@@ -172,9 +182,23 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         channel = accepted;
         configureSocket(channel);
         connected = true;
+        connecting = false;
         status = "Connected to " + channel.getRemoteAddress();
         serverChannel.close();
         serverChannel = null;
+    }
+
+    private void finishPendingConnection() throws IOException {
+        if (!connecting || channel == null) {
+            return;
+        }
+        if (!channel.finishConnect()) {
+            return;
+        }
+        connected = true;
+        connecting = false;
+        status = "Connected to " + address;
+        logger.info("Joined {}", address);
     }
 
     private void configureSocket(SocketChannel socketChannel) throws IOException {
@@ -184,17 +208,16 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         }
     }
 
-    private void checkConnection(Exception e) {
-        if (channel == null || !channel.isConnected() || "Connection reset".equals(e.getMessage())) {
-            logger.warn("Connection lost to {}", address);
-            status = "Connection lost";
-            disconnect();
-        }
+    private void checkConnection(IOException e) {
+        logger.warn("Connection lost to {}", address, e);
+        disconnect("Connection lost");
     }
 
-    public void sendControlPacket(byte[] packet) {
-        writePacket(packet);
+    @Override
+    public void send(byte[] packet) {
+        enqueueOutbound(packet);
         try {
+            drainOutboundBounded();
             drainReceiveBounded();
         } catch (IOException e) {
             checkConnection(e);
@@ -202,38 +225,26 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         }
     }
 
-    public void sendTransferByte(byte data) {
-        writePacket(new byte[]{data});
-        try {
-            drainReceiveBounded();
-        } catch (IOException e) {
-            checkConnection(e);
-            e.printStackTrace();
-        }
-    }
-
-
-    private void writePacket(byte[] packet) {
+    private void enqueueOutbound(byte[] packet) {
         if (!connected || packet == null || packet.length == 0) {
             return;
         }
+        outboundFrames.addLast(ByteBuffer.wrap(packet.clone()));
+    }
 
-        try {
-            sendBuffer.clear();
-            sendBuffer.put(packet);
-            sendBuffer.flip();
-            int attempts = 0;
-            while (sendBuffer.hasRemaining() && attempts < 100) {
-                int written = channel.write(sendBuffer);
-                if (written == 0) {
-                    attempts++;
-                    Thread.yield();
-                } else {
-                    attempts = 0;
-                }
+    private void drainOutboundBounded() throws IOException {
+        if (!connected || channel == null) {
+            return;
+        }
+        for (int write = 0; write < MAX_DRAIN_WRITES_PER_CALL && !outboundFrames.isEmpty(); write++) {
+            ByteBuffer frame = outboundFrames.peekFirst();
+            int written = channel.write(frame);
+            if (written == 0) {
+                return;
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            if (!frame.hasRemaining()) {
+                outboundFrames.removeFirst();
+            }
         }
     }
 
@@ -245,19 +256,29 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         for (int read = 0; read < MAX_DRAIN_READS_PER_CALL; read++) {
             receiveBuffer.clear();
             int bytesRead = channel.read(receiveBuffer);
-            if (bytesRead <= 0) {
+            if (bytesRead < 0) {
+                logger.warn("Connection closed by peer {}", address);
+                disconnect("Connection closed by peer");
+                return;
+            }
+            if (bytesRead == 0) {
                 return;
             }
             byte[] packet = new byte[bytesRead];
             receiveBuffer.flip();
             receiveBuffer.get(packet);
-            listener.onPacket(packet);
+            listener.onFrame(packet);
         }
     }
 
     public void disconnect() {
+        disconnect("Disconnected");
+    }
+
+    private void disconnect(String finalStatus) {
         connected = false;
         hosting = false;
+        connecting = false;
         setLinkPollMode(LinkPollMode.IDLE);
         try {
             if (channel != null && channel.isOpen()) {
@@ -271,7 +292,8 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
         } finally {
             channel = null;
             serverChannel = null;
-            status = "Disconnected";
+            outboundFrames.clear();
+            status = finalStatus;
         }
     }
 
@@ -281,6 +303,15 @@ public class Multiplayer implements MachineCycle, AutoCloseable {
 
     public boolean isHosting() {
         return hosting;
+    }
+
+    @Override
+    public boolean isActive() {
+        return connected || hosting || connecting;
+    }
+
+    public boolean isConnecting() {
+        return connecting;
     }
 
     public String status() {

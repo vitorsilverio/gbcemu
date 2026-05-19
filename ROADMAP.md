@@ -81,46 +81,36 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [ ] Investigar turbo agressivo/performance acima de 3.5x sem comprometer compatibilidade.
   - [ ] Avaliar alternativa futura para audio em pitch acelerado durante turbo.
 
-- [ ] Link cable.
-  - [x] Suportar TCP sockets para conexao via rede.
-  - [x] Suportar Unix domain sockets para conexao local simples, sem bloqueio de firewall.
-  - [x] Melhorar UI para conectar/desconectar e indicar estado atual.
-  - [x] Persistir ultima configuracao usada de local/TCP, host/guest, path, host e porta.
-  - [x] Expor estado serial/link em debug: `SB`, `SC`, clock interno/externo, transferencia ativa, aguardando resposta.
-  - [x] Expor estado conectado/hospedando no dump de debug do link.
-  - [x] Modelo basico master (clock interno) + slave (clock externo) via `Serial` + byte no socket.
-  - [x] Validar que slave nao completa transferencia sozinho sem clock externo (`SerialTest`).
-  - Validado manualmente: trocas Pokemon Red <-> Silver na maior parte das vezes com um lado master e outro slave.
-  - Sincronizacao suficiente para trocas e batalhas.
-  - Plano de implementacao (seguir a ordem 1 → 6; nao pular para Fase 5 antes de 1–4):
-    - [x] **Fase 1 — Camada `LinkCable` (simular o cabo).**
-      - [x] Inserir entre `Serial` e `Multiplayer`: `Serial` nao chama `send()` direto no socket.
-      - [x] `Serial` reporta estado (`SB`, `SC`, transferencia ativa, clock interno/externo, byte de saida) via `SerialLinkSnapshot`.
-      - [x] Hub devolve eventos: par pronto, byte recebido, clock do parceiro (Fase 2); abort futuro se necessario.
-      - [x] Regra: so clock interno avanca contador e inicia troca; clock externo so completa com clock/byte do parceiro (`Serial` + `InMemoryLinkCablePair` nos testes).
-    - [x] **Fase 2 — Protocolo de link (substituir byte solto no socket).**
-      - [x] Frames versionados (`HELLO`, `STATE`, `TRANSFER_REQUEST`, `TRANSFER_RESPONSE` em `LinkProtocol`).
-      - [x] `STATE` sincroniza `SC bit 7` remoto; troca nao exige os dois prontos no mesmo instante (handshake Pokemon).
-      - [x] Modelar troca como master inicia byte (`TRANSFER_REQUEST`) + slave responde (`TRANSFER_RESPONSE`).
-      - [x] **Consolidacao:** Protocolo agora e estritamente baseado em frames; bytes soltos sao descartados para evitar conflito com MAGIC (`0x7C`).
-    - [x] **Fase 3 — Eleicao / arbitragem master-slave.**
-      - [x] Corrigir cenario em que os dois jogos ficam com clock interno (`SC` bit 0 = 1).
-      - [x] Hub usa host/guest da rede para decidir quem emula o clock; nao reescrever `SC` no `write()` do jogo.
-      - [x] **Update:** Arbitragem dinamica no `read()` do `SC` e no `tick()` do Serial para garantir compatibilidade com Pokemon e Tetris.
-      - [x] Validado via `SerialLinkIntegrationTest.dualMasterArbitration`.
-    - [x] **Fase 4 — `LinkSync` para trades e batalhas.**
-      - [x] Barreira leve apos IRQ serial nos dois lados (nao lockstep frame-a-frame no inicio).
-      - [x] Sincronizacao de frames baseada em `Ppu.frameNumber` para evitar drift entre instancias.
-      - [x] Barreira de 2 frames de diferenca implementada em `LinkCable.tick()`.
-      - [x] Suficiente para trocas e batalhas sem pausar o emulador inteiro entre bytes.
-    - [ ] **Fase 5 — I/O do transporte (`Multiplayer`), incluindo `drainReceive`.**
-      - [x] **`drainReceive`:** apos `send()` do master, loop non-blocking em `read()` ate esvaziar buffer e entregar ao `Serial` na hora (nao esperar `tick()` com intervalo 4096).
-      - [ ] **Polling adaptativo:** intervalo grande quando idle (conectado sem transferencia quente); intervalo curto ou drain apenas em estado hot (`transferActive`, `masterWaitingResponse`, slave aguardando clock).
-      - Nao fazer poll a cada poucos ciclos durante toda a sessao (causa lentidao); clock CGB rapido (128 ciclos) exige resposta rapida so na janela da troca.
-      - `drainReceive` e polling adaptativo entram aqui, apos o hub/protocolo/sync; o hub chama `drainReceive` no mesmo ponto em que hoje o master faz `send()`.
-    - [ ] **Fase 6 — Testes.**
-      - Unit: dois `Serial` + `InMemoryLinkCable`, master/slave, dual-master com hub.
-      - Integracao: duas instancias headless; regressao Pokemon Red/Silver.
+- [ ] Link cable local.
+  - Socket local foi abandonado: a primeira versao estavel deve rodar dois emuladores na mesma instancia do GBCEMU.
+  - TCP fica para uma futura camada de netplay/lockstep, nao para multiplayer local.
+  - Design novo detalhado em [LINK_CABLE_REWRITE.md](LINK_CABLE_REWRITE.md).
+  - Arquitetura atual:
+    - `Console` representa um Game Boy fisico: CPU, PPU, APU, Bus, Cart, RAM, Serial, controles e estado.
+    - `Emulator` representa a sessao/runtime: lista de consoles, loop, throttle, start/stop/pause e coordenacao de link.
+  - [x] Remover da UI o fluxo antigo de conexao por socket para evitar uso de algo quebrado.
+  - [x] Remover o transporte por socket do caminho runtime padrao do emulador.
+  - [x] Extrair o hardware para `Console`.
+  - [x] Transformar `Emulator` em sessao com uma lista de consoles.
+  - [x] Remover `LinkedEmulationSession`; multiplayer local agora e uma sessao `Emulator` com dois consoles.
+  - [x] Expor primeira entrada de menu para iniciar sessao local com duas ROMs.
+    - [x] Trocar a execucao inicial por threads independentes por scheduler coordenado/lockstep da sessao.
+    - [x] Balancear o scheduler por ciclos de maquina acumulados, nao por uma instrucao inteira por console.
+  - [x] Renderizar Player 1 e Player 2 lado a lado na mesma janela.
+  - [x] Criar `DirectLinkCable` em memoria conectando diretamente os dois `Serial`.
+  - [ ] Validar se `DirectLinkCable` precisa trocar byte imediatamente ou esperar o segundo lado armar a transferencia em alguns jogos.
+  - [ ] Manter `Serial` como interface do jogo com `SB/SC`, interrupcao serial e shift de bits.
+  - [x] Separar controles de Player 1 e Player 2 na sessao local.
+  - [x] Implementar configuracoes persistentes de controle separadas para Player 1 e Player 2.
+  - [ ] Capturar teclado por `KeyEventDispatcher` da aplicacao para input funcionar quando qualquer janela do GBCEMU estiver focada.
+  - [x] Bloquear pause individual, rewind, save state e turbo enquanto a sessao link estiver ativa.
+  - [x] Expor estado conjunto da sessao link no debug/dump.
+  - [x] Ao abrir debug em sessao multi-console, escolher o console alvo por combo.
+  - [ ] Evoluir janelas de debug para manter combo interno permanente e trocar a visao sem reabrir janela.
+  - [ ] Permitir adicionar/remover console durante a sessao sem recriar tudo do zero.
+  - [ ] Permitir destacar a tela de um console para janela/monitor separado.
+  - [ ] Validar Tetris primeiro, depois Pokemon.
+  - [ ] No futuro, reavaliar TCP como netplay remoto com lockstep explicito.
 
 - [x] Saves `.sav` intercambiaveis.
   - [x] Passar a salvar RAM externa em formato bruto, igual outros emuladores.
@@ -213,13 +203,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 ### Faltante / Incerto
 
-- [ ] `cgb_sound`.
+- [x] `cgb_sound`.
   - Passar nos testes individuais.
   - Revisar frame sequencer, power on/off da APU, wave channel, DAC e mascaras de leitura.
   - Separar compatibilidade de registradores de qualidade do output para host.
 
 - [ ] Timing CGB.
-  - Revisar `cgb_timing`.
   - Confirmar double speed em CPU, timer, serial, PPU, DMA, HDMA e APU.
   - Garantir que componentes que nao dobram no CGB continuem no clock correto.
 
@@ -308,7 +297,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - [x] `halt_bug`.
 - [x] `oam_bug` ignorado como bug DMG-only; CGB real nao sofre a corrupcao testada por essa suite.
 - [x] `interrupt_time`.
-- [ ] `cgb_sound`.
+- [x] `cgb_sound`.
 - [x] Automatizar execucao headless de test ROMs com leitura de serial.
   - [x] `--max-frames` para limitar execucao headless.
   - [x] `--dump-debug-on-exit` para gerar bundle final em execucoes automatizadas.
@@ -335,9 +324,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 ## Proximas Prioridades Sugeridas
 
-1. Consolidar `cgb_sound` e diferenciar bug de registrador de preferencia/filtro de output.
-2. Revisar `cgb_timing` e double speed de forma sistematica.
-3. Implementar watchpoints sem custo quando inativos.
-4. Implementar gamepad.
-5. Evoluir rewind continuo.
-6. Implementar link cable local.
+1. Revisar cgb timing e double speed de forma sistematica.
+2. Implementar watchpoints sem custo quando inativos.
+3. Implementar gamepad.
+4. Evoluir rewind continuo.
+5. Implementar link cable local.
