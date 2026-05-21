@@ -14,7 +14,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private static final int REGISTER_WRITE_HISTORY_SIZE = 8192;
 
     private final ApuRegisters registers = new ApuRegisters();
-    private final AudioOutput output;
+    private final AudioSampleOutput output;
     private final ApuMixer mixer;
     private final ApuFrameSequencer frameSequencer = new ApuFrameSequencer();
 
@@ -36,17 +36,8 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     private boolean debugWriteTraceEnabled;
     private final int[] lastRecordedRegisterValues = new int[ApuAddress.REGISTER_END - ApuAddress.REGISTER_START + 1];
 
-    public Apu() {
-        this(AudioSinkFactory.createDefault(SAMPLE_RATE));
-    }
-
-    public static Apu muted() {
-        return new Apu((buffer, length) -> {
-        });
-    }
-
-    Apu(AudioSink sink) {
-        this.output = new AudioOutput(sink);
+    public Apu(AudioSampleOutput output) {
+        this.output = output;
         this.mixer = new ApuMixer(output);
         for (int i = 0; i < lastRecordedRegisterValues.length; i++) {
             lastRecordedRegisterValues[i] = -1;
@@ -154,7 +145,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 registers.read(ApuAddress.NR51_SOUND_PANNING) & 0xFF,
                 nr52,
                 output.lowPassAlpha(),
-                output.sinkDebugDescription(),
+                output.debugDescription(),
                 channel1.debugSnapshot(1),
                 channel2.debugSnapshot(2),
                 channel3.debugSnapshot(),
@@ -175,13 +166,10 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         output.close();
     }
 
-    public void setFastForwardAudioMuted(boolean muted) {
-        output.setSinkMuted(muted);
-    }
-
     private void writeSample() {
         int nr50 = registers.read(ApuAddress.NR50_MASTER_VOLUME) & 0xFF;
         int nr51 = registers.read(ApuAddress.NR51_SOUND_PANNING) & 0xFF;
+        updateOutputChannelState();
         mixer.writeSample(
                 nr50,
                 nr51,
@@ -193,6 +181,13 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
                 debugLeftVolume,
                 debugRightVolume
         );
+    }
+
+    private void updateOutputChannelState() {
+        output.updateChannelState(1, channel1.enabled, channel1.frequencyHz(), channel1.currentVolume, false);
+        output.updateChannelState(2, channel2.enabled, channel2.frequencyHz(), channel2.currentVolume, false);
+        output.updateChannelState(3, channel3.enabled, channel3.frequencyHz(), channel3.soundFontVolume(), false);
+        output.updateChannelState(4, channel4.enabled, channel4.frequencyHz(), channel4.currentVolume, true);
     }
 
     private int debugOutput(int channel, int output) {
@@ -399,8 +394,16 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             channel2.disable();
             channel3.disable();
             channel4.disable();
+            silenceOutputChannels();
             frameSequencer.reset();
         }
+    }
+
+    private void silenceOutputChannels() {
+        output.updateChannelState(1, false, 0, 0, false);
+        output.updateChannelState(2, false, 0, 0, false);
+        output.updateChannelState(3, false, 0, 0, false);
+        output.updateChannelState(4, false, 0, 0, true);
     }
 
     @Override

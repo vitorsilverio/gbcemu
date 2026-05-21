@@ -9,8 +9,7 @@ class ApuTest {
 
     @Test
     void ownsAudioRegistersAndWaveRam() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         assertTrue(apu.contains(0xFF10));
         assertTrue(apu.contains(0xFF26));
@@ -24,8 +23,7 @@ class ApuTest {
 
     @Test
     void unusedAudioRegistersReadAsFfAndIgnoreWrites() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF27, (byte) 0x00);
         apu.write(0xFF2F, (byte) 0x55);
@@ -36,8 +34,7 @@ class ApuTest {
 
     @Test
     void wavePatternRamIsReadableAndWritable() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF30, (byte) 0xAB);
         apu.write(0xFF3F, (byte) 0xCD);
@@ -48,8 +45,7 @@ class ApuTest {
 
     @Test
     void triggeringPulseChannelSetsNr52StatusBitAndProducesSamples() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF12, (byte) 0xF0);
         apu.write(0xFF13, (byte) 0x00);
@@ -64,8 +60,7 @@ class ApuTest {
 
     @Test
     void disablingMasterAudioClearsChannelStatus() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF12, (byte) 0xF0);
         apu.write(0xFF14, (byte) 0x80);
@@ -76,8 +71,7 @@ class ApuTest {
 
     @Test
     void disabledMasterAudioKeepsProducingSilentSamples() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF26, (byte) 0x00);
         tickUntilSamplesAreBuffered(apu);
@@ -87,8 +81,7 @@ class ApuTest {
 
     @Test
     void noiseChannelTriggerSetsNr52StatusBit() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF21, (byte) 0xF0);
         apu.write(0xFF22, (byte) 0x00);
@@ -99,8 +92,7 @@ class ApuTest {
 
     @Test
     void sweepOverflowOnPulseTriggerDisablesChannel() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF10, (byte) 0x01);
         apu.write(0xFF12, (byte) 0xF0);
@@ -112,8 +104,7 @@ class ApuTest {
 
     @Test
     void cgbPcmRegistersExposeDigitalChannelOutputs() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF11, (byte) 0x80);
         apu.write(0xFF12, (byte) 0xF0);
@@ -127,8 +118,7 @@ class ApuTest {
 
     @Test
     void activeWaveChannelExposesCurrentWaveRamByteOnCgb() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF30, (byte) 0x12);
         apu.write(0xFF31, (byte) 0x34);
@@ -149,8 +139,7 @@ class ApuTest {
 
     @Test
     void disablingMasterAudioClearsWaveDigitalOutput() {
-        Apu apu = new Apu((buffer, length) -> {
-        });
+        Apu apu = newApu();
 
         apu.write(0xFF30, (byte) 0xF0);
         apu.write(0xFF1A, (byte) 0x80);
@@ -168,6 +157,10 @@ class ApuTest {
 
     private void tickUntilSamplesAreBuffered(Apu apu) {
         tick(apu, 200);
+    }
+
+    private Apu newApu() {
+        return new Apu(AudioOutput.muted());
     }
 
     private void tickUntilWaveDigitalOutputIsVisible(Apu apu) {

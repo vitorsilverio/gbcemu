@@ -83,16 +83,28 @@ class WaveChannel extends SoundChannel {
         return Math.max(2, (2048 - period) * 2);
     }
 
-    ApuChannelDebugSnapshot debugSnapshot() {
+    double frequencyHz() {
         int periodDistance = 2048 - period;
-        double frequencyHz = periodDistance <= 0 ? 0 : 65_536.0 / periodDistance;
+        return periodDistance <= 0 ? 0 : 65_536.0 / periodDistance;
+    }
+
+    int soundFontVolume() {
+        return switch ((context.register(ApuAddress.NR32_CHANNEL_3_VOLUME) >> 5) & 0x03) {
+            case 1 -> 12;
+            case 2 -> 8;
+            case 3 -> 4;
+            default -> 0;
+        };
+    }
+
+    ApuChannelDebugSnapshot debugSnapshot() {
         int volumeCode = (context.register(ApuAddress.NR32_CHANNEL_3_VOLUME) >> 5) & 0x03;
         return debugSnapshot(
                 3,
                 "CH3 Wave",
                 (context.register(ApuAddress.NR30_CHANNEL_3_ON_OFF) & 0x80) != 0,
                 period,
-                frequencyHz,
+                frequencyHz(),
                 sampleIndex,
                 volumeCode,
                 "volumeCode=" + volumeCode + " sample=" + lastSample

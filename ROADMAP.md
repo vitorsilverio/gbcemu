@@ -42,7 +42,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - reducao de alocacoes por pixel.
 - Save state refatorado para estados tipados, sem `@Savable`, `Snapshot(Map)` ou restauracao por reflexao.
 - Cart RAM separada da ROM e exposta como `MemoryBank`.
-- APU separada em componentes menores com estado explicito.
+- APU separada em componentes menores com estado explicito e sem conhecer driver/sink/efeitos de audio.
 
 ## Usabilidade
 
@@ -69,6 +69,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Latencia/buffer.
   - Device de audio.
   - Perfil de filtro de saida.
+  - [x] Aba de som com controles de DSP divertido opcional.
+  - [x] DSP presets pos-mixagem: Raw, Warm, Wide, Room, Toy Synth.
+  - [x] Controles de intensidade, chorus e reverb.
+  - [x] Manter DSP e mute de turbo no driver de audio, fora da logica de hardware da APU.
+  - [x] Backend experimental de SoundFont `.sf2` por eventos da APU via Java MIDI.
+  - [ ] Refinar mapeamento de instrumentos/programas por canal e presets por jogo.
 
 - [ ] Rewind continuo.
   - [x] Restaurar enquanto o usuario segura uma tecla/botao.

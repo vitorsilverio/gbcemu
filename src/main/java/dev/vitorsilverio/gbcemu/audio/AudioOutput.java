@@ -1,12 +1,15 @@
 package dev.vitorsilverio.gbcemu.audio;
 
-final class AudioOutput {
+public final class AudioOutput implements AudioSampleOutput {
     private static final int CGB_HIGH_PASS_FACTOR = 912;
     private static final int HIGH_PASS_DIVISOR = 1000;
     private static final int FILTER_DIVISOR = 1000;
     private static final int PCM_SCALE = 48;
 
     private final AudioSink sink;
+    private final AudioEnhancer enhancer = new AudioEnhancer();
+    private final SoundFontSynth soundFontSynth = new SoundFontSynth();
+    private final int[] enhancedSample = new int[2];
     private final byte[] sampleBuffer = new byte[1024];
     private int sampleBufferPosition;
     private int leftCapacitor;
@@ -20,61 +23,86 @@ final class AudioOutput {
         this.sink = sink;
     }
 
-    void restoreHighPassFilter(int leftCapacitor, int rightCapacitor) {
+    public static AudioOutput createDefault(int sampleRate) {
+        return new AudioOutput(AudioSinkFactory.createDefault(sampleRate));
+    }
+
+    public static AudioOutput muted() {
+        return new AudioOutput((buffer, length) -> {
+        });
+    }
+
+    @Override
+    public void restoreHighPassFilter(int leftCapacitor, int rightCapacitor) {
         this.leftCapacitor = leftCapacitor;
         this.rightCapacitor = rightCapacitor;
         sampleBufferPosition = 0;
         previousLeftOutput = 0;
         previousRightOutput = 0;
+        enhancer.reset();
     }
 
-    void reset() {
+    public void reset() {
         sampleBufferPosition = 0;
         leftCapacitor = 0;
         rightCapacitor = 0;
         previousLeftOutput = 0;
         previousRightOutput = 0;
+        enhancer.reset();
     }
 
-    void close() {
+    public void close() {
         sampleBufferPosition = 0;
+        soundFontSynth.close();
         sink.close();
     }
 
-    void writeStereoSample(int left, int right) {
+    @Override
+    public void writeStereoSample(int left, int right) {
+        if (soundFontSynth.suppressPcmOutput()) {
+            left = 0;
+            right = 0;
+        }
         int filteredLeft = highPassLeft(clampSample(left));
         int filteredRight = highPassRight(clampSample(right));
         previousLeftOutput += (filteredLeft - previousLeftOutput) * lowPassAlpha / FILTER_DIVISOR;
         previousRightOutput += (filteredRight - previousRightOutput) * lowPassAlpha / FILTER_DIVISOR;
-        putPcm16(clampPcm(previousLeftOutput));
-        putPcm16(clampPcm(previousRightOutput));
+        enhancer.process(previousLeftOutput, previousRightOutput, enhancedSample);
+        putPcm16(clampPcm(enhancedSample[0]));
+        putPcm16(clampPcm(enhancedSample[1]));
     }
 
-    void writeSilentSample() {
+    @Override
+    public void writeSilentSample() {
         writeStereoSample(0, 0);
     }
 
-    int previousLeftSample() {
+    @Override
+    public int previousLeftSample() {
         return leftCapacitor;
     }
 
-    int previousRightSample() {
+    @Override
+    public int previousRightSample() {
         return rightCapacitor;
     }
 
-    int bufferedSampleBytes() {
+    @Override
+    public int bufferedSampleBytes() {
         return sampleBufferPosition;
     }
 
-    int lowPassAlpha() {
+    @Override
+    public int lowPassAlpha() {
         return lowPassAlpha;
     }
 
-    void setLowPassAlpha(int lowPassAlpha) {
+    @Override
+    public void setLowPassAlpha(int lowPassAlpha) {
         this.lowPassAlpha = Math.max(50, Math.min(1000, lowPassAlpha));
     }
 
-    void setSinkMuted(boolean sinkMuted) {
+    public void setSinkMuted(boolean sinkMuted) {
         if (this.sinkMuted == sinkMuted) {
             return;
         }
@@ -82,8 +110,32 @@ final class AudioOutput {
         sampleBufferPosition = 0;
     }
 
-    String sinkDebugDescription() {
-        return sink.debugDescription();
+    public void applyEnhancement(dev.vitorsilverio.gbcemu.config.AppSettings.AudioEnhancementConfig config) {
+        enhancer.apply(config);
+        soundFontSynth.apply(config);
+    }
+
+    public String sinkDebugDescription() {
+        String soundFont = soundFontSynth.debugDescription();
+        if ("SoundFont off".equals(soundFont)) {
+            return sink.debugDescription();
+        }
+        return sink.debugDescription() + ", " + soundFont;
+    }
+
+    @Override
+    public String debugDescription() {
+        return sinkDebugDescription();
+    }
+
+    @Override
+    public void updateChannelState(int channel, boolean enabled, double frequencyHz, int volume, boolean noise) {
+        soundFontSynth.updateChannelState(channel, enabled, frequencyHz, volume, noise);
+    }
+
+    @Override
+    public boolean suppressPcmOutput() {
+        return soundFontSynth.suppressPcmOutput();
     }
 
     private int clampSample(int value) {

@@ -1,9 +1,9 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 final class ApuMixer {
-    private final AudioOutput output;
+    private final AudioSampleOutput output;
 
-    ApuMixer(AudioOutput output) {
+    ApuMixer(AudioSampleOutput output) {
         this.output = output;
     }
 

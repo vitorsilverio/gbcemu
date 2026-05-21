@@ -15,6 +15,7 @@ public record AppSettings(
         int audioRightVolume,
         int[] audioChannelVolumes,
         boolean[] audioChannelMuted,
+        AudioEnhancementConfig audioEnhancement,
         int[] controllerKeyCodes,
         int[] player2ControllerKeyCodes,
         GamepadConfig[] gamepadConfigs,
@@ -35,6 +36,15 @@ public record AppSettings(
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
     public record GamepadConfig(int deviceIndex, int deadzonePercent, String[] mappings) {
     }
+    public record AudioEnhancementConfig(
+            String dspPreset,
+            int dspIntensity,
+            int chorusAmount,
+            int reverbAmount,
+            String soundFontMode,
+            String soundFontPath
+    ) {
+    }
     private static final String SCREEN_SCALE = "screenScale";
     private static final String SMOOTH_SCALING = "smoothScaling";
     private static final String FULLSCREEN = "fullscreen";
@@ -45,6 +55,12 @@ public record AppSettings(
     private static final String AUDIO_RIGHT_VOLUME = "audioRightVolume";
     private static final String AUDIO_CHANNEL_VOLUME_PREFIX = "audioChannelVolume";
     private static final String AUDIO_CHANNEL_MUTED_PREFIX = "audioChannelMuted";
+    private static final String AUDIO_DSP_PRESET = "audioDspPreset";
+    private static final String AUDIO_DSP_INTENSITY = "audioDspIntensity";
+    private static final String AUDIO_CHORUS_AMOUNT = "audioChorusAmount";
+    private static final String AUDIO_REVERB_AMOUNT = "audioReverbAmount";
+    private static final String AUDIO_SOUNDFONT_MODE = "audioSoundFontMode";
+    private static final String AUDIO_SOUNDFONT_PATH = "audioSoundFontPath";
     private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
     private static final String PLAYER2_CONTROLLER_KEY_PREFIX = "player2ControllerKey";
     private static final String GAMEPAD_DEVICE_PREFIX = "gamepadDevice";
@@ -76,6 +92,7 @@ public record AppSettings(
                 100,
                 new int[]{100, 100, 100, 100},
                 new boolean[4],
+                defaultAudioEnhancement(),
                 defaultControllerKeyCodes(),
                 defaultPlayer2ControllerKeyCodes(),
                 defaultGamepadConfigs(),
@@ -110,6 +127,14 @@ public record AppSettings(
             controllerKeyCodes[i] = preferences.getInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.controllerKeyCodes[i]);
             player2ControllerKeyCodes[i] = preferences.getInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.player2ControllerKeyCodes[i]);
         }
+        AudioEnhancementConfig audioEnhancement = new AudioEnhancementConfig(
+                preferences.get(AUDIO_DSP_PRESET, defaults.audioEnhancement().dspPreset()),
+                clamp(preferences.getInt(AUDIO_DSP_INTENSITY, defaults.audioEnhancement().dspIntensity()), 0, 100),
+                clamp(preferences.getInt(AUDIO_CHORUS_AMOUNT, defaults.audioEnhancement().chorusAmount()), 0, 100),
+                clamp(preferences.getInt(AUDIO_REVERB_AMOUNT, defaults.audioEnhancement().reverbAmount()), 0, 100),
+                preferences.get(AUDIO_SOUNDFONT_MODE, defaults.audioEnhancement().soundFontMode()),
+                preferences.get(AUDIO_SOUNDFONT_PATH, defaults.audioEnhancement().soundFontPath())
+        );
         for (int player = 0; player < gamepadConfigs.length; player++) {
             String[] mappings = new String[CONTROLLER_BUTTON_NAMES.length];
             GamepadConfig defaultConfig = defaults.gamepadConfig(player);
@@ -133,6 +158,7 @@ public record AppSettings(
                 clampPercent(preferences.getInt(AUDIO_RIGHT_VOLUME, defaults.audioRightVolume)),
                 channelVolumes,
                 channelMuted,
+                audioEnhancement,
                 controllerKeyCodes,
                 player2ControllerKeyCodes,
                 gamepadConfigs,
@@ -165,6 +191,17 @@ public record AppSettings(
         for (int i = 0; i < audioChannelVolumes.length; i++) {
             preferences.putInt(AUDIO_CHANNEL_VOLUME_PREFIX + (i + 1), audioChannelVolumes[i]);
             preferences.putBoolean(AUDIO_CHANNEL_MUTED_PREFIX + (i + 1), audioChannelMuted[i]);
+        }
+        AudioEnhancementConfig enhancement = normalizedAudioEnhancement(audioEnhancement);
+        preferences.put(AUDIO_DSP_PRESET, enhancement.dspPreset());
+        preferences.putInt(AUDIO_DSP_INTENSITY, enhancement.dspIntensity());
+        preferences.putInt(AUDIO_CHORUS_AMOUNT, enhancement.chorusAmount());
+        preferences.putInt(AUDIO_REVERB_AMOUNT, enhancement.reverbAmount());
+        preferences.put(AUDIO_SOUNDFONT_MODE, enhancement.soundFontMode());
+        if (enhancement.soundFontPath().isBlank()) {
+            preferences.remove(AUDIO_SOUNDFONT_PATH);
+        } else {
+            preferences.put(AUDIO_SOUNDFONT_PATH, enhancement.soundFontPath());
         }
         for (int i = 0; i < controllerKeyCodes.length; i++) {
             preferences.putInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], controllerKeyCodes[i]);
@@ -211,6 +248,10 @@ public record AppSettings(
         return audioChannelMuted[channel - 1];
     }
 
+    public AudioEnhancementConfig normalizedAudioEnhancement() {
+        return normalizedAudioEnhancement(audioEnhancement);
+    }
+
     public int controllerKeyCode(int index) {
         return controllerKeyCodes[index];
     }
@@ -233,21 +274,21 @@ public record AppSettings(
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withMultiplayerConfig(
@@ -257,7 +298,7 @@ public record AppSettings(
             String tcpHost,
             int tcpPort
     ) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
     }
 
     public AppSettings normalized() {
@@ -293,6 +334,7 @@ public record AppSettings(
                 clampPercent(audioRightVolume),
                 volumes,
                 muted,
+                normalizedAudioEnhancement(audioEnhancement),
                 keys,
                 player2Keys,
                 normalizedGamepads,
@@ -343,6 +385,38 @@ public record AppSettings(
                 new GamepadConfig(0, 35, defaultGamepadMappings()),
                 new GamepadConfig(1, 35, defaultGamepadMappings())
         };
+    }
+
+    private static AudioEnhancementConfig defaultAudioEnhancement() {
+        return new AudioEnhancementConfig("Raw", 35, 20, 15, "Off", "");
+    }
+
+    private static AudioEnhancementConfig normalizedAudioEnhancement(AudioEnhancementConfig config) {
+        AudioEnhancementConfig fallback = defaultAudioEnhancement();
+        if (config == null) {
+            return fallback;
+        }
+        String preset = normalizeChoice(config.dspPreset(), new String[]{"Raw", "Warm", "Wide", "Room", "Toy Synth"}, fallback.dspPreset());
+        String soundFontMode = normalizeChoice(config.soundFontMode(), new String[]{"Off", "Overlay", "Replace original", "Percussion overlay"}, fallback.soundFontMode());
+        return new AudioEnhancementConfig(
+                preset,
+                clamp(config.dspIntensity(), 0, 100),
+                clamp(config.chorusAmount(), 0, 100),
+                clamp(config.reverbAmount(), 0, 100),
+                soundFontMode,
+                config.soundFontPath() == null ? "" : config.soundFontPath().strip()
+        );
+    }
+
+    private static String normalizeChoice(String value, String[] allowed, String fallback) {
+        if (value != null) {
+            for (String candidate : allowed) {
+                if (candidate.equals(value)) {
+                    return candidate;
+                }
+            }
+        }
+        return fallback;
     }
 
     private static String[] defaultGamepadMappings() {

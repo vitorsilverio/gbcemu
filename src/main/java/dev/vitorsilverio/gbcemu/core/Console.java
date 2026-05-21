@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.core;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
+import dev.vitorsilverio.gbcemu.audio.AudioOutput;
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
@@ -53,6 +54,7 @@ public class Console {
     private final Timer timer;
     private final Ppu ppu;
     private final Apu apu;
+    private final AudioOutput audioOutput;
     private final Serial serial;
     private final HDMA hdma;
     private final DMA dma;
@@ -169,7 +171,9 @@ public class Console {
         this.cpu = new Cpu(bus);
         this.timer = new Timer(bus);
         this.ppu = new Ppu(bus, biosFile != null || cartridgeCgbCompatible);
-        this.apu = headless ? Apu.muted() : new Apu();
+        this.audioOutput = headless ? AudioOutput.muted() : AudioOutput.createDefault(48_000);
+        this.audioOutput.applyEnhancement(this.settings.normalizedAudioEnhancement());
+        this.apu = new Apu(audioOutput);
         this.apu.applyDebugVolumes(
                 this.settings.audioMasterVolume(),
                 this.settings.audioLeftVolume(),
@@ -435,6 +439,7 @@ public class Console {
                 this.settings.audioChannelVolumes(),
                 this.settings.audioChannelMuted()
         );
+        audioOutput.applyEnhancement(this.settings.normalizedAudioEnhancement());
         rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
         if (keyboardController != null) {
             keyboardController.applySettings(this.settings);
@@ -993,7 +998,7 @@ public class Console {
             return;
         }
         fastForwardAudioMuted = active;
-        apu.setFastForwardAudioMuted(active);
+        audioOutput.setSinkMuted(active);
     }
 
     private void sleepUntil(long deadline) {

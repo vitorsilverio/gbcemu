@@ -49,6 +49,12 @@ public class SettingsDialog extends JDialog {
     private final JSlider masterVolume;
     private final JSlider leftVolume;
     private final JSlider rightVolume;
+    private final JComboBox<String> audioDspPreset;
+    private final JSlider audioDspIntensity;
+    private final JSlider audioChorusAmount;
+    private final JSlider audioReverbAmount;
+    private final JComboBox<String> soundFontMode;
+    private final JTextField soundFontPath;
     private final JSlider[] channelVolumes = new JSlider[4];
     private final JCheckBox[] channelMuted = new JCheckBox[4];
     private final KeyCaptureButton[] controllerKeys = new KeyCaptureButton[AppSettings.CONTROLLER_BUTTON_NAMES.length];
@@ -78,6 +84,13 @@ public class SettingsDialog extends JDialog {
         this.masterVolume = slider(settings.audioMasterVolume());
         this.leftVolume = slider(settings.audioLeftVolume());
         this.rightVolume = slider(settings.audioRightVolume());
+        AppSettings.AudioEnhancementConfig enhancement = settings.normalizedAudioEnhancement();
+        this.audioDspPreset = combo(new String[]{"Raw", "Warm", "Wide", "Room", "Toy Synth"}, enhancement.dspPreset());
+        this.audioDspIntensity = slider(enhancement.dspIntensity());
+        this.audioChorusAmount = slider(enhancement.chorusAmount());
+        this.audioReverbAmount = slider(enhancement.reverbAmount());
+        this.soundFontMode = combo(new String[]{"Off", "Overlay", "Replace original", "Percussion overlay"}, enhancement.soundFontMode());
+        this.soundFontPath = new JTextField(enhancement.soundFontPath(), 28);
         for (int i = 0; i < channelVolumes.length; i++) {
             channelVolumes[i] = slider(settings.audioChannelVolume(i + 1));
             channelMuted[i] = new JCheckBox("Mute", settings.audioChannelMuted(i + 1));
@@ -132,7 +145,7 @@ public class SettingsDialog extends JDialog {
         addRow(fields, 4, "Turbo mode", turboToggleMode);
         addRow(fields, 5, "Default BIOS", defaultBiosPanel());
         addRow(fields, 6, "RTC offset", rtcOffsetPanel());
-        return wrapPanel(fields);
+        return wrapPanel(fields, this::resetGeneralDefaults);
     }
 
     private JPanel rtcOffsetPanel() {
@@ -166,7 +179,7 @@ public class SettingsDialog extends JDialog {
         addRow(fields, 1, "Screen filter", smoothScaling);
         addRow(fields, 2, "xBrz filter", xBrzFiltering);
         addRow(fields, 3, "Fullscreen", fullscreen);
-        return wrapPanel(fields);
+        return wrapPanel(fields, this::resetGraphicsDefaults);
     }
 
     private JPanel audioPanel() {
@@ -180,7 +193,34 @@ public class SettingsDialog extends JDialog {
             channel.add(channelMuted[i], BorderLayout.EAST);
             addRow(fields, i + 3, "Channel " + (i + 1) + " volume", channel);
         }
-        return wrapPanel(fields);
+        int row = channelVolumes.length + 4;
+        addSectionLabel(fields, row++, "Enhanced audio");
+        addRow(fields, row++, "DSP preset", audioDspPreset);
+        addRow(fields, row++, "DSP intensity", audioDspIntensity);
+        addRow(fields, row++, "Chorus amount", audioChorusAmount);
+        addRow(fields, row++, "Reverb amount", audioReverbAmount);
+        addSectionLabel(fields, row++, "SoundFont experimental");
+        addHint(fields, row++, "Uses Java MIDI. Overlay keeps the original PCM; Replace original silences it.");
+        addRow(fields, row++, "Mode", soundFontMode);
+        addRow(fields, row, "SoundFont file", soundFontPanel());
+        return wrapPanel(fields, this::resetAudioDefaults);
+    }
+
+    private JPanel soundFontPanel() {
+        JPanel panel = new JPanel(new BorderLayout(6, 0));
+        JButton browse = new JButton("Browse...");
+        browse.addActionListener(event -> chooseSoundFont());
+        panel.add(soundFontPath, BorderLayout.CENTER);
+        panel.add(browse, BorderLayout.EAST);
+        return panel;
+    }
+
+    private void chooseSoundFont() {
+        JFileChooser chooser = new JFileChooser(soundFontDirectory());
+        chooser.setDialogTitle("Set SoundFont");
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            soundFontPath.setText(chooser.getSelectedFile().getAbsolutePath());
+        }
     }
 
     private JPanel controlsPanel() {
@@ -210,7 +250,7 @@ public class SettingsDialog extends JDialog {
             addControlComponent(fields, row, 1, gamepadMappings[0][i]);
             addControlComponent(fields, row++, 2, gamepadMappings[1][i]);
         }
-        return wrapPanel(fields);
+        return wrapPanel(fields, this::resetControlsDefaults);
     }
 
     private void addSectionLabel(JPanel panel, int row, String text) {
@@ -219,6 +259,16 @@ public class SettingsDialog extends JDialog {
         constraints.gridy = row;
         constraints.gridwidth = 3;
         constraints.insets = new Insets(10, 6, 4, 6);
+        constraints.anchor = GridBagConstraints.WEST;
+        panel.add(new JLabel(text), constraints);
+    }
+
+    private void addHint(JPanel panel, int row, String text) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = row;
+        constraints.gridwidth = 3;
+        constraints.insets = new Insets(0, 6, 6, 6);
         constraints.anchor = GridBagConstraints.WEST;
         panel.add(new JLabel(text), constraints);
     }
@@ -255,9 +305,14 @@ public class SettingsDialog extends JDialog {
         panel.add(component, constraints);
     }
 
-    private JPanel wrapPanel(JPanel fields) {
+    private JPanel wrapPanel(JPanel fields, Runnable resetAction) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.add(fields, BorderLayout.NORTH);
+        JButton reset = new JButton("Reset tab defaults");
+        reset.addActionListener(event -> resetAction.run());
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.add(reset, BorderLayout.EAST);
+        panel.add(footer, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -320,6 +375,14 @@ public class SettingsDialog extends JDialog {
                 rightVolume.getValue(),
                 channelValues,
                 mutedValues,
+                new AppSettings.AudioEnhancementConfig(
+                        selected(audioDspPreset),
+                        audioDspIntensity.getValue(),
+                        audioChorusAmount.getValue(),
+                        audioReverbAmount.getValue(),
+                        selected(soundFontMode),
+                        soundFontPath.getText()
+                ),
                 keyValues,
                 player2KeyValues,
                 gamepadValues,
@@ -352,6 +415,18 @@ public class SettingsDialog extends JDialog {
         return new File(System.getProperty("user.dir"));
     }
 
+    private File soundFontDirectory() {
+        String path = soundFontPath.getText();
+        if (path != null && !path.isBlank()) {
+            File file = new File(path);
+            File parent = file.isDirectory() ? file : file.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                return parent;
+            }
+        }
+        return new File(System.getProperty("user.dir"));
+    }
+
     private JSpinner spinner(int value, int min, int max, int step) {
         return new JSpinner(new SpinnerNumberModel(value, min, max, step));
     }
@@ -362,6 +437,17 @@ public class SettingsDialog extends JDialog {
         slider.setMinorTickSpacing(10);
         slider.setPaintTicks(true);
         return slider;
+    }
+
+    private JComboBox<String> combo(String[] values, String selected) {
+        JComboBox<String> combo = new JComboBox<>(values);
+        combo.setSelectedItem(selected);
+        return combo;
+    }
+
+    private String selected(JComboBox<String> combo) {
+        Object value = combo.getSelectedItem();
+        return value == null ? "" : value.toString();
     }
 
     private JComboBox<String> gamepadDeviceCombo(List<String> devices, int selectedDeviceIndex) {
@@ -375,6 +461,69 @@ public class SettingsDialog extends JDialog {
         }
         combo.setSelectedIndex(Math.max(0, Math.min(selectedDeviceIndex + 1, combo.getItemCount() - 1)));
         return combo;
+    }
+
+    private void resetGeneralDefaults() {
+        AppSettings defaults = AppSettings.defaults();
+        rewindSeconds.setValue(defaults.rewindSeconds());
+        rewindInterval.setValue(defaults.rewindCaptureIntervalFrames());
+        turboMultiplier.setValue(defaults.turboMultiplier());
+        turboKey.setKeyCode(defaults.turboKeyCode());
+        turboToggleMode.setSelected(defaults.turboToggleMode());
+        defaultBiosPath.setText(defaults.defaultBiosPath());
+        rtcOffsetHours.setValue(defaults.rtcOffsetHours());
+        rtcOffsetMinutes.setValue(defaults.rtcOffsetMinutes());
+        rtcOffsetSeconds.setValue(defaults.rtcOffsetSeconds());
+    }
+
+    private void resetGraphicsDefaults() {
+        AppSettings defaults = AppSettings.defaults();
+        screenScale.setValue(defaults.screenScale());
+        smoothScaling.setSelected(defaults.smoothScaling());
+        xBrzFiltering.setSelected(defaults.xBrzFiltering());
+        fullscreen.setSelected(defaults.fullscreen());
+    }
+
+    private void resetAudioDefaults() {
+        AppSettings defaults = AppSettings.defaults();
+        AppSettings.AudioEnhancementConfig enhancement = defaults.normalizedAudioEnhancement();
+        masterVolume.setValue(defaults.audioMasterVolume());
+        leftVolume.setValue(defaults.audioLeftVolume());
+        rightVolume.setValue(defaults.audioRightVolume());
+        for (int i = 0; i < channelVolumes.length; i++) {
+            channelVolumes[i].setValue(defaults.audioChannelVolume(i + 1));
+            channelMuted[i].setSelected(defaults.audioChannelMuted(i + 1));
+        }
+        audioDspPreset.setSelectedItem(enhancement.dspPreset());
+        audioDspIntensity.setValue(enhancement.dspIntensity());
+        audioChorusAmount.setValue(enhancement.chorusAmount());
+        audioReverbAmount.setValue(enhancement.reverbAmount());
+        soundFontMode.setSelectedItem("Off");
+        soundFontPath.setText(enhancement.soundFontPath());
+    }
+
+    private void resetControlsDefaults() {
+        AppSettings defaults = AppSettings.defaults();
+        for (int i = 0; i < controllerKeys.length; i++) {
+            controllerKeys[i].setKeyCode(defaults.controllerKeyCode(i));
+            player2ControllerKeys[i].setKeyCode(defaults.player2ControllerKeyCode(i));
+        }
+        for (int player = 0; player < gamepadDevices.length; player++) {
+            AppSettings.GamepadConfig config = defaults.gamepadConfig(player);
+            setGamepadDeviceSelection(gamepadDevices[player], config.deviceIndex());
+            gamepadDeadzones[player].setValue(config.deadzonePercent());
+            for (int i = 0; i < gamepadMappings[player].length; i++) {
+                gamepadMappings[player][i].setText(config.mappings()[i]);
+            }
+        }
+    }
+
+    private void setGamepadDeviceSelection(JComboBox<String> combo, int deviceIndex) {
+        int selectedIndex = deviceIndex + 1;
+        while (combo.getItemCount() <= selectedIndex) {
+            combo.addItem("#" + combo.getItemCount() + " not connected");
+        }
+        combo.setSelectedIndex(Math.max(0, selectedIndex));
     }
 
     private void showGamepadComponents(int player) {
@@ -406,6 +555,11 @@ public class SettingsDialog extends JDialog {
 
         private int keyCode() {
             return keyCode;
+        }
+
+        private void setKeyCode(int keyCode) {
+            this.keyCode = keyCode;
+            updateText();
         }
 
         private void updateText() {

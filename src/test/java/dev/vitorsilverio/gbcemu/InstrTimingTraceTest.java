@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
+import dev.vitorsilverio.gbcemu.audio.AudioOutput;
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.controller.ButtonType;
@@ -44,7 +45,7 @@ class InstrTimingTraceTest {
         Cpu cpu = new Cpu(bus);
         TraceTimer timer = new TraceTimer(bus, cpu::toString);
         Ppu ppu = new Ppu(bus);
-        Apu apu = Apu.muted();
+        Apu apu = new Apu(AudioOutput.muted());
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -190,7 +191,7 @@ class InstrTimingTraceTest {
         Cpu cpu = new Cpu(bus);
         Timer timer = new Timer(bus);
         Ppu ppu = new Ppu(bus);
-        Apu apu = Apu.muted();
+        Apu apu = new Apu(AudioOutput.muted());
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -258,7 +259,7 @@ class InstrTimingTraceTest {
         Timer timer = new Timer(bus);
         Cart cart = CartFactory.fromFile(new File(romPath), null);
         Ppu ppu = new Ppu(bus, cart.getHeader().isCgbCompatible());
-        Apu apu = Apu.muted();
+        Apu apu = new Apu(AudioOutput.muted());
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
