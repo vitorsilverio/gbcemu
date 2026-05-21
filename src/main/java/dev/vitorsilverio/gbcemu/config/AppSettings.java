@@ -17,6 +17,7 @@ public record AppSettings(
         boolean[] audioChannelMuted,
         int[] controllerKeyCodes,
         int[] player2ControllerKeyCodes,
+        GamepadConfig[] gamepadConfigs,
         int turboMultiplier,
         int turboKeyCode,
         boolean turboToggleMode,
@@ -32,6 +33,8 @@ public record AppSettings(
         int multiplayerTcpPort
 ) {
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
+    public record GamepadConfig(int deviceIndex, int deadzonePercent, String[] mappings) {
+    }
     private static final String SCREEN_SCALE = "screenScale";
     private static final String SMOOTH_SCALING = "smoothScaling";
     private static final String FULLSCREEN = "fullscreen";
@@ -44,6 +47,9 @@ public record AppSettings(
     private static final String AUDIO_CHANNEL_MUTED_PREFIX = "audioChannelMuted";
     private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
     private static final String PLAYER2_CONTROLLER_KEY_PREFIX = "player2ControllerKey";
+    private static final String GAMEPAD_DEVICE_PREFIX = "gamepadDevice";
+    private static final String GAMEPAD_DEADZONE_PREFIX = "gamepadDeadzone";
+    private static final String GAMEPAD_MAPPING_PREFIX = "gamepadMapping";
     private static final String TURBO_MULTIPLIER = "turboMultiplier";
     private static final String TURBO_KEY = "turboKey";
     private static final String TURBO_TOGGLE_MODE = "turboToggleMode";
@@ -72,6 +78,7 @@ public record AppSettings(
                 new boolean[4],
                 defaultControllerKeyCodes(),
                 defaultPlayer2ControllerKeyCodes(),
+                defaultGamepadConfigs(),
                 3,
                 KeyEvent.VK_TAB,
                 false,
@@ -94,6 +101,7 @@ public record AppSettings(
         boolean[] channelMuted = new boolean[4];
         int[] controllerKeyCodes = new int[CONTROLLER_BUTTON_NAMES.length];
         int[] player2ControllerKeyCodes = new int[CONTROLLER_BUTTON_NAMES.length];
+        GamepadConfig[] gamepadConfigs = new GamepadConfig[2];
         for (int i = 0; i < channelVolumes.length; i++) {
             channelVolumes[i] = clampPercent(preferences.getInt(AUDIO_CHANNEL_VOLUME_PREFIX + (i + 1), defaults.audioChannelVolumes[i]));
             channelMuted[i] = preferences.getBoolean(AUDIO_CHANNEL_MUTED_PREFIX + (i + 1), defaults.audioChannelMuted[i]);
@@ -101,6 +109,18 @@ public record AppSettings(
         for (int i = 0; i < controllerKeyCodes.length; i++) {
             controllerKeyCodes[i] = preferences.getInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.controllerKeyCodes[i]);
             player2ControllerKeyCodes[i] = preferences.getInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.player2ControllerKeyCodes[i]);
+        }
+        for (int player = 0; player < gamepadConfigs.length; player++) {
+            String[] mappings = new String[CONTROLLER_BUTTON_NAMES.length];
+            GamepadConfig defaultConfig = defaults.gamepadConfig(player);
+            for (int i = 0; i < mappings.length; i++) {
+                mappings[i] = preferences.get(GAMEPAD_MAPPING_PREFIX + (player + 1) + CONTROLLER_BUTTON_NAMES[i], defaultConfig.mappings()[i]);
+            }
+            gamepadConfigs[player] = new GamepadConfig(
+                    preferences.getInt(GAMEPAD_DEVICE_PREFIX + (player + 1), defaultConfig.deviceIndex()),
+                    clamp(preferences.getInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), defaultConfig.deadzonePercent()), 0, 95),
+                    mappings
+            );
         }
         return new AppSettings(
                 clamp(preferences.getInt(SCREEN_SCALE, defaults.screenScale), 1, 8),
@@ -115,6 +135,7 @@ public record AppSettings(
                 channelMuted,
                 controllerKeyCodes,
                 player2ControllerKeyCodes,
+                gamepadConfigs,
                 clamp(preferences.getInt(TURBO_MULTIPLIER, defaults.turboMultiplier), 1, 10),
                 preferences.getInt(TURBO_KEY, defaults.turboKeyCode),
                 preferences.getBoolean(TURBO_TOGGLE_MODE, defaults.turboToggleMode),
@@ -148,6 +169,14 @@ public record AppSettings(
         for (int i = 0; i < controllerKeyCodes.length; i++) {
             preferences.putInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], controllerKeyCodes[i]);
             preferences.putInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], player2ControllerKeyCodes[i]);
+        }
+        for (int player = 0; player < 2; player++) {
+            GamepadConfig config = gamepadConfig(player);
+            preferences.putInt(GAMEPAD_DEVICE_PREFIX + (player + 1), config.deviceIndex());
+            preferences.putInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), config.deadzonePercent());
+            for (int i = 0; i < CONTROLLER_BUTTON_NAMES.length; i++) {
+                preferences.put(GAMEPAD_MAPPING_PREFIX + (player + 1) + CONTROLLER_BUTTON_NAMES[i], config.mappings()[i]);
+            }
         }
         preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
         preferences.putInt(TURBO_KEY, turboKeyCode);
@@ -190,26 +219,35 @@ public record AppSettings(
         return player2ControllerKeyCodes[index];
     }
 
+    public GamepadConfig gamepadConfig(int playerIndex) {
+        GamepadConfig[] configs = gamepadConfigs == null ? defaultGamepadConfigs() : gamepadConfigs;
+        if (configs.length == 0) {
+            return normalizeGamepadConfig(null, playerIndex);
+        }
+        int index = clamp(playerIndex, 0, configs.length - 1);
+        return normalizeGamepadConfig(configs[index], index);
+    }
+
     public long rtcOffsetTotalSeconds() {
         return (rtcOffsetHours * 3600L) + (rtcOffsetMinutes * 60L) + rtcOffsetSeconds;
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withMultiplayerConfig(
@@ -219,7 +257,7 @@ public record AppSettings(
             String tcpHost,
             int tcpPort
     ) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
     }
 
     public AppSettings normalized() {
@@ -227,6 +265,7 @@ public record AppSettings(
         boolean[] muted = Arrays.copyOf(audioChannelMuted, 4);
         int[] keys = Arrays.copyOf(controllerKeyCodes, CONTROLLER_BUTTON_NAMES.length);
         int[] player2Keys = Arrays.copyOf(player2ControllerKeyCodes, CONTROLLER_BUTTON_NAMES.length);
+        GamepadConfig[] normalizedGamepads = new GamepadConfig[2];
         for (int i = 0; i < volumes.length; i++) {
             volumes[i] = clampPercent(volumes[i]);
         }
@@ -239,6 +278,9 @@ public record AppSettings(
             if (player2Keys[i] <= 0) {
                 player2Keys[i] = player2Defaults[i];
             }
+        }
+        for (int player = 0; player < normalizedGamepads.length; player++) {
+            normalizedGamepads[player] = gamepadConfig(player);
         }
         return new AppSettings(
                 clamp(screenScale, 1, 8),
@@ -253,6 +295,7 @@ public record AppSettings(
                 muted,
                 keys,
                 player2Keys,
+                normalizedGamepads,
                 clamp(turboMultiplier, 1, 10),
                 turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode,
                 turboToggleMode,
@@ -293,6 +336,42 @@ public record AppSettings(
                 KeyEvent.VK_A,
                 KeyEvent.VK_D
         };
+    }
+
+    private static GamepadConfig[] defaultGamepadConfigs() {
+        return new GamepadConfig[]{
+                new GamepadConfig(0, 35, defaultGamepadMappings()),
+                new GamepadConfig(1, 35, defaultGamepadMappings())
+        };
+    }
+
+    private static String[] defaultGamepadMappings() {
+        return new String[]{
+                "A,CROSS,BUTTON_0",
+                "B,CIRCLE,BUTTON_1",
+                "START,OPTIONS,BUTTON_7,BUTTON_9",
+                "BACK,SELECT,SHARE,BUTTON_6,BUTTON_8",
+                "DPAD_UP,LEFT_THUMB_Y-,LEFT_AXIS_Y-,AXIS_Y-",
+                "DPAD_DOWN,LEFT_THUMB_Y+,LEFT_AXIS_Y+,AXIS_Y+",
+                "DPAD_LEFT,LEFT_THUMB_X-,LEFT_AXIS_X-,AXIS_X-",
+                "DPAD_RIGHT,LEFT_THUMB_X+,LEFT_AXIS_X+,AXIS_X+"
+        };
+    }
+
+    private static GamepadConfig normalizeGamepadConfig(GamepadConfig config, int playerIndex) {
+        GamepadConfig fallback = defaultGamepadConfigs()[clamp(playerIndex, 0, 1)];
+        if (config == null) {
+            config = fallback;
+        }
+        String[] mappings = Arrays.copyOf(config.mappings() == null ? fallback.mappings() : config.mappings(), CONTROLLER_BUTTON_NAMES.length);
+        for (int i = 0; i < mappings.length; i++) {
+            if (mappings[i] == null || mappings[i].isBlank()) {
+                mappings[i] = fallback.mappings()[i];
+            } else {
+                mappings[i] = mappings[i].strip();
+            }
+        }
+        return new GamepadConfig(clamp(config.deviceIndex(), -1, 15), clamp(config.deadzonePercent(), 0, 95), mappings);
     }
 
     private static int clampPercent(int value) {

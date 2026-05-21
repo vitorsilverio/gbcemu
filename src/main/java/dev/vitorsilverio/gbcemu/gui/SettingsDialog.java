@@ -1,16 +1,21 @@
 package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.controller.GamepadController;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import java.awt.BorderLayout;
@@ -21,6 +26,7 @@ import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class SettingsDialog extends JDialog {
@@ -47,6 +53,10 @@ public class SettingsDialog extends JDialog {
     private final JCheckBox[] channelMuted = new JCheckBox[4];
     private final KeyCaptureButton[] controllerKeys = new KeyCaptureButton[AppSettings.CONTROLLER_BUTTON_NAMES.length];
     private final KeyCaptureButton[] player2ControllerKeys = new KeyCaptureButton[AppSettings.CONTROLLER_BUTTON_NAMES.length];
+    private final JComboBox<String>[] gamepadDevices = new JComboBox[2];
+    private final JSpinner[] gamepadDeadzones = new JSpinner[2];
+    private final JButton[] showGamepadComponents = new JButton[2];
+    private final JTextField[][] gamepadMappings = new JTextField[2][AppSettings.CONTROLLER_BUTTON_NAMES.length];
 
     public SettingsDialog(Frame owner, AppSettings settings, Consumer<AppSettings> onSave) {
         super(owner, "Settings", true);
@@ -75,6 +85,18 @@ public class SettingsDialog extends JDialog {
         for (int i = 0; i < controllerKeys.length; i++) {
             controllerKeys[i] = new KeyCaptureButton(settings.controllerKeyCode(i));
             player2ControllerKeys[i] = new KeyCaptureButton(settings.player2ControllerKeyCode(i));
+        }
+        List<String> devices = GamepadController.deviceNames();
+        for (int player = 0; player < gamepadDevices.length; player++) {
+            AppSettings.GamepadConfig config = settings.gamepadConfig(player);
+            gamepadDevices[player] = gamepadDeviceCombo(devices, config.deviceIndex());
+            gamepadDeadzones[player] = spinner(config.deadzonePercent(), 0, 95, 1);
+            int playerIndex = player;
+            showGamepadComponents[player] = new JButton("Components...");
+            showGamepadComponents[player].addActionListener(event -> showGamepadComponents(playerIndex));
+            for (int i = 0; i < gamepadMappings[player].length; i++) {
+                gamepadMappings[player][i] = new JTextField(config.mappings()[i], 22);
+            }
         }
         initialize();
     }
@@ -163,21 +185,48 @@ public class SettingsDialog extends JDialog {
 
     private JPanel controlsPanel() {
         JPanel fields = new JPanel(new GridBagLayout());
-        addControlHeader(fields, 1, "Player 1");
-        addControlHeader(fields, 2, "Player 2");
+        addSectionLabel(fields, 0, "Keyboard");
+        addControlHeader(fields, 1, 1, "Player 1");
+        addControlHeader(fields, 1, 2, "Player 2");
         for (int i = 0; i < controllerKeys.length; i++) {
-            int row = i + 1;
+            int row = i + 2;
             addControlLabel(fields, row, AppSettings.CONTROLLER_BUTTON_NAMES[i]);
             addControlButton(fields, row, 1, controllerKeys[i]);
             addControlButton(fields, row, 2, player2ControllerKeys[i]);
         }
+        int row = controllerKeys.length + 3;
+        addSectionLabel(fields, row++, "Gamepad");
+        addControlLabel(fields, row, "Device");
+        addControlComponent(fields, row, 1, gamepadDevices[0]);
+        addControlComponent(fields, row++, 2, gamepadDevices[1]);
+        addControlLabel(fields, row, "Deadzone %");
+        addControlComponent(fields, row, 1, gamepadDeadzones[0]);
+        addControlComponent(fields, row++, 2, gamepadDeadzones[1]);
+        addControlLabel(fields, row, "Detected inputs");
+        addControlComponent(fields, row, 1, showGamepadComponents[0]);
+        addControlComponent(fields, row++, 2, showGamepadComponents[1]);
+        for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {
+            addControlLabel(fields, row, AppSettings.CONTROLLER_BUTTON_NAMES[i]);
+            addControlComponent(fields, row, 1, gamepadMappings[0][i]);
+            addControlComponent(fields, row++, 2, gamepadMappings[1][i]);
+        }
         return wrapPanel(fields);
     }
 
-    private void addControlHeader(JPanel panel, int column, String text) {
+    private void addSectionLabel(JPanel panel, int row, String text) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = 0;
+        constraints.gridy = row;
+        constraints.gridwidth = 3;
+        constraints.insets = new Insets(10, 6, 4, 6);
+        constraints.anchor = GridBagConstraints.WEST;
+        panel.add(new JLabel(text), constraints);
+    }
+
+    private void addControlHeader(JPanel panel, int row, int column, String text) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = column;
-        constraints.gridy = 0;
+        constraints.gridy = row;
         constraints.insets = new Insets(4, 6, 8, 6);
         constraints.anchor = GridBagConstraints.WEST;
         panel.add(new JLabel(text), constraints);
@@ -193,13 +242,17 @@ public class SettingsDialog extends JDialog {
     }
 
     private void addControlButton(JPanel panel, int row, int column, KeyCaptureButton button) {
+        addControlComponent(panel, row, column, button);
+    }
+
+    private void addControlComponent(JPanel panel, int row, int column, java.awt.Component component) {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = column;
         constraints.gridy = row;
         constraints.insets = new Insets(4, 6, 4, 6);
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
-        panel.add(button, constraints);
+        panel.add(component, constraints);
     }
 
     private JPanel wrapPanel(JPanel fields) {
@@ -236,6 +289,7 @@ public class SettingsDialog extends JDialog {
         boolean[] mutedValues = new boolean[4];
         int[] keyValues = new int[controllerKeys.length];
         int[] player2KeyValues = new int[player2ControllerKeys.length];
+        AppSettings.GamepadConfig[] gamepadValues = new AppSettings.GamepadConfig[2];
         for (int i = 0; i < channelValues.length; i++) {
             channelValues[i] = channelVolumes[i].getValue();
             mutedValues[i] = channelMuted[i].isSelected();
@@ -243,6 +297,17 @@ public class SettingsDialog extends JDialog {
         for (int i = 0; i < keyValues.length; i++) {
             keyValues[i] = controllerKeys[i].keyCode();
             player2KeyValues[i] = player2ControllerKeys[i].keyCode();
+        }
+        for (int player = 0; player < gamepadValues.length; player++) {
+            String[] mappings = new String[AppSettings.CONTROLLER_BUTTON_NAMES.length];
+            for (int i = 0; i < mappings.length; i++) {
+                mappings[i] = gamepadMappings[player][i].getText();
+            }
+            gamepadValues[player] = new AppSettings.GamepadConfig(
+                    gamepadDevices[player].getSelectedIndex() - 1,
+                    (int) gamepadDeadzones[player].getValue(),
+                    mappings
+            );
         }
         onSave.accept(new AppSettings(
                 (int) screenScale.getValue(),
@@ -257,6 +322,7 @@ public class SettingsDialog extends JDialog {
                 mutedValues,
                 keyValues,
                 player2KeyValues,
+                gamepadValues,
                 (int) turboMultiplier.getValue(),
                 turboKey.keyCode(),
                 turboToggleMode.isSelected(),
@@ -296,6 +362,26 @@ public class SettingsDialog extends JDialog {
         slider.setMinorTickSpacing(10);
         slider.setPaintTicks(true);
         return slider;
+    }
+
+    private JComboBox<String> gamepadDeviceCombo(List<String> devices, int selectedDeviceIndex) {
+        JComboBox<String> combo = new JComboBox<>();
+        combo.addItem("Disabled");
+        for (String device : devices) {
+            combo.addItem(device);
+        }
+        while (combo.getItemCount() <= selectedDeviceIndex + 1) {
+            combo.addItem("#" + combo.getItemCount() + " not connected");
+        }
+        combo.setSelectedIndex(Math.max(0, Math.min(selectedDeviceIndex + 1, combo.getItemCount() - 1)));
+        return combo;
+    }
+
+    private void showGamepadComponents(int player) {
+        int deviceIndex = gamepadDevices[player].getSelectedIndex() - 1;
+        JTextArea content = new JTextArea(GamepadController.componentSnapshot(deviceIndex), 18, 48);
+        content.setEditable(false);
+        JOptionPane.showMessageDialog(this, new JScrollPane(content), "Player " + (player + 1) + " gamepad inputs", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static class KeyCaptureButton extends JButton {

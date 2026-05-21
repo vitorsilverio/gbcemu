@@ -333,8 +333,8 @@ public class Main {
         }
         KeyboardController player1Controller = new KeyboardController(settings);
         KeyboardController player2Controller = new KeyboardController(player2KeyCodes(), 0, false);
-        CompositeController player1Input = new CompositeController(player1Controller, new GamepadController(0));
-        CompositeController player2Input = new CompositeController(player2Controller, new GamepadController(1));
+        CompositeController player1Input = new CompositeController(player1Controller, new GamepadController(settings.gamepadConfig(0)));
+        CompositeController player2Input = new CompositeController(player2Controller, new GamepadController(settings.gamepadConfig(1)));
         activeEmulator = Emulator.linked(
                 new Emulator.PlayerConfig(
                         player1Options.biosFile(),

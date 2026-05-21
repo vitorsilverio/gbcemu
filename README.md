@@ -23,6 +23,9 @@ Menus principais:
   - Player 1 usa o mapeamento configurado.
   - Player 2 tem mapeamento proprio em `Settings > Controls`.
   - Gamepads detectados pelo `input4j` tambem entram no controle composto: primeiro controle para Player 1, segundo controle para Player 2.
+  - Em `Settings > Controls`, cada player pode escolher o dispositivo, deadzone e nomes de botoes/eixos do gamepad.
+  - No mapeamento de gamepad, use nomes separados por virgula; eixos aceitam `+`/`-`, como `AXIS_Y-` para cima.
+  - O botao `Components...` mostra os nomes/valores atuais reportados pelo controle selecionado.
   - Internamente, cada jogo roda como um `Console` dentro da mesma sessao `Emulator`, que coordena o tick dos dois.
 - `Emulator > Settings...`: abre configuracoes em abas de geral, graficos, som e controles.
 - `Emulator > Pause`, `Resume`, `Stop`, `Restart`: controla a execucao.
@@ -105,7 +108,7 @@ Observacoes:
 - cgb timing ainda precisa ser corrigido.
 - A corrupcao testada por `oam_bug` e DMG-only; o foco atual e manter os bloqueios CGB reais de OAM/VRAM.
 - Link cable local ainda e experimental: a sessao abre dois emuladores lado a lado na mesma instancia e usa cabo em memoria. TCP/netplay fica para o futuro.
-- Gamepad tem integracao inicial opcional por `input4j`, mas ainda falta UI para escolher dispositivo/remapear botoes e eixos.
+- Gamepad tem integracao inicial opcional por `input4j`; a captura automatica de botoes/eixos e perfis por controle ainda ficam para evolucao.
 - Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.
 - Build nativo com GraalVM no Windows ainda pode exigir ajustes de metadata AWT/Swing.
 - A fidelidade do audio ainda esta em evolucao.

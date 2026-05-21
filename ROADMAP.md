@@ -58,7 +58,9 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Integrar `input4j` de forma opcional em runtime.
   - [x] Detectar controles.
   - [x] Mapear botoes/eixos comuns para Player 1 e Player 2.
-  - [ ] UI para escolher dispositivo e remapear botoes/eixos do gamepad.
+  - [x] UI inicial para escolher dispositivo, configurar botoes/eixos e deadzone por player.
+  - [x] Persistir perfil por player.
+  - [ ] Captura automatica de botoes/eixos pressionados.
   - [ ] Persistir perfil por controle quando possivel.
   - [ ] Suportar rumble para cartuchos/jogos compativeis.
   - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e futura integracao com controle.

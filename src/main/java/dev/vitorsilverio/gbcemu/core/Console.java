@@ -187,7 +187,7 @@ public class Console {
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
         keyboardController = headless || controllerOverride != null ? null : new KeyboardController(this.settings);
-        gamepadController = headless || controllerOverride != null ? null : new GamepadController(0);
+        gamepadController = headless || controllerOverride != null ? null : new GamepadController(this.settings.gamepadConfig(0));
         this.externallyThrottled = externallyThrottled;
         this.controller = controllerOverride != null
                 ? controllerOverride
@@ -438,6 +438,9 @@ public class Console {
         rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
         if (keyboardController != null) {
             keyboardController.applySettings(this.settings);
+        }
+        if (gamepadController != null) {
+            gamepadController.applySettings(this.settings.gamepadConfig(0));
         }
     }
 

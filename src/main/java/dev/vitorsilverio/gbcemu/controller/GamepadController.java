@@ -3,21 +3,24 @@ package dev.vitorsilverio.gbcemu.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import dev.vitorsilverio.gbcemu.config.AppSettings;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
 public class GamepadController implements Controller, AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(GamepadController.class);
-    private static final float DEADZONE = 0.35f;
     private static final long POLL_INTERVAL_MILLIS = 4L;
     private static volatile Object inputDevices;
     private static volatile boolean input4jUnavailable;
 
-    private final int playerIndex;
+    private volatile AppSettings.GamepadConfig config;
     private volatile boolean running;
     private Thread pollThread;
     private Consumer<ButtonType> onButtonPress;
@@ -31,8 +34,17 @@ public class GamepadController implements Controller, AutoCloseable {
     private boolean buttonRight;
 
     public GamepadController(int playerIndex) {
-        this.playerIndex = Math.max(0, playerIndex);
+        this(AppSettings.defaults().gamepadConfig(playerIndex));
+    }
+
+    public GamepadController(AppSettings.GamepadConfig config) {
+        this.config = config;
         start();
+    }
+
+    public void applySettings(AppSettings.GamepadConfig config) {
+        this.config = config;
+        releaseAll();
     }
 
     private void start() {
@@ -41,9 +53,65 @@ public class GamepadController implements Controller, AutoCloseable {
             return;
         }
         running = true;
-        pollThread = new Thread(this::pollLoop, "gbcemu-gamepad-" + (playerIndex + 1));
+        pollThread = new Thread(this::pollLoop, "gbcemu-gamepad");
         pollThread.setDaemon(true);
         pollThread.start();
+    }
+
+    public static List<String> deviceNames() {
+        Object devices = inputDevices();
+        if (devices == null) {
+            return List.of();
+        }
+        try {
+            Object result = devices.getClass().getMethod("getAll").invoke(devices);
+            if (!(result instanceof Collection<?> collection)) {
+                return List.of();
+            }
+            List<String> names = new ArrayList<>();
+            int index = 1;
+            for (Object device : collection) {
+                Object name = invokeOptionalStatic(device, "getName", "name", "getProductName", "productName");
+                names.add("#" + index + " " + (name == null ? device.toString() : name.toString()));
+                index++;
+            }
+            return names;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            logger.debug("Failed to list gamepads", e);
+            return List.of();
+        }
+    }
+
+    public static String componentSnapshot(int deviceIndex) {
+        if (deviceIndex < 0) {
+            return "Gamepad disabled.";
+        }
+        Object devices = inputDevices();
+        if (devices == null) {
+            return "input4j unavailable.";
+        }
+        try {
+            Object result = devices.getClass().getMethod("getAll").invoke(devices);
+            if (!(result instanceof Collection<?> collection) || collection.size() <= deviceIndex) {
+                return "Device not found.";
+            }
+            Object device = new ArrayList<>(collection).get(deviceIndex);
+            device.getClass().getMethod("poll").invoke(device);
+            Object componentsResult = device.getClass().getMethod("getComponents").invoke(device);
+            if (!(componentsResult instanceof Collection<?> components)) {
+                return "No components.";
+            }
+            StringBuilder builder = new StringBuilder();
+            for (Object component : components) {
+                String name = componentNameStatic(component);
+                float value = componentValueStatic(component);
+                builder.append(name).append(" = ").append(String.format(Locale.ROOT, "%.3f", value)).append('\n');
+            }
+            return builder.isEmpty() ? "No components." : builder.toString();
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            logger.debug("Failed to read gamepad components", e);
+            return "Failed to read components: " + e.getMessage();
+        }
     }
 
     private static Object inputDevices() {
@@ -108,11 +176,15 @@ public class GamepadController implements Controller, AutoCloseable {
         if (devices == null) {
             return null;
         }
-        Collection<?> all = allDevices(devices);
-        if (all.size() <= playerIndex) {
+        int deviceIndex = config == null ? -1 : config.deviceIndex();
+        if (deviceIndex < 0) {
             return null;
         }
-        return new ArrayList<>(all).get(playerIndex);
+        Collection<?> all = allDevices(devices);
+        if (all.size() <= deviceIndex) {
+            return null;
+        }
+        return new ArrayList<>(all).get(deviceIndex);
     }
 
     private Collection<?> allDevices(Object devices) throws ReflectiveOperationException {
@@ -137,21 +209,23 @@ public class GamepadController implements Controller, AutoCloseable {
         for (Object component : components) {
             String name = componentName(component);
             float value = componentValue(component);
-            boolean pressed = value > 0.5f;
-            a |= pressed && matches(name, "A", "CROSS", "BUTTON_0");
-            b |= pressed && matches(name, "B", "CIRCLE", "BUTTON_1");
-            start |= pressed && matches(name, "START", "OPTIONS", "BUTTON_7", "BUTTON_9");
-            select |= pressed && matches(name, "BACK", "SELECT", "SHARE", "BUTTON_6", "BUTTON_8");
-            up |= pressed && matches(name, "DPAD_UP");
-            down |= pressed && matches(name, "DPAD_DOWN");
-            left |= pressed && matches(name, "DPAD_LEFT");
-            right |= pressed && matches(name, "DPAD_RIGHT");
+            AppSettings.GamepadConfig currentConfig = config;
+            String[] mappings = currentConfig == null ? AppSettings.defaults().gamepadConfig(0).mappings() : currentConfig.mappings();
+            float deadzone = currentConfig == null ? 0.35f : currentConfig.deadzonePercent() / 100.0f;
+            a |= matchesMapping(name, value, mappings[0], deadzone);
+            b |= matchesMapping(name, value, mappings[1], deadzone);
+            start |= matchesMapping(name, value, mappings[2], deadzone);
+            select |= matchesMapping(name, value, mappings[3], deadzone);
+            up |= matchesMapping(name, value, mappings[4], deadzone);
+            down |= matchesMapping(name, value, mappings[5], deadzone);
+            left |= matchesMapping(name, value, mappings[6], deadzone);
+            right |= matchesMapping(name, value, mappings[7], deadzone);
             if (matches(name, "LEFT_THUMB_X", "LEFT_AXIS_X", "AXIS_X")) {
-                left |= value < -DEADZONE;
-                right |= value > DEADZONE;
+                left |= value < -deadzone;
+                right |= value > deadzone;
             } else if (matches(name, "LEFT_THUMB_Y", "LEFT_AXIS_Y", "AXIS_Y")) {
-                up |= value < -DEADZONE;
-                down |= value > DEADZONE;
+                up |= value < -deadzone;
+                down |= value > deadzone;
             } else if (matches(name, "DPAD", "DPAD_AXIS")) {
                 up |= value == 0.25f || value == 0.125f || value == 0.375f;
                 right |= value == 0.5f || value == 0.375f || value == 0.625f;
@@ -163,14 +237,22 @@ public class GamepadController implements Controller, AutoCloseable {
     }
 
     private String componentName(Object component) {
-        Object id = invokeOptional(component, "getId", "id", "getName", "name");
+        return componentNameStatic(component);
+    }
+
+    private static String componentNameStatic(Object component) {
+        Object id = invokeOptionalStatic(component, "getId", "id", "getName", "name");
         Object value = id == null ? component : id;
         String name = value.toString();
         return name == null ? "" : name.toUpperCase(Locale.ROOT);
     }
 
     private float componentValue(Object component) {
-        Object value = invokeOptional(component, "getData", "data", "getValue", "value", "isPressed", "pressed");
+        return componentValueStatic(component);
+    }
+
+    private static float componentValueStatic(Object component) {
+        Object value = invokeOptionalStatic(component, "getData", "data", "getValue", "value", "isPressed", "pressed");
         if (value instanceof Number number) {
             return number.floatValue();
         }
@@ -181,6 +263,10 @@ public class GamepadController implements Controller, AutoCloseable {
     }
 
     private Object invokeOptional(Object target, String... methodNames) {
+        return invokeOptionalStatic(target, methodNames);
+    }
+
+    private static Object invokeOptionalStatic(Object target, String... methodNames) {
         for (String methodName : methodNames) {
             try {
                 Method method = target.getClass().getMethod(methodName);
@@ -189,6 +275,26 @@ public class GamepadController implements Controller, AutoCloseable {
             }
         }
         return null;
+    }
+
+    private boolean matchesMapping(String actual, float value, String mapping, float deadzone) {
+        if (mapping == null || mapping.isBlank()) {
+            return false;
+        }
+        return Arrays.stream(mapping.split(","))
+                .map(String::strip)
+                .filter(token -> !token.isBlank())
+                .anyMatch(token -> matchesToken(actual, value, token.toUpperCase(Locale.ROOT), deadzone));
+    }
+
+    private boolean matchesToken(String actual, float value, String token, float deadzone) {
+        if (token.endsWith("+")) {
+            return matches(actual, token.substring(0, token.length() - 1)) && value > deadzone;
+        }
+        if (token.endsWith("-")) {
+            return matches(actual, token.substring(0, token.length() - 1)) && value < -deadzone;
+        }
+        return matches(actual, token) && value > 0.5f;
     }
 
     private boolean matches(String actual, String... expected) {
