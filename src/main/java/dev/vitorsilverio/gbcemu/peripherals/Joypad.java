@@ -5,6 +5,7 @@ import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
+import dev.vitorsilverio.gbcemu.sgb.SuperGameBoy;
 
 public class Joypad implements MemorySpace {
 
@@ -14,12 +15,18 @@ public class Joypad implements MemorySpace {
 
     private final Bus bus;
     private final Controller controller;
+    private final SuperGameBoy superGameBoy;
 
     private int selectedLines = SELECT_DPAD | SELECT_BUTTONS;
 
     public Joypad(Bus bus, Controller controller) {
+        this(bus, controller, null);
+    }
+
+    public Joypad(Bus bus, Controller controller, SuperGameBoy superGameBoy) {
         this.bus = bus;
         this.controller = controller;
+        this.superGameBoy = superGameBoy;
         this.controller.eventEmitter(this::onButtonPress);
     }
 
@@ -38,6 +45,9 @@ public class Joypad implements MemorySpace {
         // and return the corresponding state
 
         int state = 0x0F;
+        if (selectedLines == (SELECT_DPAD | SELECT_BUTTONS) && superGameBoy != null) {
+            state = superGameBoy.joypadIdNibble();
+        }
         if ((selectedLines & SELECT_BUTTONS) == 0) {
             state &= getActionButtonsState(controller);
         }
@@ -69,6 +79,9 @@ public class Joypad implements MemorySpace {
     public void write(int address, byte value) {
         if (address == JOYPAD_REG) {
             selectedLines = value & (SELECT_DPAD | SELECT_BUTTONS);
+            if (superGameBoy != null) {
+                superGameBoy.writeJoypad(selectedLines);
+            }
         } else {
             throw new IllegalArgumentException("Address " + address + " not found in any memory space");
         }

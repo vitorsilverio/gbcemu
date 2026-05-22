@@ -23,6 +23,7 @@ public record AppSettings(
         int turboKeyCode,
         boolean turboToggleMode,
         boolean xBrzFiltering,
+        boolean superGameBoyBordersEnabled,
         String defaultBiosPath,
         int rtcOffsetHours,
         int rtcOffsetMinutes,
@@ -70,6 +71,7 @@ public record AppSettings(
     private static final String TURBO_KEY = "turboKey";
     private static final String TURBO_TOGGLE_MODE = "turboToggleMode";
     private static final String XBRZ_FILTERING = "xbrzFiltering";
+    private static final String SUPER_GAME_BOY_BORDERS_ENABLED = "superGameBoyBordersEnabled";
     private static final String DEFAULT_BIOS_PATH = "defaultBios";
     private static final String RTC_OFFSET_HOURS = "rtcOffsetHours";
     private static final String RTC_OFFSET_MINUTES = "rtcOffsetMinutes";
@@ -98,6 +100,7 @@ public record AppSettings(
                 defaultGamepadConfigs(),
                 3,
                 KeyEvent.VK_TAB,
+                false,
                 false,
                 false,
                 "",
@@ -166,6 +169,7 @@ public record AppSettings(
                 preferences.getInt(TURBO_KEY, defaults.turboKeyCode),
                 preferences.getBoolean(TURBO_TOGGLE_MODE, defaults.turboToggleMode),
                 preferences.getBoolean(XBRZ_FILTERING, defaults.xBrzFiltering),
+                preferences.getBoolean(SUPER_GAME_BOY_BORDERS_ENABLED, defaults.superGameBoyBordersEnabled),
                 preferences.get(DEFAULT_BIOS_PATH, defaults.defaultBiosPath),
                 clamp(preferences.getInt(RTC_OFFSET_HOURS, defaults.rtcOffsetHours), -9999, 9999),
                 clamp(preferences.getInt(RTC_OFFSET_MINUTES, defaults.rtcOffsetMinutes), -59, 59),
@@ -218,6 +222,7 @@ public record AppSettings(
         preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
         preferences.putInt(TURBO_KEY, turboKeyCode);
         preferences.putBoolean(TURBO_TOGGLE_MODE, turboToggleMode);
+        preferences.putBoolean(SUPER_GAME_BOY_BORDERS_ENABLED, superGameBoyBordersEnabled);
         preferences.putInt(RTC_OFFSET_HOURS, rtcOffsetHours);
         preferences.putInt(RTC_OFFSET_MINUTES, rtcOffsetMinutes);
         preferences.putInt(RTC_OFFSET_SECONDS, rtcOffsetSeconds);
@@ -274,21 +279,21 @@ public record AppSettings(
     }
 
     public AppSettings withAudioMasterVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, clampPercent(value), audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, superGameBoyBordersEnabled, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioLeftVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, clampPercent(value), audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, superGameBoyBordersEnabled, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioRightVolume(int value) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, clampPercent(value), audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, superGameBoyBordersEnabled, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withAudioChannelVolume(int channel, int value) {
         int[] copy = audioChannelVolumes.clone();
         copy[channel - 1] = clampPercent(value);
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, copy, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, superGameBoyBordersEnabled, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, multiplayerTcpMode, multiplayerHostMode, multiplayerLocalPath, multiplayerTcpHost, multiplayerTcpPort);
     }
 
     public AppSettings withMultiplayerConfig(
@@ -298,7 +303,7 @@ public record AppSettings(
             String tcpHost,
             int tcpPort
     ) {
-        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
+        return new AppSettings(screenScale, smoothScaling, fullscreen, rewindSeconds, rewindCaptureIntervalFrames, audioMasterVolume, audioLeftVolume, audioRightVolume, audioChannelVolumes, audioChannelMuted, audioEnhancement, controllerKeyCodes, player2ControllerKeyCodes, gamepadConfigs, turboMultiplier, turboKeyCode, turboToggleMode, xBrzFiltering, superGameBoyBordersEnabled, defaultBiosPath, rtcOffsetHours, rtcOffsetMinutes, rtcOffsetSeconds, tcpMode, hostMode, localPath, tcpHost, tcpPort);
     }
 
     public AppSettings normalized() {
@@ -342,6 +347,7 @@ public record AppSettings(
                 turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode,
                 turboToggleMode,
                 xBrzFiltering,
+                superGameBoyBordersEnabled,
                 defaultBiosPath == null ? "" : defaultBiosPath.strip(),
                 clamp(rtcOffsetHours, -9999, 9999),
                 clamp(rtcOffsetMinutes, -59, 59),

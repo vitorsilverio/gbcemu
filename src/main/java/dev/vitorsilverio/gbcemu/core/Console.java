@@ -28,6 +28,7 @@ import dev.vitorsilverio.gbcemu.ppu.CgbCompatibilityPaletteSelection;
 import dev.vitorsilverio.gbcemu.ppu.CgbCompatibilityPaletteSelector;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.ppu.PpuMode;
+import dev.vitorsilverio.gbcemu.sgb.SuperGameBoy;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
 import dev.vitorsilverio.gbcemu.snapshot.RewindBuffer;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
@@ -71,6 +72,7 @@ public class Console {
     private final Controller controller;
     private final GameSharkDevice gameSharkDevice;
     private final Cart cart;
+    private final SuperGameBoy superGameBoy;
     private final File romFile;
     private final File saveFile;
     private final boolean throttled;
@@ -168,9 +170,11 @@ public class Console {
         this.saveFile = saveFile;
         this.cart = CartFactory.fromFile(romFile, saveFile, this::currentRtcEpochSeconds);
         this.cartridgeCgbCompatible = cart.getHeader().isCgbCompatible();
+        boolean superGameBoyEnabled = this.settings.superGameBoyBordersEnabled() && cart.getHeader().isSgbEnhanced();
         this.cpu = new Cpu(bus);
         this.timer = new Timer(bus);
-        this.ppu = new Ppu(bus, biosFile != null || cartridgeCgbCompatible);
+        this.ppu = new Ppu(bus, !superGameBoyEnabled && (biosFile != null || cartridgeCgbCompatible));
+        this.superGameBoy = new SuperGameBoy(superGameBoyEnabled, ppu);
         this.audioOutput = headless ? AudioOutput.muted() : AudioOutput.createDefault(48_000);
         this.audioOutput.applyEnhancement(this.settings.normalizedAudioEnhancement());
         this.apu = new Apu(audioOutput);
@@ -196,7 +200,7 @@ public class Console {
         this.controller = controllerOverride != null
                 ? controllerOverride
                 : headless ? new IdleController() : new CompositeController(keyboardController, gamepadController);
-        var joypad = new Joypad(bus, this.controller);
+        var joypad = new Joypad(bus, this.controller, superGameBoy);
         bus.addMemorySpace(joypad);
         workRam = new WorkRam();
         bus.addMemorySpace(workRam);
@@ -224,9 +228,9 @@ public class Console {
         if (this.window != null) {
             KeyListener keyListener = keyListenerOverride != null ? keyListenerOverride : keyboardController;
             if (secondaryDisplay) {
-                this.window.attachSecondary(ppu, keyListener);
+                this.window.attachSecondary(ppu, keyListener, superGameBoy);
             } else {
-                this.window.attach(ppu, keyListener);
+                this.window.attach(ppu, keyListener, superGameBoy);
             }
         }
         this.linkCable = linkCableOverride != null
@@ -458,7 +462,7 @@ public class Console {
     }
 
     public void openPpuDebugger() {
-        new PpuDebugWindow(ppu);
+        new PpuDebugWindow(ppu, superGameBoy);
     }
 
     public void openCpuDebugger() {
@@ -482,8 +486,23 @@ public class Console {
             String suffix = label == null || label.isBlank() ? "" : "-" + label.replaceAll("[^A-Za-z0-9._-]", "_");
             String baseName = "debug-bundle-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now()) + suffix;
             String frameFilename = baseName + "-frame.png";
+            String sgbBorderFilename = baseName + "-sgb-border.png";
+            String sgbFrameFilename = baseName + "-sgb-frame.png";
+            String sgbAttributesFilename = baseName + "-sgb-attributes.png";
             writeDebugFramePng(frameFilename);
-            return DebugJson.writeTargetFile(baseName + ".json", debugBundleJson(frameFilename), "Failed to dump debug bundle");
+            boolean wroteSgbBorder = writeSgbBorderPng(sgbBorderFilename);
+            boolean wroteSgbFrame = writeSgbFramePng(sgbFrameFilename);
+            boolean wroteSgbAttributes = writeSgbAttributesPng(sgbAttributesFilename);
+            return DebugJson.writeTargetFile(
+                    baseName + ".json",
+                    debugBundleJson(
+                            frameFilename,
+                            wroteSgbBorder ? sgbBorderFilename : "",
+                            wroteSgbFrame ? sgbFrameFilename : "",
+                            wroteSgbAttributes ? sgbAttributesFilename : ""
+                    ),
+                    "Failed to dump debug bundle"
+            );
         }
     }
 
@@ -504,6 +523,55 @@ public class Console {
         BufferedImage image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_ARGB);
         image.setRGB(0, 0, 160, 144, pixels, 0, 160);
         return image;
+    }
+
+    private boolean writeSgbBorderPng(String filename) {
+        BufferedImage border = superGameBoy.copyBorderImage();
+        if (border == null) {
+            return false;
+        }
+        File target = new File("target");
+        if (!target.exists()) {
+            target.mkdirs();
+        }
+        try {
+            ImageIO.write(border, "png", new File(target, filename));
+            return true;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to dump SGB border", e);
+        }
+    }
+
+    private boolean writeSgbFramePng(String filename) {
+        if (superGameBoy == null || !superGameBoy.isEnabled()) {
+            return false;
+        }
+        File target = new File("target");
+        if (!target.exists()) {
+            target.mkdirs();
+        }
+        try {
+            ImageIO.write(superGameBoy.colorizeFrame(ppu.getFrameBuffer()), "png", new File(target, filename));
+            return true;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to dump SGB frame", e);
+        }
+    }
+
+    private boolean writeSgbAttributesPng(String filename) {
+        if (superGameBoy == null || !superGameBoy.isEnabled()) {
+            return false;
+        }
+        File target = new File("target");
+        if (!target.exists()) {
+            target.mkdirs();
+        }
+        try {
+            ImageIO.write(superGameBoy.debugAttributeImage(), "png", new File(target, filename));
+            return true;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to dump SGB attribute map", e);
+        }
     }
 
     public File dumpMemoryBanks() {
@@ -581,7 +649,7 @@ public class Console {
         );
     }
 
-    private String debugBundleJson(String frameFilename) {
+    private String debugBundleJson(String frameFilename, String sgbBorderFilename, String sgbFrameFilename, String sgbAttributesFilename) {
         CpuState cpuState = cpu.saveState();
         Ppu.DebugSnapshot ppuSnapshot = ppu.debugSnapshot();
         Ppu.FrameDebugStats frameStats = ppu.frameDebugStats();
@@ -606,10 +674,14 @@ public class Console {
         DebugJson.appendLong(builder, "systemCycles", systemCycles, true, 4);
         DebugJson.appendBoolean(builder, "biosLoaded", bios != null, true, 4);
         DebugJson.appendBoolean(builder, "cartridgeCgbCompatible", cartridgeCgbCompatible, true, 4);
+        DebugJson.appendBoolean(builder, "cartridgeSgbEnhanced", cart.getHeader().isSgbEnhanced(), true, 4);
         DebugJson.appendBoolean(builder, "throttled", throttled, true, 4);
         DebugJson.appendBoolean(builder, "paused", paused, true, 4);
         DebugJson.appendBoolean(builder, "stopped", stopped, true, 4);
-        DebugJson.appendString(builder, "framePng", frameFilename, false, 4);
+        DebugJson.appendString(builder, "framePng", frameFilename, true, 4);
+        DebugJson.appendString(builder, "sgbBorderPng", sgbBorderFilename, true, 4);
+        DebugJson.appendString(builder, "sgbFramePng", sgbFrameFilename, true, 4);
+        DebugJson.appendString(builder, "sgbAttributesPng", sgbAttributesFilename, false, 4);
         builder.append("  },\n");
         builder.append("  \"cpu\": {\n");
         DebugJson.appendHex(builder, "pc", cpuState.pc(), true, 4, 4);
@@ -664,6 +736,7 @@ public class Console {
         appendSerialTransferHistoryJson(builder, 4);
         builder.append("  },\n");
         appendLinkDebugJson(builder);
+        appendSuperGameBoyDebugJson(builder);
         appendDmaDebugJson(builder, dmaState, hdmaState);
         appendCgbRegistersDebugJson(builder, key0State, key1State, cgbUndocumentedState, compatibilityPaletteSelection);
         builder.append("  \"ppu\": {\n");
@@ -729,6 +802,40 @@ public class Console {
         DebugJson.appendHex(builder, "peerSc", peer.sc(), true, 4, 2);
         DebugJson.appendHex(builder, "peerOutgoingByte", peer.outgoingByte(), true, 4, 2);
         DebugJson.appendBoolean(builder, "bothReadyForTransfer", linkCable.bothSidesReadyForTransfer(), false, 4);
+        builder.append("  },\n");
+    }
+
+    private void appendSuperGameBoyDebugJson(StringBuilder builder) {
+        builder.append("  \"superGameBoy\": {\n");
+        DebugJson.appendBoolean(builder, "enabled", superGameBoy.isEnabled(), true, 4);
+        DebugJson.appendBoolean(builder, "borderReady", superGameBoy.hasBorder(), true, 4);
+        DebugJson.appendBoolean(builder, "transferMaskActive", superGameBoy.isTransferMaskActive(), true, 4);
+        DebugJson.appendBoolean(builder, "systemPalettesReady", superGameBoy.systemPalettesReady(), true, 4);
+        DebugJson.appendString(builder, "lastCommand", superGameBoy.lastCommandName(), true, 4);
+        DebugJson.appendString(builder, "recentCommands", superGameBoy.recentCommandHistory(), true, 4);
+        DebugJson.appendHex(builder, "lastHeaderByte", superGameBoy.lastHeaderByte(), true, 4, 2);
+        DebugJson.appendString(builder, "lastPacketHex", superGameBoy.lastPacketHex(), true, 4);
+        DebugJson.appendNumber(builder, "maskMode", superGameBoy.maskMode(), true, 4);
+        DebugJson.appendBoolean(builder, "receivingPacket", superGameBoy.isReceivingPacket(), true, 4);
+        DebugJson.appendNumber(builder, "expectedPackets", superGameBoy.expectedPackets(), true, 4);
+        DebugJson.appendNumber(builder, "receivedPackets", superGameBoy.receivedPackets(), true, 4);
+        DebugJson.appendString(builder, "pendingTransfer", superGameBoy.pendingTransferName(), true, 4);
+        DebugJson.appendNumber(builder, "pendingTransferFrames", superGameBoy.pendingTransferFrames(), true, 4);
+        DebugJson.appendNumber(builder, "pendingTransferCount", superGameBoy.pendingTransferCount(), true, 4);
+        DebugJson.appendNumber(builder, "borderTileNonZeroBytes", superGameBoy.borderTileNonZeroBytes(), true, 4);
+        DebugJson.appendNumber(builder, "pictureTransferNonZeroBytes", superGameBoy.pictureTransferNonZeroBytes(), true, 4);
+        DebugJson.appendNumber(builder, "pictureTransferUniqueMapEntries", superGameBoy.pictureTransferUniqueMapEntries(), true, 4);
+        DebugJson.appendString(builder, "screenPalettes", superGameBoy.screenPalettesSample(), true, 4);
+        DebugJson.appendNumber(builder, "screenAttributeUniqueCount", superGameBoy.screenAttributeUniqueCount(), true, 4);
+        DebugJson.appendString(builder, "borderTileDataSample", superGameBoy.borderTileDataSample(), true, 4);
+        DebugJson.appendString(builder, "pictureTransferMapSample", superGameBoy.pictureTransferMapSample(), true, 4);
+        DebugJson.appendString(builder, "pictureTransferPaletteSample", superGameBoy.pictureTransferPaletteSample(), true, 4);
+        DebugJson.appendLong(builder, "packetsReceivedTotal", superGameBoy.packetsReceived(), true, 4);
+        DebugJson.appendLong(builder, "invalidPackets", superGameBoy.invalidPackets(), true, 4);
+        DebugJson.appendLong(builder, "ignoredPackets", superGameBoy.ignoredPackets(), true, 4);
+        DebugJson.appendNumber(builder, "pulseCount", superGameBoy.pulseCount(), true, 4);
+        DebugJson.appendNumber(builder, "joypadCount", superGameBoy.joypadCount(), true, 4);
+        DebugJson.appendNumber(builder, "selectedJoypad", superGameBoy.selectedJoypad(), false, 4);
         builder.append("  },\n");
     }
 
@@ -921,12 +1028,16 @@ public class Console {
         ppu.tick();
         updateFastForwardAudioMode();
         apu.tick();
-        if (window != null && ppu.consumeFrameReady() && shouldRenderFrame()) {
-            window.renderFrame(ppu);
+        if (ppu.consumeFrameReady()) {
+            boolean transferFrame = superGameBoy.consumeTransferFrame();
+            if (window != null && shouldRenderFrame() && !transferFrame && !superGameBoy.shouldSuppressFrame()) {
+                window.renderFrame(ppu);
+            }
         }
         dots++;
         if (dots >= DOTS_PER_FRAME) {
             dots = 0;
+            superGameBoy.tickFrame();
             frameNumber++;
             recordRewindSnapshot();
             updatePerformanceStats();
@@ -1047,13 +1158,27 @@ public class Console {
             key0.write(0xFF4C, (byte) 0x04);
             ppu.write(0xFF6C, (byte) 0x01);
         }
+        cpu.setPc(0x100);
+        cpu.setSp(0xfffe);
+        if (superGameBoy.isEnabled()) {
+            key0.write(0xFF4C, (byte) 0x04);
+            ppu.write(0xFF6C, (byte) 0x01);
+            cpu.setAf(0x0100);
+            cpu.setBc(0x0014);
+            cpu.setDe(0x0000);
+            cpu.setHl(0x0000);
+            if (bios != null) {
+                cpu.getBus().write(0xFF50, (byte) 0x01);
+            } else {
+                key0.lock();
+            }
+            return;
+        }
         if (bios != null) {
             cpu.getBus().write(0xFF50, (byte) 0x01);
         } else {
             key0.lock();
         }
-        cpu.setPc(0x100);
-        cpu.setSp(0xfffe);
         if (cartridgeCgbCompatible) {
             cpu.setAf(0x1180);
             cpu.setBc(0x0000);
@@ -1144,7 +1269,8 @@ public class Console {
                     key0.saveState(),
                     key1.saveState(),
                     infraredPort.saveState(),
-                    cgbUndocumentedRegisters.saveState()
+                    cgbUndocumentedRegisters.saveState(),
+                    superGameBoy.saveState()
             );
         }
     }
@@ -1191,6 +1317,7 @@ public class Console {
             key1.loadState(emulatorState.key1());
             infraredPort.loadState(emulatorState.infrared());
             cgbUndocumentedRegisters.loadState(emulatorState.cgbUndocumentedRegisters());
+            superGameBoy.loadState(emulatorState.superGameBoy());
         }
         resume();
     }

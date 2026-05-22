@@ -13,6 +13,7 @@ public class CartHeader {
     private final byte cgbFlag;
     private final String newLicenseeCode;
     private final String sgbFlag;
+    private final int sgbFlagValue;
     private final CartridgeType cartridgeType;
     private final int romSize;
     private final int ramSize;
@@ -40,6 +41,7 @@ public class CartHeader {
         manufacturerCode = new String(rom, 0x013F, 4, StandardCharsets.ISO_8859_1);
         newLicenseeCode = new String(rom, 0x0144, 2, StandardCharsets.ISO_8859_1);
         sgbFlag = new String(rom, 0x0146, 1, StandardCharsets.ISO_8859_1);
+        sgbFlagValue = rom[0x0146] & 0xFF;
         cartridgeType = CartridgeType.fromCode(rom[0x0147]);
         romSize = decodeRomSize(rom[0x0148] & 0xFF);
         ramSize = rom[0x0149] & 0xFF;
@@ -82,6 +84,14 @@ public class CartHeader {
 
     public boolean isCgbCompatible() {
         return cgbFlag == (byte) 0x80 || cgbFlag == (byte) 0xC0;
+    }
+
+    public boolean isSgbEnhanced() {
+        return sgbFlagValue == 0x03;
+    }
+
+    public int getSgbFlag() {
+        return sgbFlagValue;
     }
 
     public byte getCgbFlag() {

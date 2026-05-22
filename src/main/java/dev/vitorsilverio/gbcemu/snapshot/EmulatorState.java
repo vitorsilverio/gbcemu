@@ -18,6 +18,7 @@ import dev.vitorsilverio.gbcemu.peripherals.TimerState;
 import dev.vitorsilverio.gbcemu.ppu.OamState;
 import dev.vitorsilverio.gbcemu.ppu.PpuState;
 import dev.vitorsilverio.gbcemu.ppu.VideoRamState;
+import dev.vitorsilverio.gbcemu.sgb.SuperGameBoyState;
 
 import java.io.Serializable;
 
@@ -40,7 +41,8 @@ public record EmulatorState(
         Key0State key0,
         Key1State key1,
         InfraredState infrared,
-        CgbUndocumentedRegistersState cgbUndocumentedRegisters
+        CgbUndocumentedRegistersState cgbUndocumentedRegisters,
+        SuperGameBoyState superGameBoy
 ) implements Serializable {
-    public static final int CURRENT_VERSION = 1;
+    public static final int CURRENT_VERSION = 2;
 }

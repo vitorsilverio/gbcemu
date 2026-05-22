@@ -14,6 +14,7 @@ public record PpuState(
         byte obj1PaletteDmg,
         int[][] frameBuffer,
         int[][] bgColorIndexes,
+        int[][] resolvedColorIndexes,
         boolean[][] bgPriorities,
         boolean cgbMode,
         int cycles,

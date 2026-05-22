@@ -2,6 +2,7 @@ package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.sgb.SuperGameBoy;
 import io.github.stanio.xbrz.awt.AwtXbrz;
 
 import javax.swing.*;
@@ -12,6 +13,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.util.prefs.Preferences;
 
 public class EmulatorWindow {
@@ -36,6 +38,10 @@ public class EmulatorWindow {
     private boolean fullscreen;
     private Ppu ppu;
     private Ppu secondaryPpu;
+    private SuperGameBoy superGameBoy;
+    private SuperGameBoy secondarySuperGameBoy;
+    private Image primaryFrameSnapshot;
+    private Image secondaryFrameSnapshot;
     private KeyListener keyListener;
     private KeyListener secondaryKeyListener;
     private OverlayIcon overlayIcon;
@@ -108,7 +114,7 @@ public class EmulatorWindow {
 
     private void applyWindowMode() {
         boolean visible = window.isVisible();
-        if (visible) {
+        if (window.isDisplayable()) {
             window.dispose();
         }
         window.setUndecorated(fullscreen);
@@ -126,7 +132,12 @@ public class EmulatorWindow {
     }
 
     public void attach(Ppu ppu, KeyListener keyListener) {
+        attach(ppu, keyListener, null);
+    }
+
+    public void attach(Ppu ppu, KeyListener keyListener, SuperGameBoy superGameBoy) {
         this.ppu = ppu;
+        this.superGameBoy = superGameBoy;
         SwingUtilities.invokeLater(() -> {
             if (this.ppu != ppu) {
                 return;
@@ -136,12 +147,19 @@ public class EmulatorWindow {
             if (keyListener != null) {
                 screen.addKeyListener(keyListener);
             }
+            updateScreenPreferredSize();
+            applyWindowMode();
             screen.repaint();
         });
     }
 
     public void attachSecondary(Ppu ppu, KeyListener keyListener) {
+        attachSecondary(ppu, keyListener, null);
+    }
+
+    public void attachSecondary(Ppu ppu, KeyListener keyListener, SuperGameBoy superGameBoy) {
         this.secondaryPpu = ppu;
+        this.secondarySuperGameBoy = superGameBoy;
         SwingUtilities.invokeLater(() -> {
             if (this.secondaryPpu != ppu) {
                 return;
@@ -163,11 +181,19 @@ public class EmulatorWindow {
         }
         if (expectedPpu == null || ppu == expectedPpu) {
             ppu = null;
+            superGameBoy = null;
         }
         if (expectedPpu == null || secondaryPpu == expectedPpu) {
             secondaryPpu = null;
+            secondarySuperGameBoy = null;
         }
         SwingUtilities.invokeLater(() -> {
+            if (expectedPpu == null || ppu == expectedPpu) {
+                primaryFrameSnapshot = null;
+            }
+            if (expectedPpu == null || secondaryPpu == expectedPpu) {
+                secondaryFrameSnapshot = null;
+            }
             if (expectedPpu != null
                     && ppu != null
                     && secondaryPpu != null
@@ -188,7 +214,15 @@ public class EmulatorWindow {
         if (source == null || (source != ppu && source != secondaryPpu)) {
             return;
         }
-        SwingUtilities.invokeLater(screen::repaint);
+        SwingUtilities.invokeLater(() -> {
+            if (source == ppu) {
+                primaryFrameSnapshot = captureDisplayFrame(source, superGameBoy);
+            } else if (source == secondaryPpu) {
+                secondaryFrameSnapshot = captureDisplayFrame(source, secondarySuperGameBoy);
+            }
+            updateScreenPreferredSize();
+            screen.repaint();
+        });
     }
 
     public void showOverlay(OverlayIcon icon) {
@@ -224,8 +258,40 @@ public class EmulatorWindow {
     }
 
     private void updateScreenPreferredSize() {
-        int screens = secondaryPpu == null ? 1 : 2;
-        screen.setPreferredSize(new Dimension(WIDTH * scale * screens, HEIGHT * scale));
+        int primaryScale = displayScale(superGameBoy);
+        int width = displayWidth(superGameBoy) * primaryScale;
+        int height = displayHeight(superGameBoy) * primaryScale;
+        if (secondaryPpu != null) {
+            int secondaryScale = displayScale(secondarySuperGameBoy);
+            width += displayWidth(secondarySuperGameBoy) * secondaryScale;
+            height = Math.max(height, displayHeight(secondarySuperGameBoy) * secondaryScale);
+        }
+        Dimension preferredSize = new Dimension(width, height);
+        boolean preferredSizeChanged = !preferredSize.equals(screen.getPreferredSize());
+        if (preferredSizeChanged) {
+            screen.setPreferredSize(preferredSize);
+            screen.revalidate();
+        }
+        if (!fullscreen && (preferredSizeChanged || !preferredSize.equals(screen.getSize()))) {
+            window.pack();
+            window.validate();
+            SwingUtilities.invokeLater(() -> {
+                window.pack();
+                window.validate();
+            });
+        }
+    }
+
+    private int displayWidth(SuperGameBoy sgb) {
+        return sgb != null && sgb.hasBorder() ? SuperGameBoy.BORDER_WIDTH : WIDTH;
+    }
+
+    private int displayHeight(SuperGameBoy sgb) {
+        return sgb != null && sgb.hasBorder() ? SuperGameBoy.BORDER_HEIGHT : HEIGHT;
+    }
+
+    private int displayScale(SuperGameBoy sgb) {
+        return scale;
     }
 
 
@@ -437,25 +503,90 @@ public class EmulatorWindow {
                 smoothScaling ? RenderingHints.VALUE_INTERPOLATION_BILINEAR : RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
         );
         if (secondaryPpu == null) {
-            drawPpuFrame(graphics, ppu, 0, fullscreen ? screen.getWidth() : WIDTH * scale, fullscreen ? screen.getHeight() : HEIGHT * scale);
+            int primaryScale = displayScale(superGameBoy);
+            drawDisplay(graphics, ppu, primaryFrameSnapshot, superGameBoy, 0, 0, fullscreen ? screen.getWidth() : displayWidth(superGameBoy) * primaryScale, fullscreen ? screen.getHeight() : displayHeight(superGameBoy) * primaryScale);
         } else {
-            int drawWidth = fullscreen ? screen.getWidth() / 2 : WIDTH * scale;
-            int drawHeight = fullscreen ? screen.getHeight() : HEIGHT * scale;
-            drawPpuFrame(graphics, ppu, 0, drawWidth, drawHeight);
-            drawPpuFrame(graphics, secondaryPpu, drawWidth, drawWidth, drawHeight);
+            int primaryScale = displayScale(superGameBoy);
+            int secondaryScale = displayScale(secondarySuperGameBoy);
+            int firstWidth = fullscreen ? screen.getWidth() / 2 : displayWidth(superGameBoy) * primaryScale;
+            int secondWidth = fullscreen ? screen.getWidth() - firstWidth : displayWidth(secondarySuperGameBoy) * secondaryScale;
+            int firstHeight = fullscreen ? screen.getHeight() : displayHeight(superGameBoy) * primaryScale;
+            int secondHeight = fullscreen ? screen.getHeight() : displayHeight(secondarySuperGameBoy) * secondaryScale;
+            drawDisplay(graphics, ppu, primaryFrameSnapshot, superGameBoy, 0, 0, firstWidth, firstHeight);
+            drawDisplay(graphics, secondaryPpu, secondaryFrameSnapshot, secondarySuperGameBoy, firstWidth, 0, secondWidth, secondHeight);
         }
         drawOverlay(g);
     }
 
+    private void drawDisplay(Graphics2D graphics, Ppu source, Image frameSnapshot, SuperGameBoy sgb, int x, int y, int drawWidth, int drawHeight) {
+        if (sgb != null && sgb.hasBorder() && frameSnapshot != null) {
+            graphics.drawImage(frameSnapshot, x, y, drawWidth, drawHeight, null);
+            return;
+        }
+        if (sgb != null && sgb.hasBorder()) {
+            Image border = sgb.borderImage();
+            graphics.drawImage(border, x, y, drawWidth, drawHeight, null);
+            int gameX = x + scaleCoordinate(SuperGameBoy.GAME_SCREEN_X, drawWidth, SuperGameBoy.BORDER_WIDTH);
+            int gameY = y + scaleCoordinate(SuperGameBoy.GAME_SCREEN_Y, drawHeight, SuperGameBoy.BORDER_HEIGHT);
+            int gameWidth = scaleCoordinate(WIDTH, drawWidth, SuperGameBoy.BORDER_WIDTH);
+            int gameHeight = scaleCoordinate(HEIGHT, drawHeight, SuperGameBoy.BORDER_HEIGHT);
+            drawPpuFrame(graphics, source, frameSnapshot, gameX, gameY, gameWidth, gameHeight);
+            return;
+        }
+        drawPpuFrame(graphics, source, frameSnapshot, x, y, drawWidth, drawHeight);
+    }
+
     private void drawPpuFrame(Graphics2D graphics, Ppu source, int x, int drawWidth, int drawHeight) {
+        drawPpuFrame(graphics, source, null, x, 0, drawWidth, drawHeight);
+    }
+
+    private void drawPpuFrame(Graphics2D graphics, Ppu source, Image frameSnapshot, int x, int y, int drawWidth, int drawHeight) {
         if (source == null) {
             return;
         }
-        Image frame = source.getFrameBuffer();
+        Image frame = frameSnapshot != null ? frameSnapshot : source.getFrameBuffer();
         if (xbrzFiltering) {
             frame = AwtXbrz.scaleImage(frame, scale);
         }
-        graphics.drawImage(frame, x, 0, drawWidth, drawHeight, null);
+        graphics.drawImage(frame, x, y, drawWidth, drawHeight, null);
+    }
+
+    private Image captureDisplayFrame(Ppu source, SuperGameBoy sgb) {
+        if (source == null) {
+            return null;
+        }
+        if (sgb != null && sgb.hasBorder()) {
+            BufferedImage border = sgb.copyBorderImage();
+            if (border != null) {
+                BufferedImage composed = new BufferedImage(SuperGameBoy.BORDER_WIDTH, SuperGameBoy.BORDER_HEIGHT, BufferedImage.TYPE_INT_RGB);
+                Graphics2D graphics = composed.createGraphics();
+                try {
+                    graphics.drawImage(border, 0, 0, null);
+                    graphics.drawImage(sgb.colorizeFrame(source.getFrameBuffer()), SuperGameBoy.GAME_SCREEN_X, SuperGameBoy.GAME_SCREEN_Y, WIDTH, HEIGHT, null);
+                } finally {
+                    graphics.dispose();
+                }
+                return composed;
+            }
+        }
+        return sgb != null && sgb.isEnabled()
+                ? sgb.colorizeFrame(source.getFrameBuffer())
+                : copyImage(source.getFrameBuffer());
+    }
+
+    private BufferedImage copyImage(Image source) {
+        BufferedImage copy = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = copy.createGraphics();
+        try {
+            graphics.drawImage(source, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+        return copy;
+    }
+
+    private int scaleCoordinate(int value, int targetSize, int sourceSize) {
+        return Math.round(value * targetSize / (float) sourceSize);
     }
 
     private void drawOverlay(Graphics g) {

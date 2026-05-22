@@ -18,6 +18,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
@@ -36,6 +37,7 @@ public class SettingsDialog extends JDialog {
     private final JSpinner screenScale;
     private final JCheckBox smoothScaling;
     private final JCheckBox xBrzFiltering;
+    private final JCheckBox superGameBoyBordersEnabled;
     private final JCheckBox fullscreen;
     private final JSpinner rewindSeconds;
     private final JSpinner rewindInterval;
@@ -71,6 +73,7 @@ public class SettingsDialog extends JDialog {
         this.screenScale = spinner(settings.screenScale(), 1, 8, 1);
         this.smoothScaling = new JCheckBox("Smooth scaling", settings.smoothScaling());
         this.xBrzFiltering = new JCheckBox("xBrz filtering", settings.xBrzFiltering());
+        this.superGameBoyBordersEnabled = new JCheckBox("Enable Super Game Boy borders", settings.superGameBoyBordersEnabled());
         this.fullscreen = new JCheckBox("Fullscreen", settings.fullscreen());
         this.rewindSeconds = spinner(settings.rewindSeconds(), 0, 120, 1);
         this.rewindInterval = spinner(settings.rewindCaptureIntervalFrames(), 1, 60, 1);
@@ -178,7 +181,8 @@ public class SettingsDialog extends JDialog {
         addRow(fields, 0, "Screen scale", screenScale);
         addRow(fields, 1, "Screen filter", smoothScaling);
         addRow(fields, 2, "xBrz filter", xBrzFiltering);
-        addRow(fields, 3, "Fullscreen", fullscreen);
+        addRow(fields, 3, "SGB borders", superGameBoyBordersEnabled);
+        addRow(fields, 4, "Fullscreen", fullscreen);
         return wrapPanel(fields, this::resetGraphicsDefaults);
     }
 
@@ -218,6 +222,7 @@ public class SettingsDialog extends JDialog {
     private void chooseSoundFont() {
         JFileChooser chooser = new JFileChooser(soundFontDirectory());
         chooser.setDialogTitle("Set SoundFont");
+        chooser.setFileFilter(new FileNameExtensionFilter("SoundFont files", "sf2", "sfz"));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             soundFontPath.setText(chooser.getSelectedFile().getAbsolutePath());
         }
@@ -390,6 +395,7 @@ public class SettingsDialog extends JDialog {
                 turboKey.keyCode(),
                 turboToggleMode.isSelected(),
                 xBrzFiltering.isSelected(),
+                superGameBoyBordersEnabled.isSelected(),
                 defaultBiosPath.getText(),
                 (int) rtcOffsetHours.getValue(),
                 (int) rtcOffsetMinutes.getValue(),
@@ -481,6 +487,7 @@ public class SettingsDialog extends JDialog {
         screenScale.setValue(defaults.screenScale());
         smoothScaling.setSelected(defaults.smoothScaling());
         xBrzFiltering.setSelected(defaults.xBrzFiltering());
+        superGameBoyBordersEnabled.setSelected(defaults.superGameBoyBordersEnabled());
         fullscreen.setSelected(defaults.fullscreen());
     }
 

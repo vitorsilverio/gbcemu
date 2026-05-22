@@ -17,21 +17,34 @@ public class GamepadController implements Controller, AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(GamepadController.class);
     private static final long POLL_INTERVAL_MILLIS = 4L;
+    private static final long FAILURE_RETRY_MILLIS = 16L;
+    private static final long DIGITAL_RELEASE_GRACE_NANOS = 72_000_000L;
+    private static final long ANALOG_RELEASE_GRACE_NANOS = 24_000_000L;
+    private static final int MAX_TRANSIENT_FAILURES = 8;
     private static volatile Object inputDevices;
     private static volatile boolean input4jUnavailable;
 
     private volatile AppSettings.GamepadConfig config;
     private volatile boolean running;
     private Thread pollThread;
-    private Consumer<ButtonType> onButtonPress;
-    private boolean buttonA;
-    private boolean buttonB;
-    private boolean buttonStart;
-    private boolean buttonSelect;
-    private boolean buttonUp;
-    private boolean buttonDown;
-    private boolean buttonLeft;
-    private boolean buttonRight;
+    private int consecutivePollFailures;
+    private volatile Consumer<ButtonType> onButtonPress;
+    private volatile boolean buttonA;
+    private volatile boolean buttonB;
+    private volatile boolean buttonStart;
+    private volatile boolean buttonSelect;
+    private volatile boolean buttonUp;
+    private volatile boolean buttonDown;
+    private volatile boolean buttonLeft;
+    private volatile boolean buttonRight;
+    private long buttonAReleaseAt;
+    private long buttonBReleaseAt;
+    private long buttonStartReleaseAt;
+    private long buttonSelectReleaseAt;
+    private long buttonUpReleaseAt;
+    private long buttonDownReleaseAt;
+    private long buttonLeftReleaseAt;
+    private long buttonRightReleaseAt;
 
     public GamepadController(int playerIndex) {
         this(AppSettings.defaults().gamepadConfig(playerIndex));
@@ -147,13 +160,17 @@ public class GamepadController implements Controller, AutoCloseable {
         while (running) {
             try {
                 pollOnce();
+                consecutivePollFailures = 0;
                 Thread.sleep(POLL_INTERVAL_MILLIS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
             } catch (Throwable e) {
                 logger.debug("Failed to poll gamepad", e);
-                releaseAll();
+                consecutivePollFailures++;
+                if (consecutivePollFailures >= MAX_TRANSIENT_FAILURES) {
+                    applyState(GamepadState.released());
+                }
                 sleepAfterFailure();
             }
         }
@@ -162,7 +179,7 @@ public class GamepadController implements Controller, AutoCloseable {
     private void pollOnce() throws ReflectiveOperationException {
         Object device = deviceForPlayer();
         if (device == null) {
-            releaseAll();
+            applyState(GamepadState.released());
             return;
         }
         device.getClass().getMethod("poll").invoke(device);
@@ -206,6 +223,7 @@ public class GamepadController implements Controller, AutoCloseable {
         boolean down = false;
         boolean left = false;
         boolean right = false;
+        boolean analogDirection = false;
         for (Object component : components) {
             String name = componentName(component);
             float value = componentValue(component);
@@ -220,20 +238,33 @@ public class GamepadController implements Controller, AutoCloseable {
             down |= matchesMapping(name, value, mappings[5], deadzone);
             left |= matchesMapping(name, value, mappings[6], deadzone);
             right |= matchesMapping(name, value, mappings[7], deadzone);
+            boolean analogLeft = false;
+            boolean analogRight = false;
+            boolean analogUp = false;
+            boolean analogDown = false;
             if (matches(name, "LEFT_THUMB_X", "LEFT_AXIS_X", "AXIS_X")) {
-                left |= value < -deadzone;
-                right |= value > deadzone;
+                analogLeft = value < -deadzone;
+                analogRight = value > deadzone;
+                left |= analogLeft;
+                right |= analogRight;
             } else if (matches(name, "LEFT_THUMB_Y", "LEFT_AXIS_Y", "AXIS_Y")) {
-                up |= value < -deadzone;
-                down |= value > deadzone;
+                analogUp = value < -deadzone;
+                analogDown = value > deadzone;
+                up |= analogUp;
+                down |= analogDown;
             } else if (matches(name, "DPAD", "DPAD_AXIS")) {
-                up |= value == 0.25f || value == 0.125f || value == 0.375f;
-                right |= value == 0.5f || value == 0.375f || value == 0.625f;
-                down |= value == 0.75f || value == 0.625f || value == 0.875f;
-                left |= value == 1.0f || value == 0.875f || value == 0.125f;
+                analogUp = value == 0.25f || value == 0.125f || value == 0.375f;
+                analogRight = value == 0.5f || value == 0.375f || value == 0.625f;
+                analogDown = value == 0.75f || value == 0.625f || value == 0.875f;
+                analogLeft = value == 1.0f || value == 0.875f || value == 0.125f;
+                up |= analogUp;
+                right |= analogRight;
+                down |= analogDown;
+                left |= analogLeft;
             }
+            analogDirection |= analogUp || analogDown || analogLeft || analogRight;
         }
-        return new GamepadState(a, b, start, select, up, down, left, right);
+        return new GamepadState(a, b, start, select, up, down, left, right, analogDirection);
     }
 
     private String componentName(Object component) {
@@ -307,22 +338,61 @@ public class GamepadController implements Controller, AutoCloseable {
     }
 
     private void applyState(GamepadState state) {
-        emitPress(state.a && !buttonA, ButtonType.ACTION);
-        emitPress(state.b && !buttonB, ButtonType.ACTION);
-        emitPress(state.start && !buttonStart, ButtonType.ACTION);
-        emitPress(state.select && !buttonSelect, ButtonType.ACTION);
-        emitPress(state.up && !buttonUp, ButtonType.DIRECTIONAL);
-        emitPress(state.down && !buttonDown, ButtonType.DIRECTIONAL);
-        emitPress(state.left && !buttonLeft, ButtonType.DIRECTIONAL);
-        emitPress(state.right && !buttonRight, ButtonType.DIRECTIONAL);
-        buttonA = state.a;
-        buttonB = state.b;
-        buttonStart = state.start;
-        buttonSelect = state.select;
-        buttonUp = state.up;
-        buttonDown = state.down;
-        buttonLeft = state.left;
-        buttonRight = state.right;
+        long now = System.nanoTime();
+        if (state.a) {
+            buttonAReleaseAt = now + DIGITAL_RELEASE_GRACE_NANOS;
+        }
+        if (state.b) {
+            buttonBReleaseAt = now + DIGITAL_RELEASE_GRACE_NANOS;
+        }
+        if (state.start) {
+            buttonStartReleaseAt = now + DIGITAL_RELEASE_GRACE_NANOS;
+        }
+        if (state.select) {
+            buttonSelectReleaseAt = now + DIGITAL_RELEASE_GRACE_NANOS;
+        }
+        if (state.up) {
+            buttonUpReleaseAt = now + directionalReleaseGrace(state);
+        }
+        if (state.down) {
+            buttonDownReleaseAt = now + directionalReleaseGrace(state);
+        }
+        if (state.left) {
+            buttonLeftReleaseAt = now + directionalReleaseGrace(state);
+        }
+        if (state.right) {
+            buttonRightReleaseAt = now + directionalReleaseGrace(state);
+        }
+
+        boolean nextA = state.a || (buttonA && now < buttonAReleaseAt);
+        boolean nextB = state.b || (buttonB && now < buttonBReleaseAt);
+        boolean nextStart = state.start || (buttonStart && now < buttonStartReleaseAt);
+        boolean nextSelect = state.select || (buttonSelect && now < buttonSelectReleaseAt);
+        boolean nextUp = state.up || (buttonUp && now < buttonUpReleaseAt);
+        boolean nextDown = state.down || (buttonDown && now < buttonDownReleaseAt);
+        boolean nextLeft = state.left || (buttonLeft && now < buttonLeftReleaseAt);
+        boolean nextRight = state.right || (buttonRight && now < buttonRightReleaseAt);
+
+        emitPress(nextA && !buttonA, ButtonType.ACTION);
+        emitPress(nextB && !buttonB, ButtonType.ACTION);
+        emitPress(nextStart && !buttonStart, ButtonType.ACTION);
+        emitPress(nextSelect && !buttonSelect, ButtonType.ACTION);
+        emitPress(nextUp && !buttonUp, ButtonType.DIRECTIONAL);
+        emitPress(nextDown && !buttonDown, ButtonType.DIRECTIONAL);
+        emitPress(nextLeft && !buttonLeft, ButtonType.DIRECTIONAL);
+        emitPress(nextRight && !buttonRight, ButtonType.DIRECTIONAL);
+        buttonA = nextA;
+        buttonB = nextB;
+        buttonStart = nextStart;
+        buttonSelect = nextSelect;
+        buttonUp = nextUp;
+        buttonDown = nextDown;
+        buttonLeft = nextLeft;
+        buttonRight = nextRight;
+    }
+
+    private long directionalReleaseGrace(GamepadState state) {
+        return state.anyAnalogDirection() ? ANALOG_RELEASE_GRACE_NANOS : DIGITAL_RELEASE_GRACE_NANOS;
     }
 
     private void emitPress(boolean pressed, ButtonType type) {
@@ -334,7 +404,7 @@ public class GamepadController implements Controller, AutoCloseable {
 
     private void sleepAfterFailure() {
         try {
-            Thread.sleep(1000L);
+            Thread.sleep(FAILURE_RETRY_MILLIS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -349,6 +419,15 @@ public class GamepadController implements Controller, AutoCloseable {
         buttonDown = false;
         buttonLeft = false;
         buttonRight = false;
+        buttonAReleaseAt = 0L;
+        buttonBReleaseAt = 0L;
+        buttonStartReleaseAt = 0L;
+        buttonSelectReleaseAt = 0L;
+        buttonUpReleaseAt = 0L;
+        buttonDownReleaseAt = 0L;
+        buttonLeftReleaseAt = 0L;
+        buttonRightReleaseAt = 0L;
+        consecutivePollFailures = 0;
     }
 
     @Override
@@ -413,7 +492,11 @@ public class GamepadController implements Controller, AutoCloseable {
             boolean up,
             boolean down,
             boolean left,
-            boolean right
+            boolean right,
+            boolean anyAnalogDirection
     ) {
+        private static GamepadState released() {
+            return new GamepadState(false, false, false, false, false, false, false, false, false);
+        }
     }
 }

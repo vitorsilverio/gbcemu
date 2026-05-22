@@ -6,6 +6,7 @@ import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -15,6 +16,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.Timer;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
@@ -34,6 +36,12 @@ public class MemoryDebugWindow {
     private final JTextField memoryLength = new JTextField("0100", 6);
     private final JComboBox<MemoryRegion> memoryRegion = new JComboBox<>(MemoryRegion.values());
     private final JComboBox<EditMode> editMode = new JComboBox<>(EditMode.values());
+    private final JCheckBox autoRefresh = new JCheckBox("Auto refresh");
+    private final Timer autoRefreshTimer = new Timer(1000, event -> {
+        if (autoRefresh.isSelected() && frame.isVisible()) {
+            refresh();
+        }
+    });
     private final DefaultTableModel memoryModel = new DefaultTableModel() {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -72,6 +80,7 @@ public class MemoryDebugWindow {
         refresh();
         frame.pack();
         frame.setVisible(true);
+        autoRefreshTimer.start();
     }
 
     private JPanel buildControls() {
@@ -94,6 +103,7 @@ public class MemoryDebugWindow {
         controls.add(new JLabel("Edit"));
         controls.add(editMode);
         controls.add(refresh);
+        controls.add(autoRefresh);
         controls.add(dump);
         controls.add(dumpJson);
         return controls;

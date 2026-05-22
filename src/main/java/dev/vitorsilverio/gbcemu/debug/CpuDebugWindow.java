@@ -16,6 +16,7 @@ import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -55,6 +56,12 @@ public class CpuDebugWindow {
     private final JTable instructionTable = new JTable(instructionModel);
     private final JTextField watchAddress = new JTextField(4);
     private final JTextField watchValue = new JTextField(2);
+    private final JCheckBox autoRefresh = new JCheckBox("Auto refresh");
+    private final Timer autoRefreshTimer = new Timer(1000, event -> {
+        if (autoRefresh.isSelected() && window.isVisible()) {
+            refresh();
+        }
+    });
 
     public CpuDebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, LinkCable linkCable) {
         this.cpu = cpu;
@@ -93,6 +100,7 @@ public class CpuDebugWindow {
         JButton dumpJson = new JButton("Dump JSON");
         dumpJson.addActionListener(event -> dumpJson());
         toolbar.add(refresh);
+        toolbar.add(autoRefresh);
         toolbar.add(step);
         toolbar.add(stepLine);
         toolbar.add(stepFrame);
@@ -123,11 +131,7 @@ public class CpuDebugWindow {
         configureInstructionTable();
         window.pack();
         window.setLocationRelativeTo(null);
-        new Timer(250, event -> {
-            if (window.isVisible()) {
-                refresh();
-            }
-        }).start();
+        autoRefreshTimer.start();
     }
 
     private JPanel statePanel() {

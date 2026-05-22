@@ -6,6 +6,7 @@ import dev.vitorsilverio.gbcemu.audio.ApuDebugSnapshot;
 import dev.vitorsilverio.gbcemu.audio.ApuRegisterWrite;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -49,7 +50,12 @@ public class AudioDebugWindow {
             return false;
         }
     };
-    private final Timer refreshTimer = new Timer(250, event -> refreshDebugState());
+    private final JCheckBox autoRefresh = new JCheckBox("Auto refresh");
+    private final Timer refreshTimer = new Timer(1000, event -> {
+        if (autoRefresh.isSelected() && frame.isVisible()) {
+            refreshDebugState();
+        }
+    });
     private long lastDisplayedWriteSequence = -1;
 
     public AudioDebugWindow(Apu apu) {
@@ -71,8 +77,7 @@ public class AudioDebugWindow {
 
         JPanel content = new JPanel(new BorderLayout(8, 8));
         content.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        masterState.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
-        content.add(masterState, BorderLayout.NORTH);
+        content.add(buildToolbar(), BorderLayout.NORTH);
 
         tabs.addTab("Mixer", buildMixerTab());
         tabs.addTab("State", buildStateTab());
@@ -85,6 +90,18 @@ public class AudioDebugWindow {
         frame.setVisible(true);
         refreshDebugState();
         refreshTimer.start();
+    }
+
+    private JPanel buildToolbar() {
+        JPanel toolbar = new JPanel(new BorderLayout(8, 8));
+        JPanel actions = new JPanel();
+        JButton refresh = new JButton("Refresh");
+        refresh.addActionListener(event -> refreshDebugState());
+        actions.add(refresh);
+        actions.add(autoRefresh);
+        toolbar.add(masterState, BorderLayout.CENTER);
+        toolbar.add(actions, BorderLayout.EAST);
+        return toolbar;
     }
 
     private JPanel buildMixerTab() {

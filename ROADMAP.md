@@ -32,6 +32,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - PPU/tiles/tile maps/paletas.
   - Audio/canais.
   - Cart/MBC.
+  - Auto refresh opcional de 1 Hz nas janelas de debug principais.
 - Disassembler em tabela com cache por memoria/banco e breakpoints por PC.
 - Debug de audio por canal, com mute/volume individual, master/stereo e trace opcional de writes da APU.
 - Throttle por deadline acumulado, corrigindo starvation de audio em Windows.
@@ -139,6 +140,18 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Integrar Arduino/dispositivo serial.
   - Testar comunicacao com Game Boy Color real.
 
+- [ ] Super Game Boy visual.
+  - [x] Manter bordas SGB opcionais, ativadas por configuracao de graficos.
+  - [x] Detectar cartuchos com flag SGB no header.
+  - [x] Capturar pacotes SGB pelo registrador `JOYP`.
+  - [x] Implementar retorno basico de `MLT_REQ` para jogos detectarem SGB.
+  - [x] Decodificar `CHR_TRN`/`PCT_TRN` para bordas enviadas pelo proprio jogo.
+  - [x] Renderizar a borda oficial do jogo ao redor do frame 160x144.
+  - [x] Salvar estado SGB em save state/rewind quando borda ou comandos SGB estiverem ativos.
+  - [x] Exportar PNG da borda e estado SGB no debug bundle.
+  - [ ] Implementar comandos de paleta/atributos SGB para colorizacao da area do jogo.
+  - [x] Implementar apenas bordas fornecidas pela ROM; sem bordas customizadas de usuario.
+
 ## Debug
 
 - [x] Watchpoints.
@@ -167,6 +180,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Incluir amostra pequena do banco atual de cada `MemoryBank`.
   - [x] Export JSON da janela de memoria com mapa, regiao visivel e amostras maiores dos bancos atuais.
   - [x] Export JSON da janela de PPU com registradores, frame stats, paletas, VRAM e OAM.
+    - [x] Exibir/exportar borda SGB na janela grafica de PPU quando disponivel.
   - [x] Export JSON da janela de Cart/MBC com propriedades, mapper state e amostras de ROM/RAM.
   - [x] Utilitario comum para JSON de debug.
   - [x] Dump bundle pelo menu `Debug`, sem precisar abrir janelas individuais.

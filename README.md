@@ -28,6 +28,7 @@ Menus principais:
   - O botao `Components...` mostra os nomes/valores atuais reportados pelo controle selecionado.
   - Internamente, cada jogo roda como um `Console` dentro da mesma sessao `Emulator`, que coordena o tick dos dois.
 - `Emulator > Settings...`: abre configuracoes em abas de geral, graficos, som e controles.
+  - A aba de graficos permite ativar bordas Super Game Boy enviadas pela propria ROM quando o cartucho suportar SGB.
   - A aba de som inclui presets DSP opcionais (`Raw`, `Warm`, `Wide`, `Room`, `Toy Synth`) com intensidade, chorus e reverb.
   - Tambem ha suporte experimental a SoundFont `.sf2` via Java MIDI, com modos de overlay/substituicao.
 - `Emulator > Pause`, `Resume`, `Stop`, `Restart`: controla a execucao.
@@ -95,6 +96,7 @@ Observacoes:
 - Rewind por snapshots.
 - GameShark.
 - Filtros de tela, incluindo xBRZ.
+- Bordas Super Game Boy opcionais para jogos que enviam borda propria.
 - Filtros DSP opcionais de audio pos-mixagem para brincar com o som sem alterar a APU.
 - SoundFont experimental para tocar os canais da APU como instrumentos MIDI carregados de um `.sf2`.
 - Turbo configuravel por tecla segurada ou toggle, com audio silenciado e frameskip automatico durante a aceleracao.

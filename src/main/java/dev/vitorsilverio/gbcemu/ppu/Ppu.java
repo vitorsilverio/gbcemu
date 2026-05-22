@@ -60,6 +60,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final Stat stat = new Stat();
     private final int[][] frameBuffer; // 160x144 pixels
     private final int[][] bgColorIndexes; // 160x144 pixels
+    private final int[][] resolvedColorIndexes; // 160x144 pixels
     private final boolean[][] bgPriorities; // 160x144 pixels
     private final BufferedImage frameImage;
     private final int[] frameImagePixels;
@@ -88,8 +89,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private ObjectAtribute foundSpriteAttribute;
     private int foundSpriteColorIndex;
     private int bgPixelColorIndex;
+    private int bgMappedColorIndex;
     private int bgPixelColor;
     private boolean bgPixelPriority;
+    private int resolvedPixelColorIndex;
     private int resolvedPixelColor;
     private boolean windowYCondition;
     private int windowLineCounter;
@@ -107,17 +110,22 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         this.cgbMode = cgbMode;
         this.frameBuffer = new int[160][144];
         this.bgColorIndexes = new int[160][144];
+        this.resolvedColorIndexes = new int[160][144];
         this.bgPriorities = new boolean[160][144];
         this.frameImage = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
         this.frameImagePixels = ((DataBufferInt) frameImage.getRaster().getDataBuffer()).getData();
         if (!cgbMode) {
             objectPriorityMode = ObjectPriorityMode.DMG;
+            initializeDmgGrayCgbPalettes();
         }
     }
 
     public void setCgbMode(boolean cgbMode) {
         this.cgbMode = cgbMode;
         objectPriorityMode = cgbMode ? ObjectPriorityMode.CGB : ObjectPriorityMode.DMG;
+        if (!cgbMode) {
+            initializeDmgGrayCgbPalettes();
+        }
     }
 
 
@@ -183,6 +191,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         bgColorIndexes[currentColumn][currentLine] = bgPixelColorIndex;
         bgPriorities[currentColumn][currentLine] = bgPixelPriority;
         resolveSpritePixel(currentColumn, currentLine);
+        resolvedColorIndexes[currentColumn][currentLine] = resolvedPixelColorIndex;
         frameBuffer[currentColumn][currentLine] = resolvedPixelColor;
         frameImagePixels[currentLine * 160 + currentColumn] = resolvedPixelColor;
 
@@ -228,6 +237,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         bgPixelColorIndex = tile.getPixelUnchecked(tileX, tileY);
         int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
         int mappedColorIndex = cgbMode ? bgPixelColorIndex : bgPaletteDmg.getColor(bgPixelColorIndex);
+        bgMappedColorIndex = mappedColorIndex;
         bgPixelColor = bgPalette.getColor(paletteIndex, mappedColorIndex);
         bgPixelPriority = cgbMode && map.isPriority();
     }
@@ -242,6 +252,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     }
 
     private void resolveSpritePixel(int x, int y) {
+        resolvedPixelColorIndex = bgMappedColorIndex;
         resolvedPixelColor = bgPixelColor;
         if (!control.isSpriteEnabled()) {
             return;
@@ -258,6 +269,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         int paletteIndex = cgbMode ? foundSpriteAttribute.getCgbPalette() : foundSpriteAttribute.getDmgPalette();
         int colorIndex = foundSpriteColorIndex;
         int mappedColorIndex = cgbMode ? colorIndex : getDmgObjectPalette(foundSpriteAttribute).getColor(colorIndex);
+        resolvedPixelColorIndex = mappedColorIndex;
         resolvedPixelColor = objPalette.getColor(paletteIndex, mappedColorIndex);
     }
 
@@ -632,6 +644,20 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         return frameImage;
     }
 
+    public int getResolvedColorIndex(int x, int y) {
+        if (x < 0 || x >= 160 || y < 0 || y >= 144) {
+            return 0;
+        }
+        return resolvedColorIndexes[x][y] & 0x03;
+    }
+
+    public int getBackgroundColorIndex(int x, int y) {
+        if (x < 0 || x >= 160 || y < 0 || y >= 144) {
+            return 0;
+        }
+        return bgColorIndexes[x][y] & 0x03;
+    }
+
     public boolean consumeFrameReady() {
         if (!frameReady) {
             return false;
@@ -666,6 +692,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 obj1PaletteDmg.getData(),
                 copyIntMatrix(frameBuffer),
                 copyIntMatrix(bgColorIndexes),
+                copyIntMatrix(resolvedColorIndexes),
                 copyBooleanMatrix(bgPriorities),
                 cgbMode,
                 cycles,
@@ -701,6 +728,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         restoreIntMatrix(state.frameBuffer(), frameBuffer);
         restoreFrameImage();
         restoreIntMatrix(state.bgColorIndexes(), bgColorIndexes);
+        restoreIntMatrix(state.resolvedColorIndexes(), resolvedColorIndexes);
         restoreBooleanMatrix(state.bgPriorities(), bgPriorities);
         cgbMode = state.cgbMode();
         cycles = state.cycles();
@@ -946,6 +974,19 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         setCgbObjectPaletteBytes(0, CgbCompatibilityPaletteColors.littleEndianBytes(selection.obj0PaletteWordOffset()));
         setCgbObjectPaletteBytes(1, CgbCompatibilityPaletteColors.littleEndianBytes(selection.obj1PaletteWordOffset()));
         setCgbBackgroundPaletteBytes(0, CgbCompatibilityPaletteColors.littleEndianBytes(selection.bgPaletteWordOffset()));
+    }
+
+    private void initializeDmgGrayCgbPalettes() {
+        byte[] palette = new byte[] {
+                (byte) 0xFF, 0x7F,
+                (byte) 0x18, 0x63,
+                0x10, 0x42,
+                0x00, 0x00
+        };
+        for (int paletteIndex = 0; paletteIndex < 8; paletteIndex++) {
+            bgPalette.setPaletteBytes(paletteIndex, palette);
+            objPalette.setPaletteBytes(paletteIndex, palette);
+        }
     }
 
     private int grayColor(int colorIndex) {

@@ -6,6 +6,7 @@ import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -28,6 +29,12 @@ public class CartDebugWindow {
     private final JTable propertiesTable = new JTable(propertiesModel);
     private final JTable banksTable = new JTable(banksModel);
     private final JTextArea headerText = new JTextArea();
+    private final JCheckBox autoRefresh = new JCheckBox("Auto refresh");
+    private final Timer autoRefreshTimer = new Timer(1000, event -> {
+        if (autoRefresh.isSelected() && frame.isVisible()) {
+            refresh();
+        }
+    });
 
     public CartDebugWindow(Cart cart) {
         this.cart = cart;
@@ -49,6 +56,7 @@ public class CartDebugWindow {
         JButton dumpJson = new JButton("Dump JSON");
         dumpJson.addActionListener(event -> dumpJson());
         toolbar.add(refresh);
+        toolbar.add(autoRefresh);
         toolbar.add(dump);
         toolbar.add(dumpJson);
         frame.add(toolbar, BorderLayout.NORTH);
@@ -70,11 +78,7 @@ public class CartDebugWindow {
         configureTable(banksTable);
         frame.pack();
         frame.setLocationRelativeTo(null);
-        new Timer(500, event -> {
-            if (frame.isVisible()) {
-                refresh();
-            }
-        }).start();
+        autoRefreshTimer.start();
     }
 
     private void refresh() {
