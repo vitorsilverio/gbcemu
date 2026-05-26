@@ -24,12 +24,21 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.function.BooleanSupplier;
 
 public class MemoryDebugWindow {
 
-    private final Bus bus;
-    private final BooleanSupplier pausedSupplier;
+    public record Target(String name, Bus bus, BooleanSupplier pausedSupplier) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private Bus bus;
+    private BooleanSupplier pausedSupplier;
+    private final JComboBox<Target> targetSelector;
     private final JFrame frame = new JFrame("Memory Debug");
     private final JTextArea memoryMapText = new JTextArea();
     private final JTextField memoryStart = new JTextField("C000", 6);
@@ -61,6 +70,16 @@ public class MemoryDebugWindow {
     public MemoryDebugWindow(Bus bus, BooleanSupplier pausedSupplier) {
         this.bus = bus;
         this.pausedSupplier = pausedSupplier;
+        this.targetSelector = null;
+        initializeWindow();
+    }
+
+    public MemoryDebugWindow(List<Target> targets) {
+        if (targets.isEmpty()) {
+            throw new IllegalArgumentException("At least one memory debug target is required");
+        }
+        this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
+        applyTarget(targets.getFirst());
         initializeWindow();
     }
 
@@ -85,6 +104,16 @@ public class MemoryDebugWindow {
 
     private JPanel buildControls() {
         JPanel controls = new JPanel();
+        if (targetSelector != null) {
+            targetSelector.addActionListener(event -> {
+                Target target = (Target) targetSelector.getSelectedItem();
+                if (target != null) {
+                    applyTarget(target);
+                    refresh();
+                }
+            });
+            controls.add(targetSelector);
+        }
         memoryRegion.addActionListener(event -> applyMemoryRegion());
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refresh());
@@ -107,6 +136,11 @@ public class MemoryDebugWindow {
         controls.add(dump);
         controls.add(dumpJson);
         return controls;
+    }
+
+    private void applyTarget(Target target) {
+        this.bus = target.bus();
+        this.pausedSupplier = target.pausedSupplier();
     }
 
     private JScrollPane buildMemoryMap() {

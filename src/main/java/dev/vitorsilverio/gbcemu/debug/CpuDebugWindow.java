@@ -17,6 +17,7 @@ import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -35,16 +36,25 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class CpuDebugWindow {
 
-    private final Cpu cpu;
-    private final Bus bus;
-    private final Ppu ppu;
-    private final DebugController debugController;
-    private final LinkCable linkCable;
-    private final DisassemblyCache disassemblyCache;
+    public record Target(String name, Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, LinkCable linkCable) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private Cpu cpu;
+    private Bus bus;
+    private Ppu ppu;
+    private DebugController debugController;
+    private LinkCable linkCable;
+    private DisassemblyCache disassemblyCache;
+    private final JComboBox<Target> targetSelector;
     private final JFrame window = new JFrame("CPU / Disassembly");
     private final Map<String, JTextField> stateFields = new LinkedHashMap<>();
     private final DefaultTableModel instructionModel = new DefaultTableModel() {
@@ -69,7 +79,19 @@ public class CpuDebugWindow {
         this.ppu = ppu;
         this.debugController = debugController;
         this.linkCable = linkCable;
+        this.targetSelector = null;
         this.disassemblyCache = new DisassemblyCache(bus);
+        initialize();
+        refresh();
+        window.setVisible(true);
+    }
+
+    public CpuDebugWindow(List<Target> targets) {
+        if (targets.isEmpty()) {
+            throw new IllegalArgumentException("At least one CPU debug target is required");
+        }
+        this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
+        applyTarget(targets.getFirst());
         initialize();
         refresh();
         window.setVisible(true);
@@ -81,6 +103,16 @@ public class CpuDebugWindow {
         window.setMinimumSize(new java.awt.Dimension(840, 560));
 
         JPanel toolbar = new JPanel();
+        if (targetSelector != null) {
+            targetSelector.addActionListener(event -> {
+                Target target = (Target) targetSelector.getSelectedItem();
+                if (target != null) {
+                    applyTarget(target);
+                    refresh();
+                }
+            });
+            toolbar.add(targetSelector);
+        }
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refresh());
         JButton step = new JButton("Step");
@@ -132,6 +164,15 @@ public class CpuDebugWindow {
         window.pack();
         window.setLocationRelativeTo(null);
         autoRefreshTimer.start();
+    }
+
+    private void applyTarget(Target target) {
+        this.cpu = target.cpu();
+        this.bus = target.bus();
+        this.ppu = target.ppu();
+        this.debugController = target.debugController();
+        this.linkCable = target.linkCable();
+        this.disassemblyCache = new DisassemblyCache(bus);
     }
 
     private JPanel statePanel() {

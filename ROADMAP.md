@@ -132,7 +132,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Bloquear pause individual, rewind, save state e turbo enquanto a sessao link estiver ativa.
   - [x] Expor estado conjunto da sessao link no debug/dump.
   - [x] Ao abrir debug em sessao multi-console, escolher o console alvo por combo.
-  - [ ] Evoluir janelas de debug para manter combo interno permanente e trocar a visao sem reabrir janela.
+  - [x] Evoluir janelas de debug para manter combo interno permanente e trocar a visao sem reabrir janela.
+    - [x] Memory Debug.
+    - [x] PPU Debug.
+    - [x] CPU/Disassembly.
+    - [x] Audio.
+    - [x] Cart/MBC.
   - [ ] Permitir iniciar/adicionar um segundo console durante a sessao, nao apenas iniciar sempre com dois.
   - [ ] Permitir fechar um console/sessao individual sem interromper tudo.
   - [ ] Permitir destacar a tela de um console para janela/monitor separado.

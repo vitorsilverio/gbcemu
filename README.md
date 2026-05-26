@@ -37,7 +37,7 @@ Menus principais:
 - `Emulator > Pause`, `Resume`, `Stop`, `Restart`: controla a execucao.
 - `Emulator > Save states`: salva/carrega slots por jogo e gerencia estados.
 - `Emulator > Cheats`: abre a janela de GameShark.
-- `Debug`: abre janelas separadas de CPU, memoria, PPU, audio, cart/MBC e dumps. Em sessao local de link, o debug pergunta qual console visualizar e o dump gera um indice da sessao com dumps separados por console. O debug de PPU tambem exporta imagens auxiliares de SGB quando disponiveis.
+- `Debug`: abre janelas separadas de CPU, memoria, PPU, audio, cart/MBC e dumps. Em sessao local de link, as janelas de debug permitem trocar o console dentro da propria janela. O dump gera um indice da sessao com dumps separados por console. O debug de PPU tambem exporta imagens auxiliares de SGB quando disponiveis.
 
 ## Linha De Comando
 

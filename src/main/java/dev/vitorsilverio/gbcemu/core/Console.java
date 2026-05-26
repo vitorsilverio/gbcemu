@@ -45,6 +45,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.function.BooleanSupplier;
 
 public class Console {
 
@@ -471,6 +472,42 @@ public class Console {
 
     public void openCartDebugger() {
         new CartDebugWindow(cart);
+    }
+
+    Bus debugBus() {
+        return bus;
+    }
+
+    Cpu debugCpu() {
+        return cpu;
+    }
+
+    Apu debugApu() {
+        return apu;
+    }
+
+    Cart debugCart() {
+        return cart;
+    }
+
+    DebugController debugController() {
+        return debugController;
+    }
+
+    LinkCable debugLinkCable() {
+        return linkCable;
+    }
+
+    BooleanSupplier debugPausedSupplier() {
+        return this::isPaused;
+    }
+
+    Ppu debugPpu() {
+        return ppu;
+    }
+
+    SuperGameBoy debugSuperGameBoy() {
+        return superGameBoy;
     }
 
     private void updateMemoryAccessListener() {

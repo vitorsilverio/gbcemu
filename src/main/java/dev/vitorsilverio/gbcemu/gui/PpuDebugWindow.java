@@ -11,6 +11,7 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -26,11 +27,20 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public class PpuDebugWindow {
 
-    private final Ppu ppu;
-    private final SuperGameBoy superGameBoy;
+    public record Target(String name, Ppu ppu, SuperGameBoy superGameBoy) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private Ppu ppu;
+    private SuperGameBoy superGameBoy;
+    private final JComboBox<Target> targetSelector;
     private final JFrame frame = new JFrame("PPU Debug");
     private final ImagePanel tilesBank0 = new ImagePanel(3);
     private final ImagePanel tilesBank1 = new ImagePanel(3);
@@ -55,6 +65,16 @@ public class PpuDebugWindow {
     public PpuDebugWindow(Ppu ppu, SuperGameBoy superGameBoy) {
         this.ppu = ppu;
         this.superGameBoy = superGameBoy;
+        this.targetSelector = null;
+        initializeWindow();
+    }
+
+    public PpuDebugWindow(List<Target> targets) {
+        if (targets.isEmpty()) {
+            throw new IllegalArgumentException("At least one PPU debug target is required");
+        }
+        this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
+        applyTarget(targets.getFirst());
         initializeWindow();
     }
 
@@ -83,6 +103,16 @@ public class PpuDebugWindow {
 
     private JPanel buildToolbar() {
         JPanel toolbar = new JPanel();
+        if (targetSelector != null) {
+            targetSelector.addActionListener(event -> {
+                Target target = (Target) targetSelector.getSelectedItem();
+                if (target != null) {
+                    applyTarget(target);
+                    refresh();
+                }
+            });
+            toolbar.add(targetSelector);
+        }
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refresh());
         JButton dump = new JButton("Dump");
@@ -94,6 +124,12 @@ public class PpuDebugWindow {
         toolbar.add(dump);
         toolbar.add(dumpJson);
         return toolbar;
+    }
+
+    private void applyTarget(Target target) {
+        this.ppu = target.ppu();
+        this.superGameBoy = target.superGameBoy();
+        this.lastSgbBorderPreferredSize = sgbBorder.getPreferredSize();
     }
 
     private JPanel imageGrid(ImagePanel first, ImagePanel second) {

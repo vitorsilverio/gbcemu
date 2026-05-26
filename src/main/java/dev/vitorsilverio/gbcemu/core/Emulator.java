@@ -2,7 +2,12 @@ package dev.vitorsilverio.gbcemu.core;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.controller.Controller;
+import dev.vitorsilverio.gbcemu.debug.CpuDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.AudioDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.CartDebugWindow;
 import dev.vitorsilverio.gbcemu.gui.EmulatorWindow;
+import dev.vitorsilverio.gbcemu.gui.MemoryDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.PpuDebugWindow;
 import dev.vitorsilverio.gbcemu.link.DirectLinkCable;
 import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
@@ -240,10 +245,16 @@ public class Emulator {
     }
 
     public void openAudioDebugger() {
-        Console console = chooseConsole("Audio debug");
-        if (console != null) {
-            console.openAudioDebugger();
+        if (consoles.size() == 1) {
+            primaryConsole.openAudioDebugger();
+            return;
         }
+        List<AudioDebugWindow.Target> targets = new ArrayList<>();
+        for (int i = 0; i < consoles.size(); i++) {
+            Console console = consoles.get(i);
+            targets.add(new AudioDebugWindow.Target("Console " + (i + 1), console.debugApu()));
+        }
+        new AudioDebugWindow(targets);
     }
 
     public String serialTranscript() {
@@ -255,31 +266,62 @@ public class Emulator {
     }
 
     public void openMemoryDebugger() {
-        Console console = chooseConsole("Memory debug");
-        if (console != null) {
-            console.openMemoryDebugger();
+        if (consoles.size() == 1) {
+            primaryConsole.openMemoryDebugger();
+            return;
         }
+        List<MemoryDebugWindow.Target> targets = new ArrayList<>();
+        for (int i = 0; i < consoles.size(); i++) {
+            Console console = consoles.get(i);
+            targets.add(new MemoryDebugWindow.Target("Console " + (i + 1), console.debugBus(), console.debugPausedSupplier()));
+        }
+        new MemoryDebugWindow(targets);
     }
 
     public void openPpuDebugger() {
-        Console console = chooseConsole("PPU debug");
-        if (console != null) {
-            console.openPpuDebugger();
+        if (consoles.size() == 1) {
+            primaryConsole.openPpuDebugger();
+            return;
         }
+        List<PpuDebugWindow.Target> targets = new ArrayList<>();
+        for (int i = 0; i < consoles.size(); i++) {
+            Console console = consoles.get(i);
+            targets.add(new PpuDebugWindow.Target("Console " + (i + 1), console.debugPpu(), console.debugSuperGameBoy()));
+        }
+        new PpuDebugWindow(targets);
     }
 
     public void openCpuDebugger() {
-        Console console = chooseConsole("CPU debug");
-        if (console != null) {
-            console.openCpuDebugger();
+        if (consoles.size() == 1) {
+            primaryConsole.openCpuDebugger();
+            return;
         }
+        List<CpuDebugWindow.Target> targets = new ArrayList<>();
+        for (int i = 0; i < consoles.size(); i++) {
+            Console console = consoles.get(i);
+            targets.add(new CpuDebugWindow.Target(
+                    "Console " + (i + 1),
+                    console.debugCpu(),
+                    console.debugBus(),
+                    console.debugPpu(),
+                    console.debugController(),
+                    console.debugLinkCable()
+            ));
+        }
+        new CpuDebugWindow(targets);
     }
 
     public void openCartDebugger() {
-        Console console = chooseConsole("Cart debug");
-        if (console != null) {
-            console.openCartDebugger();
+        if (consoles.size() == 1) {
+            primaryConsole.openCartDebugger();
+            return;
         }
+        List<CartDebugWindow.Target> targets = new ArrayList<>();
+        for (int i = 0; i < consoles.size(); i++) {
+            Console console = consoles.get(i);
+            targets.add(new CartDebugWindow.Target("Console " + (i + 1), console.debugCart()));
+        }
+        new CartDebugWindow(targets);
     }
 
     public File dumpDebugBundle() {

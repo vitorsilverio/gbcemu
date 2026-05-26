@@ -8,6 +8,7 @@ import dev.vitorsilverio.gbcemu.audio.ApuRegisterWrite;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -28,7 +29,15 @@ import java.util.List;
 
 public class AudioDebugWindow {
 
-    private final Apu apu;
+    public record Target(String name, Apu apu) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private Apu apu;
+    private final JComboBox<Target> targetSelector;
     private final JFrame frame = new JFrame("Audio Debug");
     private final JTabbedPane tabs = new JTabbedPane();
     private final JLabel masterState = new JLabel();
@@ -60,6 +69,17 @@ public class AudioDebugWindow {
 
     public AudioDebugWindow(Apu apu) {
         this.apu = apu;
+        this.targetSelector = null;
+        this.apu.setDebugWriteTraceEnabled(true);
+        initializeWindow();
+    }
+
+    public AudioDebugWindow(List<Target> targets) {
+        if (targets.isEmpty()) {
+            throw new IllegalArgumentException("At least one audio debug target is required");
+        }
+        this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
+        applyTarget(targets.getFirst());
         this.apu.setDebugWriteTraceEnabled(true);
         initializeWindow();
     }
@@ -69,7 +89,7 @@ public class AudioDebugWindow {
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent event) {
-                apu.setDebugWriteTraceEnabled(false);
+                disableTraceForAllTargets();
             }
         });
         frame.setMinimumSize(new Dimension(880, 520));
@@ -95,6 +115,19 @@ public class AudioDebugWindow {
     private JPanel buildToolbar() {
         JPanel toolbar = new JPanel(new BorderLayout(8, 8));
         JPanel actions = new JPanel();
+        if (targetSelector != null) {
+            targetSelector.addActionListener(event -> {
+                Target target = (Target) targetSelector.getSelectedItem();
+                if (target != null) {
+                    apu.setDebugWriteTraceEnabled(false);
+                    applyTarget(target);
+                    apu.setDebugWriteTraceEnabled(true);
+                    rebuildTabs();
+                    refreshDebugState();
+                }
+            });
+            actions.add(targetSelector);
+        }
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refreshDebugState());
         actions.add(refresh);
@@ -102,6 +135,29 @@ public class AudioDebugWindow {
         toolbar.add(masterState, BorderLayout.CENTER);
         toolbar.add(actions, BorderLayout.EAST);
         return toolbar;
+    }
+
+    private void applyTarget(Target target) {
+        this.apu = target.apu();
+        this.lastDisplayedWriteSequence = -1;
+    }
+
+    private void rebuildTabs() {
+        tabs.removeAll();
+        tabs.addTab("Mixer", buildMixerTab());
+        tabs.addTab("State", buildStateTab());
+        tabs.addTab("Writes", buildWritesTab());
+        tabs.setSelectedIndex(2);
+    }
+
+    private void disableTraceForAllTargets() {
+        if (targetSelector == null) {
+            apu.setDebugWriteTraceEnabled(false);
+            return;
+        }
+        for (int i = 0; i < targetSelector.getItemCount(); i++) {
+            targetSelector.getItemAt(i).apu().setDebugWriteTraceEnabled(false);
+        }
     }
 
     private JPanel buildMixerTab() {

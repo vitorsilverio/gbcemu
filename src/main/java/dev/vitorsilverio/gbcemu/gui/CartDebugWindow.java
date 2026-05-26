@@ -7,6 +7,7 @@ import dev.vitorsilverio.gbcemu.util.DebugJson;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -18,11 +19,20 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class CartDebugWindow {
 
-    private final Cart cart;
+    public record Target(String name, Cart cart) {
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private Cart cart;
+    private final JComboBox<Target> targetSelector;
     private final JFrame frame = new JFrame("Cart / MBC Debug");
     private final DefaultTableModel propertiesModel = tableModel("Property", "Value");
     private final DefaultTableModel banksModel = tableModel("Memory", "Current", "Banks", "Bank Size");
@@ -38,6 +48,18 @@ public class CartDebugWindow {
 
     public CartDebugWindow(Cart cart) {
         this.cart = cart;
+        this.targetSelector = null;
+        initialize();
+        refresh();
+        frame.setVisible(true);
+    }
+
+    public CartDebugWindow(List<Target> targets) {
+        if (targets.isEmpty()) {
+            throw new IllegalArgumentException("At least one cart debug target is required");
+        }
+        this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
+        applyTarget(targets.getFirst());
         initialize();
         refresh();
         frame.setVisible(true);
@@ -49,6 +71,16 @@ public class CartDebugWindow {
         frame.setMinimumSize(new java.awt.Dimension(760, 520));
 
         JPanel toolbar = new JPanel();
+        if (targetSelector != null) {
+            targetSelector.addActionListener(event -> {
+                Target target = (Target) targetSelector.getSelectedItem();
+                if (target != null) {
+                    applyTarget(target);
+                    refresh();
+                }
+            });
+            toolbar.add(targetSelector);
+        }
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refresh());
         JButton dump = new JButton("Dump");
@@ -79,6 +111,10 @@ public class CartDebugWindow {
         frame.pack();
         frame.setLocationRelativeTo(null);
         autoRefreshTimer.start();
+    }
+
+    private void applyTarget(Target target) {
+        this.cart = target.cart();
     }
 
     private void refresh() {
