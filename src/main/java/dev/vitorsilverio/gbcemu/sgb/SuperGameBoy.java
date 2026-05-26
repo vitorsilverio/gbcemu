@@ -192,17 +192,9 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
             return;
         }
 
-        if (bits == previousLines) {
+        int oldLines = previousLines;
+        if (bits == oldLines) {
             return;
-        }
-
-        if ((bits & JOYP_STOP) != 0) {
-            if (!receivingPacket && waitingStopBit && joypadCount > 1) {
-                waitingStopBit = false;
-                selectedJoypad = (selectedJoypad + 1) % joypadCount;
-            }
-        } else if ((previousLines & JOYP_STOP) != 0) {
-            waitingStopBit = !waitingStopBit;
         }
 
         previousLines = bits;
@@ -213,18 +205,30 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
             receivingPacket = false;
             return;
         }
+
+        if ((bits & JOYP_STOP) != 0) {
+            if (!receivingPacket && waitingStopBit && joypadCount > 1) {
+                waitingStopBit = false;
+                selectedJoypad = (selectedJoypad + 1) % joypadCount;
+            }
+        } else if ((oldLines & JOYP_STOP) != 0) {
+            waitingStopBit = !waitingStopBit;
+        }
+
         if (pulseCount >= PACKET_BITS) {
             return;
         }
         switch (bits) {
             case JOYP_ONE_BIT -> {
-                if (pulseCount >= 0) {
+                if (receivingPacket && pulseCount >= 0) {
                     pulseBuffer[pulseCount] = 1;
                 }
             }
             case JOYP_CLOCK -> {
-                pulseCount++;
-                receivingPacket = pulseCount < PACKET_BITS;
+                if (receivingPacket) {
+                    pulseCount++;
+                    receivingPacket = pulseCount < PACKET_BITS;
+                }
             }
             default -> {
             }

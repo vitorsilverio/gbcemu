@@ -14,6 +14,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
+import javax.swing.SwingUtilities;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -65,6 +66,7 @@ public class SettingsDialog extends JDialog {
     private final JSpinner[] gamepadDeadzones = new JSpinner[2];
     private final JButton[] showGamepadComponents = new JButton[2];
     private final JTextField[][] gamepadMappings = new JTextField[2][AppSettings.CONTROLLER_BUTTON_NAMES.length];
+    private final JButton[][] captureGamepadMappings = new JButton[2][AppSettings.CONTROLLER_BUTTON_NAMES.length];
 
     public SettingsDialog(Frame owner, AppSettings settings, Consumer<AppSettings> onSave) {
         super(owner, "Settings", true);
@@ -105,13 +107,16 @@ public class SettingsDialog extends JDialog {
         List<String> devices = GamepadController.deviceNames();
         for (int player = 0; player < gamepadDevices.length; player++) {
             AppSettings.GamepadConfig config = settings.gamepadConfig(player);
-            gamepadDevices[player] = gamepadDeviceCombo(devices, config.deviceIndex());
+            gamepadDevices[player] = gamepadDeviceCombo(devices, config);
             gamepadDeadzones[player] = spinner(config.deadzonePercent(), 0, 95, 1);
             int playerIndex = player;
             showGamepadComponents[player] = new JButton("Components...");
             showGamepadComponents[player].addActionListener(event -> showGamepadComponents(playerIndex));
             for (int i = 0; i < gamepadMappings[player].length; i++) {
+                int buttonIndex = i;
                 gamepadMappings[player][i] = new JTextField(config.mappings()[i], 22);
+                captureGamepadMappings[player][i] = new JButton("Capture");
+                captureGamepadMappings[player][i].addActionListener(event -> captureGamepadMapping(playerIndex, buttonIndex));
             }
         }
         initialize();
@@ -252,10 +257,17 @@ public class SettingsDialog extends JDialog {
         addControlComponent(fields, row++, 2, showGamepadComponents[1]);
         for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {
             addControlLabel(fields, row, AppSettings.CONTROLLER_BUTTON_NAMES[i]);
-            addControlComponent(fields, row, 1, gamepadMappings[0][i]);
-            addControlComponent(fields, row++, 2, gamepadMappings[1][i]);
+            addControlComponent(fields, row, 1, gamepadMappingPanel(0, i));
+            addControlComponent(fields, row++, 2, gamepadMappingPanel(1, i));
         }
         return wrapPanel(fields, this::resetControlsDefaults);
+    }
+
+    private JPanel gamepadMappingPanel(int player, int buttonIndex) {
+        JPanel panel = new JPanel(new BorderLayout(6, 0));
+        panel.add(gamepadMappings[player][buttonIndex], BorderLayout.CENTER);
+        panel.add(captureGamepadMappings[player][buttonIndex], BorderLayout.EAST);
+        return panel;
     }
 
     private void addSectionLabel(JPanel panel, int row, String text) {
@@ -365,6 +377,7 @@ public class SettingsDialog extends JDialog {
             }
             gamepadValues[player] = new AppSettings.GamepadConfig(
                     gamepadDevices[player].getSelectedIndex() - 1,
+                    GamepadController.deviceProfileKey(gamepadDevices[player].getSelectedIndex() - 1),
                     (int) gamepadDeadzones[player].getValue(),
                     mappings
             );
@@ -456,17 +469,30 @@ public class SettingsDialog extends JDialog {
         return value == null ? "" : value.toString();
     }
 
-    private JComboBox<String> gamepadDeviceCombo(List<String> devices, int selectedDeviceIndex) {
+    private JComboBox<String> gamepadDeviceCombo(List<String> devices, AppSettings.GamepadConfig config) {
         JComboBox<String> combo = new JComboBox<>();
         combo.addItem("Disabled");
         for (String device : devices) {
             combo.addItem(device);
         }
+        int selectedDeviceIndex = findDeviceIndex(devices, config);
         while (combo.getItemCount() <= selectedDeviceIndex + 1) {
             combo.addItem("#" + combo.getItemCount() + " not connected");
         }
         combo.setSelectedIndex(Math.max(0, Math.min(selectedDeviceIndex + 1, combo.getItemCount() - 1)));
         return combo;
+    }
+
+    private int findDeviceIndex(List<String> devices, AppSettings.GamepadConfig config) {
+        String deviceName = config.deviceName();
+        if (deviceName != null && !deviceName.isBlank()) {
+            for (int i = 0; i < devices.size(); i++) {
+                if (devices.get(i).endsWith(deviceName)) {
+                    return i;
+                }
+            }
+        }
+        return config.deviceIndex();
     }
 
     private void resetGeneralDefaults() {
@@ -538,6 +564,38 @@ public class SettingsDialog extends JDialog {
         JTextArea content = new JTextArea(GamepadController.componentSnapshot(deviceIndex), 18, 48);
         content.setEditable(false);
         JOptionPane.showMessageDialog(this, new JScrollPane(content), "Player " + (player + 1) + " gamepad inputs", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void captureGamepadMapping(int player, int buttonIndex) {
+        int deviceIndex = gamepadDevices[player].getSelectedIndex() - 1;
+        if (deviceIndex < 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Select a gamepad device before capturing.",
+                    "Gamepad capture",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JButton captureButton = captureGamepadMappings[player][buttonIndex];
+        captureButton.setEnabled(false);
+        captureButton.setText("Press...");
+        int deadzone = (int) gamepadDeadzones[player].getValue();
+        Thread thread = new Thread(() -> {
+            String token = GamepadController.captureNextMapping(deviceIndex, deadzone, 5000L);
+            SwingUtilities.invokeLater(() -> {
+                captureButton.setEnabled(true);
+                captureButton.setText("Capture");
+                if (token.isBlank()) {
+                    JOptionPane.showMessageDialog(this,
+                            "No input detected before timeout.",
+                            "Gamepad capture",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                gamepadMappings[player][buttonIndex].setText(token);
+            });
+        }, "gbcemu-gamepad-capture");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private static class KeyCaptureButton extends JButton {

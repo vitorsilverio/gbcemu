@@ -6,6 +6,7 @@ import dev.vitorsilverio.gbcemu.sgb.SuperGameBoy;
 import io.github.stanio.xbrz.awt.AwtXbrz;
 
 import javax.swing.*;
+import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -14,6 +15,8 @@ import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.List;
 import java.util.prefs.Preferences;
 
 public class EmulatorWindow {
@@ -42,10 +45,12 @@ public class EmulatorWindow {
     private SuperGameBoy secondarySuperGameBoy;
     private Image primaryFrameSnapshot;
     private Image secondaryFrameSnapshot;
+    private final KeyEventDispatcher controllerKeyDispatcher = this::dispatchControllerKeyEvent;
     private KeyListener keyListener;
     private KeyListener secondaryKeyListener;
     private OverlayIcon overlayIcon;
     private boolean windowLocationInitialized;
+    private boolean controllerKeyDispatcherInstalled;
 
     public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings) {
         this(menuActions, settings, JFrame.EXIT_ON_CLOSE);
@@ -76,6 +81,7 @@ public class EmulatorWindow {
         updateScreenPreferredSize();
         window.setContentPane(screen);
         window.setResizable(false);
+        installControllerKeyDispatcher();
         installMenu(menuActions);
         installRewindHoldKey(menuActions);
         installWindowLifecycle(menuActions);
@@ -144,9 +150,6 @@ public class EmulatorWindow {
             }
             detachKeyListener();
             this.keyListener = keyListener;
-            if (keyListener != null) {
-                screen.addKeyListener(keyListener);
-            }
             updateScreenPreferredSize();
             applyWindowMode();
             screen.repaint();
@@ -166,9 +169,6 @@ public class EmulatorWindow {
             }
             detachSecondaryKeyListener();
             this.secondaryKeyListener = keyListener;
-            if (keyListener != null) {
-                screen.addKeyListener(keyListener);
-            }
             updateScreenPreferredSize();
             applyWindowMode();
             screen.repaint();
@@ -244,17 +244,107 @@ public class EmulatorWindow {
     }
 
     private void detachKeyListener() {
-        if (keyListener != null) {
-            screen.removeKeyListener(keyListener);
-            keyListener = null;
-        }
+        keyListener = null;
     }
 
     private void detachSecondaryKeyListener() {
-        if (secondaryKeyListener != null) {
-            screen.removeKeyListener(secondaryKeyListener);
-            secondaryKeyListener = null;
+        secondaryKeyListener = null;
+    }
+
+    private void installControllerKeyDispatcher() {
+        if (controllerKeyDispatcherInstalled) {
+            return;
         }
+        KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                .addKeyEventDispatcher(controllerKeyDispatcher);
+        controllerKeyDispatcherInstalled = true;
+    }
+
+    private void uninstallControllerKeyDispatcher() {
+        if (!controllerKeyDispatcherInstalled) {
+            return;
+        }
+        KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                .removeKeyEventDispatcher(controllerKeyDispatcher);
+        controllerKeyDispatcherInstalled = false;
+    }
+
+    private boolean dispatchControllerKeyEvent(KeyEvent event) {
+        if (keyListener == null && secondaryKeyListener == null) {
+            return false;
+        }
+        if (event.getID() != KeyEvent.KEY_PRESSED && event.getID() != KeyEvent.KEY_RELEASED) {
+            return false;
+        }
+        if (!isEventFromThisWindow(event) || isTextEditingEvent(event)) {
+            return false;
+        }
+
+        if (event.getID() == KeyEvent.KEY_PRESSED) {
+            dispatchKeyPressed(keyListener, event);
+            dispatchKeyPressed(secondaryKeyListener, event);
+        } else {
+            dispatchKeyReleased(keyListener, event);
+            dispatchKeyReleased(secondaryKeyListener, event);
+        }
+        return false;
+    }
+
+    private void dispatchKeyPressed(KeyListener listener, KeyEvent event) {
+        if (listener != null) {
+            listener.keyPressed(event);
+        }
+    }
+
+    private void dispatchKeyReleased(KeyListener listener, KeyEvent event) {
+        if (listener != null) {
+            listener.keyReleased(event);
+        }
+    }
+
+    private boolean isEventFromThisWindow(KeyEvent event) {
+        Window sourceWindow = event.getSource() instanceof Component component
+                ? SwingUtilities.getWindowAncestor(component)
+                : KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        return sourceWindow == window
+                || isOwnedBy(sourceWindow, window)
+                || isStandaloneGbcEmuToolWindow(sourceWindow);
+    }
+
+    private boolean isOwnedBy(Window candidate, Window owner) {
+        for (Window current = candidate; current != null; current = current.getOwner()) {
+            if (current == owner) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isStandaloneGbcEmuToolWindow(Window candidate) {
+        if (!(candidate instanceof JFrame frame)) {
+            return false;
+        }
+        String title = frame.getTitle();
+        return "CPU / Disassembly".equals(title)
+                || "Audio Debug".equals(title)
+                || "Cart / MBC Debug".equals(title)
+                || "GameShark Codes".equals(title)
+                || "Memory Debug".equals(title)
+                || "PPU Debug".equals(title);
+    }
+
+    private boolean isTextEditingEvent(KeyEvent event) {
+        if (!(event.getSource() instanceof Component component)) {
+            return false;
+        }
+        if (component instanceof JTextComponent) {
+            return true;
+        }
+        if (component instanceof JTable table && table.isEditing()) {
+            return true;
+        }
+        Object combo = SwingUtilities.getAncestorOfClass(JComboBox.class, component);
+        return combo instanceof JComboBox<?> comboBox && comboBox.isEditable();
     }
 
     private void updateScreenPreferredSize() {
@@ -303,6 +393,24 @@ public class EmulatorWindow {
         openRom.addActionListener(event -> menuActions.openRom().run());
         openRom.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F1, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         emulatorMenu.add(openRom);
+
+        JMenu recentRoms = new JMenu("Recent ROMs");
+        recentRoms.addMenuListener(new javax.swing.event.MenuListener() {
+            @Override
+            public void menuSelected(javax.swing.event.MenuEvent event) {
+                rebuildRecentRomsMenu(recentRoms, menuActions);
+            }
+
+            @Override
+            public void menuDeselected(javax.swing.event.MenuEvent event) {
+            }
+
+            @Override
+            public void menuCanceled(javax.swing.event.MenuEvent event) {
+            }
+        });
+        rebuildRecentRomsMenu(recentRoms, menuActions);
+        emulatorMenu.add(recentRoms);
 
         JMenuItem openLinkedSession = new JMenuItem("Start linked session...");
         openLinkedSession.addActionListener(event -> menuActions.openLinkedSession().run());
@@ -405,6 +513,30 @@ public class EmulatorWindow {
 
     }
 
+    private void rebuildRecentRomsMenu(JMenu menu, EmulatorMenuActions menuActions) {
+        menu.removeAll();
+        List<File> recentRoms = menuActions.recentRoms().get();
+        if (recentRoms.isEmpty()) {
+            JMenuItem empty = new JMenuItem("(empty)");
+            empty.setEnabled(false);
+            menu.add(empty);
+            return;
+        }
+        for (File rom : recentRoms) {
+            JMenuItem item = new JMenuItem(rom.getName());
+            item.setToolTipText(rom.getAbsolutePath());
+            item.addActionListener(event -> menuActions.openRecentRom().accept(rom));
+            menu.add(item);
+        }
+        menu.addSeparator();
+        JMenuItem clear = new JMenuItem("Clear recent ROMs");
+        clear.addActionListener(event -> {
+            menuActions.clearRecentRoms().run();
+            rebuildRecentRomsMenu(menu, menuActions);
+        });
+        menu.add(clear);
+    }
+
     private void installRewindHoldKey(EmulatorMenuActions menuActions) {
         rewindHoldTimer = new Timer(90, event -> menuActions.rewindSnapshotSilent().run());
         rewindHoldTimer.setRepeats(true);
@@ -435,6 +567,7 @@ public class EmulatorWindow {
             public void windowClosing(WindowEvent event) {
                 saveWindowLocation();
                 rewindHoldTimer.stop();
+                uninstallControllerKeyDispatcher();
                 menuActions.stop().run();
             }
 

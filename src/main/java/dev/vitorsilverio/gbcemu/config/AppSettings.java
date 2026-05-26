@@ -35,7 +35,7 @@ public record AppSettings(
         int multiplayerTcpPort
 ) {
     public static final String[] CONTROLLER_BUTTON_NAMES = {"A", "B", "Start", "Select", "Up", "Down", "Left", "Right"};
-    public record GamepadConfig(int deviceIndex, int deadzonePercent, String[] mappings) {
+    public record GamepadConfig(int deviceIndex, String deviceName, int deadzonePercent, String[] mappings) {
     }
     public record AudioEnhancementConfig(
             String dspPreset,
@@ -65,6 +65,8 @@ public record AppSettings(
     private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
     private static final String PLAYER2_CONTROLLER_KEY_PREFIX = "player2ControllerKey";
     private static final String GAMEPAD_DEVICE_PREFIX = "gamepadDevice";
+    private static final String GAMEPAD_DEVICE_NAME_PREFIX = "gamepadDeviceName";
+    private static final String GAMEPAD_PROFILE_PREFIX = "gamepadProfile.";
     private static final String GAMEPAD_DEADZONE_PREFIX = "gamepadDeadzone";
     private static final String GAMEPAD_MAPPING_PREFIX = "gamepadMapping";
     private static final String TURBO_MULTIPLIER = "turboMultiplier";
@@ -144,9 +146,19 @@ public record AppSettings(
             for (int i = 0; i < mappings.length; i++) {
                 mappings[i] = preferences.get(GAMEPAD_MAPPING_PREFIX + (player + 1) + CONTROLLER_BUTTON_NAMES[i], defaultConfig.mappings()[i]);
             }
+            String deviceName = preferences.get(GAMEPAD_DEVICE_NAME_PREFIX + (player + 1), defaultConfig.deviceName());
+            int deadzone = clamp(preferences.getInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), defaultConfig.deadzonePercent()), 0, 95);
+            if (!deviceName.isBlank()) {
+                String profileKey = gamepadProfileKey(deviceName);
+                deadzone = clamp(preferences.getInt(profileKey + ".deadzone", deadzone), 0, 95);
+                for (int i = 0; i < mappings.length; i++) {
+                    mappings[i] = preferences.get(profileKey + ".mapping." + CONTROLLER_BUTTON_NAMES[i], mappings[i]);
+                }
+            }
             gamepadConfigs[player] = new GamepadConfig(
                     preferences.getInt(GAMEPAD_DEVICE_PREFIX + (player + 1), defaultConfig.deviceIndex()),
-                    clamp(preferences.getInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), defaultConfig.deadzonePercent()), 0, 95),
+                    deviceName,
+                    deadzone,
                     mappings
             );
         }
@@ -214,10 +226,16 @@ public record AppSettings(
         for (int player = 0; player < 2; player++) {
             GamepadConfig config = gamepadConfig(player);
             preferences.putInt(GAMEPAD_DEVICE_PREFIX + (player + 1), config.deviceIndex());
+            if (config.deviceName().isBlank()) {
+                preferences.remove(GAMEPAD_DEVICE_NAME_PREFIX + (player + 1));
+            } else {
+                preferences.put(GAMEPAD_DEVICE_NAME_PREFIX + (player + 1), config.deviceName());
+            }
             preferences.putInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), config.deadzonePercent());
             for (int i = 0; i < CONTROLLER_BUTTON_NAMES.length; i++) {
                 preferences.put(GAMEPAD_MAPPING_PREFIX + (player + 1) + CONTROLLER_BUTTON_NAMES[i], config.mappings()[i]);
             }
+            saveGamepadProfile(preferences, config);
         }
         preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
         preferences.putInt(TURBO_KEY, turboKeyCode);
@@ -388,8 +406,8 @@ public record AppSettings(
 
     private static GamepadConfig[] defaultGamepadConfigs() {
         return new GamepadConfig[]{
-                new GamepadConfig(0, 35, defaultGamepadMappings()),
-                new GamepadConfig(1, 35, defaultGamepadMappings())
+                new GamepadConfig(0, "", 35, defaultGamepadMappings()),
+                new GamepadConfig(1, "", 35, defaultGamepadMappings())
         };
     }
 
@@ -451,7 +469,24 @@ public record AppSettings(
                 mappings[i] = mappings[i].strip();
             }
         }
-        return new GamepadConfig(clamp(config.deviceIndex(), -1, 15), clamp(config.deadzonePercent(), 0, 95), mappings);
+        String deviceName = config.deviceName() == null ? "" : config.deviceName().strip();
+        return new GamepadConfig(clamp(config.deviceIndex(), -1, 15), deviceName, clamp(config.deadzonePercent(), 0, 95), mappings);
+    }
+
+    private static void saveGamepadProfile(Preferences preferences, GamepadConfig config) {
+        if (config.deviceName().isBlank()) {
+            return;
+        }
+        String profileKey = gamepadProfileKey(config.deviceName());
+        preferences.put(profileKey + ".name", config.deviceName());
+        preferences.putInt(profileKey + ".deadzone", config.deadzonePercent());
+        for (int i = 0; i < CONTROLLER_BUTTON_NAMES.length; i++) {
+            preferences.put(profileKey + ".mapping." + CONTROLLER_BUTTON_NAMES[i], config.mappings()[i]);
+        }
+    }
+
+    private static String gamepadProfileKey(String deviceName) {
+        return GAMEPAD_PROFILE_PREFIX + Integer.toHexString(deviceName.hashCode());
     }
 
     private static int clampPercent(int value) {

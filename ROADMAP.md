@@ -44,6 +44,13 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Save state refatorado para estados tipados, sem `@Savable`, `Snapshot(Map)` ou restauracao por reflexao.
 - Cart RAM separada da ROM e exposta como `MemoryBank`.
 - APU separada em componentes menores com estado explicito e sem conhecer driver/sink/efeitos de audio.
+- Gamepad opcional via `input4j`, com configuracao por player, deadzone e mapeamento manual de botoes/eixos.
+- Suporte inicial a Super Game Boy visual:
+  - deteccao por header SGB;
+  - captura de pacotes via `JOYP`;
+  - borda oficial enviada pela ROM;
+  - composicao de frame 256x224 quando borda esta ativa;
+  - dumps graficos SGB para diagnostico.
 
 ## Usabilidade
 
@@ -55,15 +62,22 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Mover configuracao de BIOS padrao para a janela de configuracoes.
   - [x] Persistir posicao da janela principal e abrir multiplas instancias em cascata.
 
+- [x] ROMs recentes.
+  - [x] Mostrar lista dos ultimos jogos abertos no menu `Emulator`.
+  - [x] Reabrir rapidamente ROM recente com save/configuracoes usuais.
+  - [x] Persistir caminhos recentes e remover entradas inexistentes.
+  - [x] Ter acao para limpar historico.
+
 - [ ] Gamepad.
   - [x] Integrar `input4j` de forma opcional em runtime.
   - [x] Detectar controles.
   - [x] Mapear botoes/eixos comuns para Player 1 e Player 2.
   - [x] UI inicial para escolher dispositivo, configurar botoes/eixos e deadzone por player.
   - [x] Persistir perfil por player.
-  - [ ] Captura automatica de botoes/eixos pressionados.
-  - [ ] Persistir perfil por controle quando possivel.
-  - [ ] Suportar rumble para cartuchos/jogos compativeis.
+  - [x] Captura automatica de botoes/eixos pressionados.
+  - [x] Persistir nome do controle selecionado para sobreviver a mudanca de ordem dos dispositivos.
+  - [x] Persistir perfil por controle quando possivel.
+  - [ ] Suportar rumble para cartuchos/jogos compativeis, com baixa prioridade por haver poucos jogos.
   - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e futura integracao com controle.
 
 - [ ] Configuracao de audio mais completa.
@@ -95,6 +109,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Socket local foi abandonado: a primeira versao estavel deve rodar dois emuladores na mesma instancia do GBCEMU.
   - TCP fica para uma futura camada de netplay/lockstep, nao para multiplayer local.
   - Design novo detalhado em [LINK_CABLE_REWRITE.md](LINK_CABLE_REWRITE.md).
+  - Estado atual: arquitetura de dois consoles na mesma sessao existe. O foco restante passa a ser usabilidade da sessao local; revisoes profundas de protocolo ficam para quando voltarmos a testar multiplayer de forma dedicada.
   - Arquitetura atual:
     - `Console` representa um Game Boy fisico: CPU, PPU, APU, Bus, Cart, RAM, Serial, controles e estado.
     - `Emulator` representa a sessao/runtime: lista de consoles, loop, throttle, start/stop/pause e coordenacao de link.
@@ -108,16 +123,18 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
     - [x] Balancear o scheduler por ciclos de maquina acumulados, nao por uma instrucao inteira por console.
   - [x] Renderizar Player 1 e Player 2 lado a lado na mesma janela.
   - [x] Criar `DirectLinkCable` em memoria conectando diretamente os dois `Serial`.
-  - [ ] Validar se `DirectLinkCable` precisa trocar byte imediatamente ou esperar o segundo lado armar a transferencia em alguns jogos.
+  - [ ] Revisar `DirectLinkCable` apenas se novos testes mostrarem falha concreta de protocolo.
+  - [ ] Validar se a troca de byte deve aguardar o segundo lado armar a transferencia em alguns jogos.
   - [ ] Manter `Serial` como interface do jogo com `SB/SC`, interrupcao serial e shift de bits.
   - [x] Separar controles de Player 1 e Player 2 na sessao local.
   - [x] Implementar configuracoes persistentes de controle separadas para Player 1 e Player 2.
-  - [ ] Capturar teclado por `KeyEventDispatcher` da aplicacao para input funcionar quando qualquer janela do GBCEMU estiver focada.
+  - [x] Capturar teclado por `KeyEventDispatcher` da aplicacao para input funcionar quando qualquer janela do GBCEMU estiver focada.
   - [x] Bloquear pause individual, rewind, save state e turbo enquanto a sessao link estiver ativa.
   - [x] Expor estado conjunto da sessao link no debug/dump.
   - [x] Ao abrir debug em sessao multi-console, escolher o console alvo por combo.
   - [ ] Evoluir janelas de debug para manter combo interno permanente e trocar a visao sem reabrir janela.
-  - [ ] Permitir adicionar/remover console durante a sessao sem recriar tudo do zero.
+  - [ ] Permitir iniciar/adicionar um segundo console durante a sessao, nao apenas iniciar sempre com dois.
+  - [ ] Permitir fechar um console/sessao individual sem interromper tudo.
   - [ ] Permitir destacar a tela de um console para janela/monitor separado.
   - [ ] Validar Tetris primeiro, depois Pokemon.
   - [ ] No futuro, reavaliar TCP como netplay remoto com lockstep explicito.
@@ -140,16 +157,29 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Integrar Arduino/dispositivo serial.
   - Testar comunicacao com Game Boy Color real.
 
-- [ ] Super Game Boy visual.
+- [x] Super Game Boy visual.
   - [x] Manter bordas SGB opcionais, ativadas por configuracao de graficos.
   - [x] Detectar cartuchos com flag SGB no header.
   - [x] Capturar pacotes SGB pelo registrador `JOYP`.
   - [x] Implementar retorno basico de `MLT_REQ` para jogos detectarem SGB.
-  - [x] Decodificar `CHR_TRN`/`PCT_TRN` para bordas enviadas pelo proprio jogo.
+  - [x] Decodificar `CHR_TRN`/`PCT_TRN` para bordas enviadas pelo proprio jogo, usando a janela de transferencia de 5 frames.
   - [x] Renderizar a borda oficial do jogo ao redor do frame 160x144.
   - [x] Salvar estado SGB em save state/rewind quando borda ou comandos SGB estiverem ativos.
   - [x] Exportar PNG da borda e estado SGB no debug bundle.
-  - [ ] Implementar comandos de paleta/atributos SGB para colorizacao da area do jogo.
+    - `debug-ppu-sgb-border.png`: borda bruta.
+    - `debug-ppu-sgb-frame.png`: frame 160x144 colorizado pelo estado SGB.
+    - `debug-ppu-sgb-attributes.png`: mapa de atributos.
+    - `debug-ppu-sgb-preview.png`: composicao borda + jogo.
+  - [x] Implementar comandos principais de paleta/atributos SGB para colorizacao da area do jogo.
+    - `PAL01`/`PAL23`/`PAL03`/`PAL12`.
+    - `PAL_SET`.
+    - `ATTR_BLK`, `ATTR_LIN`, `ATTR_DIV`, `ATTR_CHR`, `ATTR_SET`.
+    - `MASK_EN`, `MLT_REQ`.
+    - `PAL_TRN`, `ATTR_TRN`.
+  - [x] Corrigir sincronismo de paletas/atributos SGB no jogo.
+    - Em Pokemon Red, a borda e a colorizacao da tela central foram validadas apos comparar com a implementacao do mGBA em `referencia/mgba`.
+    - Comandos invalidos/idle de joypad nao devem ser aceitos como pacotes SGB reais.
+    - Paletas SGB ficam separadas da palette RAM CGB usada por DMG compatibility.
   - [x] Implementar apenas bordas fornecidas pela ROM; sem bordas customizadas de usuario.
 
 ## Debug
@@ -227,13 +257,16 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 ### Faltante / Incerto
 
 - [x] `cgb_sound`.
-  - Passar nos testes individuais.
-  - Revisar frame sequencer, power on/off da APU, wave channel, DAC e mascaras de leitura.
-  - Separar compatibilidade de registradores de qualidade do output para host.
+  - [x] Passar nos testes individuais.
+  - [x] Revisar frame sequencer, power on/off da APU, wave channel, DAC e mascaras de leitura.
+  - [x] Separar compatibilidade de registradores de qualidade do output para host.
+  - Estado atual: sem pendencia audivel conhecida depois da correcao de timing. Manter como area de regressao/testes, nao como prioridade ativa.
 
 - [ ] Timing CGB.
-  - Confirmar double speed em CPU, timer, serial, PPU, DMA, HDMA e APU.
+  - Estado atual: nenhum bug especifico aberto, mas ainda falta uma revisao dirigida para fechar o assunto.
+  - Validar double speed em CPU, timer, serial, PPU, DMA, HDMA e APU contra referencias/test ROMs quando tivermos suite apropriada.
   - Garantir que componentes que nao dobram no CGB continuem no clock correto.
+  - Documentar quais subsistemas usam clock de CPU, dot clock, machine cycle ou frame sequencer para evitar regressao futura.
 
 - [x] HDMA/GDMA completo.
   - [x] HBlank HDMA transfere no maximo um bloco de `$10` bytes por HBlank.
@@ -345,10 +378,26 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Estados devem ser tipados e versionados.
 - Componentes com bancos devem expor `MemoryBank` quando isso ajudar debugger e ferramentas.
 
-## Proximas Prioridades Sugeridas
+## Pendencias Atuais
 
-1. Revisar cgb timing e double speed de forma sistematica.
-2. Implementar watchpoints sem custo quando inativos.
-3. Implementar gamepad.
-4. Evoluir rewind continuo.
-5. Implementar link cable local.
+### Mais Importantes Agora
+
+1. Revisar timing CGB/double speed de forma sistematica.
+   - Nao ha bug especifico aberto; e uma auditoria para garantir que CPU/timer/serial/PPU/DMA/APU estao no clock certo em normal/double speed.
+2. Evoluir perfis de controle.
+   - Perfil por controle.
+   - Rumble fica como baixa prioridade.
+3. Melhorar usabilidade do link local.
+   - Separar/destacar janelas.
+   - Adicionar um segundo console depois que a sessao ja iniciou.
+   - Fechar uma sessao/console individual sem derrubar tudo.
+4. Escolher proxima tarefa de compatibilidade baseada em jogo/teste real.
+
+### Menores / Depois
+
+- Turbo acima de 3.5x com menos custo de renderizacao/audio.
+- APU/fidelidade sonora: monitorar regressao, mas sem pendencia audivel conhecida no momento.
+- HuC3 RTC completo e speaker.
+- Pocket Camera e mappers raros conforme necessidade de jogos reais.
+- GraalVM native-image no Windows com metadata AWT/Swing estavel.
+- Infrared fisico via dispositivo externo.

@@ -1,6 +1,6 @@
 # GBC EMU
 
-Emulador de Game Boy Color em Java, com foco em compatibilidade CGB, ferramentas de debug integradas.
+Emulador de Game Boy Color em Java, com foco em compatibilidade CGB, usabilidade fora da IDE e ferramentas de debug integradas.
 
 ## Requisitos
 
@@ -19,13 +19,16 @@ Ao abrir sem argumentos, o emulador mostra a janela principal sem exigir ROM ime
 Menus principais:
 
 - `Emulator > Start ROM...`: abre uma ROM `.gb` ou `.gbc`.
-- `Emulator > Start linked session...`: abre duas ROMs lado a lado em uma sessao local de link cable em memoria.
+- `Emulator > Recent ROMs`: reabre rapidamente os ultimos jogos usados e permite limpar o historico.
+- `Emulator > Start linked session...`: abre duas ROMs lado a lado em uma sessao local de link cable em memoria. Esta area ainda e experimental.
   - Player 1 usa o mapeamento configurado.
   - Player 2 tem mapeamento proprio em `Settings > Controls`.
   - Gamepads detectados pelo `input4j` tambem entram no controle composto: primeiro controle para Player 1, segundo controle para Player 2.
   - Em `Settings > Controls`, cada player pode escolher o dispositivo, deadzone e nomes de botoes/eixos do gamepad.
-  - No mapeamento de gamepad, use nomes separados por virgula; eixos aceitam `+`/`-`, como `AXIS_Y-` para cima.
+  - No mapeamento de gamepad, use `Capture` para detectar botoes/eixos automaticamente, ou edite nomes separados por virgula; eixos aceitam `+`/`-`, como `AXIS_Y-` para cima.
   - O botao `Components...` mostra os nomes/valores atuais reportados pelo controle selecionado.
+  - O controle escolhido tambem e lembrado pelo nome reportado pelo sistema, e mapeamento/deadzone ficam salvos como perfil desse controle.
+  - O teclado e capturado pela aplicacao enquanto uma janela do GBCEMU estiver focada, exceto durante edicao de campos de texto.
   - Internamente, cada jogo roda como um `Console` dentro da mesma sessao `Emulator`, que coordena o tick dos dois.
 - `Emulator > Settings...`: abre configuracoes em abas de geral, graficos, som e controles.
   - A aba de graficos permite ativar bordas Super Game Boy enviadas pela propria ROM quando o cartucho suportar SGB.
@@ -34,7 +37,7 @@ Menus principais:
 - `Emulator > Pause`, `Resume`, `Stop`, `Restart`: controla a execucao.
 - `Emulator > Save states`: salva/carrega slots por jogo e gerencia estados.
 - `Emulator > Cheats`: abre a janela de GameShark.
-- `Debug`: abre janelas separadas de CPU, memoria, PPU, audio, cart/MBC e dumps. Em sessao local de link, o debug pergunta qual console visualizar e o dump gera um indice da sessao com dumps separados por console.
+- `Debug`: abre janelas separadas de CPU, memoria, PPU, audio, cart/MBC e dumps. Em sessao local de link, o debug pergunta qual console visualizar e o dump gera um indice da sessao com dumps separados por console. O debug de PPU tambem exporta imagens auxiliares de SGB quando disponiveis.
 
 ## Linha De Comando
 
@@ -95,15 +98,16 @@ Observacoes:
 - Save states por jogo e slots `.sa0`, `.sa1`, `.saN`, com metadata e preview.
 - Rewind por snapshots.
 - GameShark.
+- Historico de ROMs recentes no menu.
 - Filtros de tela, incluindo xBRZ.
-- Bordas Super Game Boy opcionais para jogos que enviam borda propria.
+- Bordas Super Game Boy opcionais para jogos que enviam borda propria, com colorizacao SGB da area do jogo.
 - Filtros DSP opcionais de audio pos-mixagem para brincar com o som sem alterar a APU.
 - SoundFont experimental para tocar os canais da APU como instrumentos MIDI carregados de um `.sf2`.
 - Turbo configuravel por tecla segurada ou toggle, com audio silenciado e frameskip automatico durante a aceleracao.
 - Debug separado por area:
   - CPU/disassembly e breakpoints.
   - Memoria, bancos e edicao segura.
-  - PPU, tiles, tile maps e paletas.
+  - PPU, tiles, tile maps, paletas e imagens SGB auxiliares.
   - Audio por canal.
   - Cart/MBC.
 - Dumps de debug para investigacao externa.
@@ -111,13 +115,13 @@ Observacoes:
 
 ## Limitações Conhecidas
 
-- cgb timing ainda precisa ser corrigido.
+- Timing CGB/double speed ainda precisa de validacao sistematica.
 - A corrupcao testada por `oam_bug` e DMG-only; o foco atual e manter os bloqueios CGB reais de OAM/VRAM.
-- Link cable local ainda e experimental: a sessao abre dois emuladores lado a lado na mesma instancia e usa cabo em memoria. TCP/netplay fica para o futuro.
-- Gamepad tem integracao inicial opcional por `input4j`; a captura automatica de botoes/eixos e perfis por controle ainda ficam para evolucao.
+- Link cable local ainda e experimental: a sessao abre dois consoles lado a lado na mesma instancia e usa cabo em memoria. Separar telas, iniciar/adicionar consoles durante a execucao e fechar uma sessao individual ainda ficam para evolucao.
+- Gamepad tem integracao opcional por `input4j`; perfis por controle ainda ficam para evolucao.
 - Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.
 - Build nativo com GraalVM no Windows ainda pode exigir ajustes de metadata AWT/Swing.
-- A fidelidade do audio ainda esta em evolucao.
+- Os filtros DSP e SoundFont sao opcionais/experimentais; a APU base deve continuar priorizando comportamento de hardware.
 
 ## Roadmap
 

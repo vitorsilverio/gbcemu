@@ -15,13 +15,17 @@ import dev.vitorsilverio.gbcemu.snapshot.SaveStateStore;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.prefs.Preferences;
 
 public class Main {
 
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(Main.class);
     private static final String LAST_ROM_DIRECTORY = "lastRomDirectory";
+    private static final String RECENT_ROM_PREFIX = "recentRom";
+    private static final int MAX_RECENT_ROMS = 10;
     private static AppSettings settings = AppSettings.load(PREFERENCES);
     private static Emulator activeEmulator;
     private static Options activeOptions;
@@ -89,6 +93,9 @@ public class Main {
     private static EmulatorMenuActions menuActions() {
         return new EmulatorMenuActions(
                 Main::openRomFromMenu,
+                Main::recentRoms,
+                Main::openRecentRom,
+                Main::clearRecentRoms,
                 Main::openLinkedSessionFromMenu,
                 Main::openSettings,
                 Main::pauseEmulator,
@@ -311,6 +318,22 @@ public class Main {
         startEmulator(baseOptions.withRomFile(romFile));
     }
 
+    private static void openRecentRom(File romFile) {
+        if (romFile == null) {
+            return;
+        }
+        if (!romFile.isFile()) {
+            removeRecentRom(romFile);
+            JOptionPane.showMessageDialog(null,
+                    "Recent ROM no longer exists:\n" + romFile.getAbsolutePath(),
+                    "Recent ROMs",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
+        startEmulator(baseOptions.withRomFile(romFile));
+    }
+
     private static void openLinkedSessionFromMenu() {
         File player1Rom = chooseRomFile("Open Player 1 ROM");
         if (player1Rom == null) {
@@ -324,6 +347,8 @@ public class Main {
         Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
         Options player1Options = baseOptions.withRomFile(player1Rom);
         Options player2Options = baseOptions.withRomFile(player2Rom);
+        addRecentRom(player1Rom);
+        addRecentRom(player2Rom);
         stopCurrentRuntime();
         activeOptions = null;
 
@@ -456,6 +481,9 @@ public class Main {
     private static synchronized void startEmulator(Options options) {
         stopCurrentRuntime();
         activeOptions = options;
+        if (!options.headless() && options.romFile() != null) {
+            addRecentRom(options.romFile());
+        }
         Emulator emulator = new Emulator(
                 options.biosFile(),
                 options.romFile(),
@@ -530,6 +558,91 @@ public class Main {
         }
         File directory = new File(configured);
         return directory.isDirectory() ? directory : currentDirectory();
+    }
+
+    private static List<File> recentRoms() {
+        List<File> files = new ArrayList<>();
+        boolean changed = false;
+        for (int i = 0; i < MAX_RECENT_ROMS; i++) {
+            String path = PREFERENCES.get(RECENT_ROM_PREFIX + i, "");
+            if (path.isBlank()) {
+                continue;
+            }
+            File file = new File(path);
+            if (!file.isFile()) {
+                changed = true;
+                continue;
+            }
+            if (!containsSameFile(files, file)) {
+                files.add(file);
+            } else {
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveRecentRoms(files);
+        }
+        return files;
+    }
+
+    private static void addRecentRom(File romFile) {
+        if (romFile == null) {
+            return;
+        }
+        File normalized = normalizeFile(romFile);
+        List<File> files = new ArrayList<>();
+        files.add(normalized);
+        for (File recent : recentRoms()) {
+            if (!sameFile(normalized, recent) && files.size() < MAX_RECENT_ROMS) {
+                files.add(recent);
+            }
+        }
+        saveRecentRoms(files);
+    }
+
+    private static void removeRecentRom(File romFile) {
+        if (romFile == null) {
+            return;
+        }
+        File normalized = normalizeFile(romFile);
+        List<File> files = new ArrayList<>();
+        for (File recent : recentRoms()) {
+            if (!sameFile(normalized, recent)) {
+                files.add(recent);
+            }
+        }
+        saveRecentRoms(files);
+    }
+
+    private static void clearRecentRoms() {
+        saveRecentRoms(List.of());
+    }
+
+    private static void saveRecentRoms(List<File> files) {
+        for (int i = 0; i < MAX_RECENT_ROMS; i++) {
+            if (i < files.size()) {
+                PREFERENCES.put(RECENT_ROM_PREFIX + i, normalizeFile(files.get(i)).getAbsolutePath());
+            } else {
+                PREFERENCES.remove(RECENT_ROM_PREFIX + i);
+            }
+        }
+    }
+
+    private static boolean containsSameFile(List<File> files, File file) {
+        for (File candidate : files) {
+            if (sameFile(candidate, file)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean sameFile(File first, File second) {
+        return normalizeFile(first).equals(normalizeFile(second));
+    }
+
+    private static File normalizeFile(File file) {
+        return file == null ? new File("") : file.getAbsoluteFile();
     }
 
     record Options(

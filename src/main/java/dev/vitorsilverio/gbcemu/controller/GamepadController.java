@@ -84,14 +84,34 @@ public class GamepadController implements Controller, AutoCloseable {
             List<String> names = new ArrayList<>();
             int index = 1;
             for (Object device : collection) {
-                Object name = invokeOptionalStatic(device, "getName", "name", "getProductName", "productName");
-                names.add("#" + index + " " + (name == null ? device.toString() : name.toString()));
+                names.add("#" + index + " " + deviceName(device));
                 index++;
             }
             return names;
         } catch (ReflectiveOperationException | RuntimeException e) {
             logger.debug("Failed to list gamepads", e);
             return List.of();
+        }
+    }
+
+    public static String deviceProfileKey(int deviceIndex) {
+        if (deviceIndex < 0) {
+            return "";
+        }
+        Object devices = inputDevices();
+        if (devices == null) {
+            return "";
+        }
+        try {
+            Object result = devices.getClass().getMethod("getAll").invoke(devices);
+            if (!(result instanceof Collection<?> collection) || collection.size() <= deviceIndex) {
+                return "";
+            }
+            Object device = new ArrayList<>(collection).get(deviceIndex);
+            return deviceName(device);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            logger.debug("Failed to identify gamepad", e);
+            return "";
         }
     }
 
@@ -125,6 +145,40 @@ public class GamepadController implements Controller, AutoCloseable {
             logger.debug("Failed to read gamepad components", e);
             return "Failed to read components: " + e.getMessage();
         }
+    }
+
+    public static String captureNextMapping(int deviceIndex, int deadzonePercent, long timeoutMillis) {
+        if (deviceIndex < 0) {
+            return "";
+        }
+        Object devices = inputDevices();
+        if (devices == null) {
+            return "";
+        }
+        try {
+            Object result = devices.getClass().getMethod("getAll").invoke(devices);
+            if (!(result instanceof Collection<?> collection) || collection.size() <= deviceIndex) {
+                return "";
+            }
+            Object device = new ArrayList<>(collection).get(deviceIndex);
+            float threshold = Math.max(0.05f, Math.min(0.95f, deadzonePercent / 100.0f));
+            List<ComponentReading> baseline = componentReadings(device);
+            long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
+            while (System.nanoTime() < deadline && !Thread.currentThread().isInterrupted()) {
+                Thread.sleep(20L);
+                List<ComponentReading> current = componentReadings(device);
+                String token = changedComponentToken(baseline, current, threshold);
+                if (!token.isBlank()) {
+                    return token;
+                }
+            }
+        } catch (ReflectiveOperationException | RuntimeException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            logger.debug("Failed to capture gamepad input", e);
+        }
+        return "";
     }
 
     private static Object inputDevices() {
@@ -197,11 +251,22 @@ public class GamepadController implements Controller, AutoCloseable {
         if (deviceIndex < 0) {
             return null;
         }
-        Collection<?> all = allDevices(devices);
+        List<?> all = new ArrayList<>(allDevices(devices));
+        String deviceName = config == null || config.deviceName() == null ? "" : config.deviceName();
+        if (!deviceName.isBlank()) {
+            if (deviceIndex < all.size() && deviceName.equals(deviceName(all.get(deviceIndex)))) {
+                return all.get(deviceIndex);
+            }
+            for (Object device : all) {
+                if (deviceName.equals(deviceName(device))) {
+                    return device;
+                }
+            }
+        }
         if (all.size() <= deviceIndex) {
             return null;
         }
-        return new ArrayList<>(all).get(deviceIndex);
+        return all.get(deviceIndex);
     }
 
     private Collection<?> allDevices(Object devices) throws ReflectiveOperationException {
@@ -278,6 +343,11 @@ public class GamepadController implements Controller, AutoCloseable {
         return name == null ? "" : name.toUpperCase(Locale.ROOT);
     }
 
+    private static String deviceName(Object device) {
+        Object name = invokeOptionalStatic(device, "getName", "name", "getProductName", "productName");
+        return name == null ? device.toString() : name.toString().strip();
+    }
+
     private float componentValue(Object component) {
         return componentValueStatic(component);
     }
@@ -291,6 +361,52 @@ public class GamepadController implements Controller, AutoCloseable {
             return pressed ? 1.0f : 0.0f;
         }
         return 0.0f;
+    }
+
+    private static List<ComponentReading> componentReadings(Object device) throws ReflectiveOperationException {
+        device.getClass().getMethod("poll").invoke(device);
+        Object componentsResult = device.getClass().getMethod("getComponents").invoke(device);
+        if (!(componentsResult instanceof Collection<?> components)) {
+            return List.of();
+        }
+        List<ComponentReading> readings = new ArrayList<>();
+        for (Object component : components) {
+            readings.add(new ComponentReading(componentNameStatic(component), componentValueStatic(component)));
+        }
+        return readings;
+    }
+
+    private static String changedComponentToken(List<ComponentReading> baseline, List<ComponentReading> current, float threshold) {
+        for (ComponentReading reading : current) {
+            float previous = baselineValue(baseline, reading.name());
+            float delta = reading.value() - previous;
+            if (Math.abs(delta) < threshold || Math.abs(reading.value()) < threshold) {
+                continue;
+            }
+            if (isAxisLike(reading.name())) {
+                return reading.name() + (reading.value() < 0 ? "-" : "+");
+            }
+            return reading.name();
+        }
+        return "";
+    }
+
+    private static float baselineValue(List<ComponentReading> baseline, String name) {
+        for (ComponentReading reading : baseline) {
+            if (reading.name().equals(name)) {
+                return reading.value();
+            }
+        }
+        return 0.0f;
+    }
+
+    private static boolean isAxisLike(String name) {
+        return name.contains("AXIS")
+                || name.contains("THUMB")
+                || name.contains("STICK")
+                || name.contains("TRIGGER")
+                || name.endsWith("_X")
+                || name.endsWith("_Y");
     }
 
     private Object invokeOptional(Object target, String... methodNames) {
@@ -498,5 +614,8 @@ public class GamepadController implements Controller, AutoCloseable {
         private static GamepadState released() {
             return new GamepadState(false, false, false, false, false, false, false, false, false);
         }
+    }
+
+    private record ComponentReading(String name, float value) {
     }
 }

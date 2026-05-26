@@ -1,7 +1,15 @@
 package dev.vitorsilverio.gbcemu.gui;
 
+import java.io.File;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 public record EmulatorMenuActions(
         Runnable openRom,
+        Supplier<List<File>> recentRoms,
+        Consumer<File> openRecentRom,
+        Runnable clearRecentRoms,
         Runnable openLinkedSession,
         Runnable openSettings,
         Runnable pause,
