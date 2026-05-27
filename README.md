@@ -21,6 +21,7 @@ Menus principais:
 - `Emulator > Start ROM...`: abre uma ROM `.gb` ou `.gbc`.
 - `Emulator > Recent ROMs`: reabre rapidamente os ultimos jogos usados e permite limpar o historico.
 - `Emulator > Start linked session...`: abre duas ROMs lado a lado em uma sessao local de link cable em memoria. Esta area ainda e experimental.
+- `Emulator > Add Console 2...`: adiciona um segundo jogo a sessao atual sem reiniciar o primeiro console.
   - Player 1 usa o mapeamento configurado.
   - Player 2 tem mapeamento proprio em `Settings > Controls`.
   - Gamepads detectados pelo `input4j` tambem entram no controle composto: primeiro controle para Player 1, segundo controle para Player 2.
@@ -30,6 +31,8 @@ Menus principais:
   - O controle escolhido tambem e lembrado pelo nome reportado pelo sistema, e mapeamento/deadzone ficam salvos como perfil desse controle.
   - O teclado e capturado pela aplicacao enquanto uma janela do GBCEMU estiver focada, exceto durante edicao de campos de texto.
   - Internamente, cada jogo roda como um `Console` dentro da mesma sessao `Emulator`, que coordena o tick dos dois.
+- `Emulator > Display`: abre uma janela destacada para o Console 1 ou Console 2, util para colocar cada tela em um monitor sem separar a sessao.
+- `Emulator > Stop Console`: interrompe apenas um console ativo. Se o Console 1 for fechado enquanto o Console 2 continua, a tela restante e promovida na janela principal.
 - `Emulator > Settings...`: abre configuracoes em abas de geral, graficos, som e controles.
   - A aba de graficos permite ativar bordas Super Game Boy enviadas pela propria ROM quando o cartucho suportar SGB.
   - A aba de som inclui presets DSP opcionais (`Raw`, `Warm`, `Wide`, `Room`, `Toy Synth`) com intensidade, chorus e reverb.
@@ -117,7 +120,7 @@ Observacoes:
 
 - Timing CGB/double speed ainda precisa de validacao sistematica.
 - A corrupcao testada por `oam_bug` e DMG-only; o foco atual e manter os bloqueios CGB reais de OAM/VRAM.
-- Link cable local ainda e experimental: a sessao abre dois consoles lado a lado na mesma instancia e usa cabo em memoria. Separar telas, iniciar/adicionar consoles durante a execucao e fechar uma sessao individual ainda ficam para evolucao.
+- Link cable local ainda e experimental: a sessao usa cabo em memoria e pode abrir/adicionar um segundo console durante a execucao. Telas podem ser abertas em janelas destacadas e consoles podem ser fechados individualmente. O protocolo ainda deve ser revisitado com jogos reais especificos.
 - Gamepad tem integracao opcional por `input4j`; perfis por controle ainda ficam para evolucao.
 - Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.
 - Build nativo com GraalVM no Windows ainda pode exigir ajustes de metadata AWT/Swing.

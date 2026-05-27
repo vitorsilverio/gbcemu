@@ -41,7 +41,8 @@ public class Emulator {
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
 
     private final List<Console> consoles;
-    private final Console primaryConsole;
+    private final Object consolesLock = new Object();
+    private volatile Console primaryConsole;
     private final boolean throttled;
     private volatile boolean stopped;
 
@@ -67,7 +68,7 @@ public class Emulator {
                 settings,
                 null,
                 null,
-                null,
+                headless ? null : DirectLinkCable.createStandalone(),
                 false,
                 true
         ), !headless);
@@ -81,8 +82,8 @@ public class Emulator {
         if (consoles.isEmpty()) {
             throw new IllegalArgumentException("At least one console is required");
         }
-        this.consoles = List.copyOf(consoles);
-        this.primaryConsole = consoles.getFirst();
+        this.consoles = new ArrayList<>(consoles);
+        this.primaryConsole = this.consoles.getFirst();
         this.throttled = throttled;
     }
 
@@ -115,32 +116,44 @@ public class Emulator {
     }
 
     public void start() {
-        consoles.forEach(Console::resetExternalThrottleClock);
-        long[] consoleCycles = initialConsoleCycles();
-        long observedFrame = primaryConsole.frameNumber();
+        synchronized (consolesLock) {
+            consoles.forEach(Console::resetExternalThrottleClock);
+        }
+        List<Long> consoleCycles = initialConsoleCycles();
+        Console frameConsole = primaryConsole;
+        long observedFrame = frameConsole.frameNumber();
         long nextFrameDeadline = System.nanoTime() + NANOS_PER_FRAME;
-        while (!stopped && !anyConsoleStopped()) {
+        while (!stopped) {
+            pruneStoppedConsoles(consoleCycles);
+            frameConsole = primaryConsole;
+            if (frameConsole == null) {
+                break;
+            }
             if (allConsolesPaused()) {
                 LockSupport.parkNanos(2_000_000L);
-                nextFrameDeadline = System.nanoTime() + primaryConsole.targetFrameNanos();
-                observedFrame = primaryConsole.frameNumber();
+                nextFrameDeadline = System.nanoTime() + frameConsole.targetFrameNanos();
+                observedFrame = frameConsole.frameNumber();
                 continue;
             }
 
-            int consoleIndex = nextConsoleIndex(consoleCycles);
-            if (consoleIndex < 0) {
+            TickTarget tickTarget = nextTickTarget(consoleCycles);
+            if (tickTarget == null) {
                 LockSupport.parkNanos(1_000_000L);
                 continue;
             }
-            int advancedCycles = consoles.get(consoleIndex).tick();
+            int advancedCycles = tickTarget.console().tick();
             if (advancedCycles > 0) {
-                consoleCycles[consoleIndex] += advancedCycles;
+                updateConsoleCycles(consoleCycles, tickTarget.console(), advancedCycles);
             }
 
-            long frame = primaryConsole.frameNumber();
+            frameConsole = primaryConsole;
+            if (frameConsole == null) {
+                break;
+            }
+            long frame = frameConsole.frameNumber();
             if (frame != observedFrame) {
                 observedFrame = frame;
-                long targetFrameNanos = primaryConsole.targetFrameNanos();
+                long targetFrameNanos = frameConsole.targetFrameNanos();
                 if (throttled) {
                     long now = System.nanoTime();
                     long remaining = nextFrameDeadline - now;
@@ -148,7 +161,9 @@ public class Emulator {
                         LockSupport.parkNanos(remaining);
                     }
                     long frameClock = System.nanoTime();
-                    consoles.forEach(console -> console.markFrameClock(frameClock));
+                    synchronized (consolesLock) {
+                        consoles.forEach(console -> console.markFrameClock(frameClock));
+                    }
                     nextFrameDeadline += targetFrameNanos;
                     if (System.nanoTime() > nextFrameDeadline + targetFrameNanos * 3) {
                         nextFrameDeadline = System.nanoTime() + targetFrameNanos;
@@ -159,61 +174,108 @@ public class Emulator {
         stop();
     }
 
-    private long[] initialConsoleCycles() {
-        long[] cycles = new long[consoles.size()];
-        for (int i = 0; i < consoles.size(); i++) {
-            cycles[i] = consoles.get(i).systemCycles();
+    private List<Long> initialConsoleCycles() {
+        synchronized (consolesLock) {
+            List<Long> cycles = new ArrayList<>();
+            for (Console console : consoles) {
+                cycles.add(console.systemCycles());
+            }
+            return cycles;
         }
-        return cycles;
     }
 
-    private int nextConsoleIndex(long[] consoleCycles) {
-        int selected = -1;
-        long lowestCycles = Long.MAX_VALUE;
-        for (int i = 0; i < consoles.size(); i++) {
-            Console console = consoles.get(i);
-            if (console.isStopped() || console.isPaused()) {
-                continue;
+    private TickTarget nextTickTarget(List<Long> consoleCycles) {
+        synchronized (consolesLock) {
+            syncCycleList(consoleCycles);
+            int selected = -1;
+            long lowestCycles = Long.MAX_VALUE;
+            for (int i = 0; i < consoles.size(); i++) {
+                Console console = consoles.get(i);
+                if (console.isStopped() || console.isPaused()) {
+                    continue;
+                }
+                long cycles = consoleCycles.get(i);
+                if (cycles < lowestCycles) {
+                    selected = i;
+                    lowestCycles = cycles;
+                }
             }
-            if (consoleCycles[i] < lowestCycles) {
-                selected = i;
-                lowestCycles = consoleCycles[i];
+            return selected < 0 ? null : new TickTarget(consoles.get(selected));
+        }
+    }
+
+    private void updateConsoleCycles(List<Long> consoleCycles, Console console, int advancedCycles) {
+        synchronized (consolesLock) {
+            int index = consoles.indexOf(console);
+            if (index >= 0) {
+                syncCycleList(consoleCycles);
+                consoleCycles.set(index, consoleCycles.get(index) + advancedCycles);
             }
         }
-        return selected;
+    }
+
+    private void syncCycleList(List<Long> consoleCycles) {
+        while (consoleCycles.size() < consoles.size()) {
+            consoleCycles.add(consoles.get(consoleCycles.size()).systemCycles());
+        }
+        while (consoleCycles.size() > consoles.size()) {
+            consoleCycles.removeLast();
+        }
+    }
+
+    private void pruneStoppedConsoles(List<Long> consoleCycles) {
+        synchronized (consolesLock) {
+            for (int i = consoles.size() - 1; i >= 0; i--) {
+                if (consoles.get(i).isStopped()) {
+                    consoles.get(i).detachDisplay();
+                    consoles.remove(i);
+                    if (i < consoleCycles.size()) {
+                        consoleCycles.remove(i);
+                    }
+                }
+            }
+            refreshPrimaryConsole();
+        }
+    }
+
+    private void refreshPrimaryConsole() {
+        primaryConsole = consoles.isEmpty() ? null : consoles.getFirst();
+    }
+
+    private record TickTarget(Console console) {
     }
 
     public void pause() {
         if (isLinkConnectionActive()) {
             return;
         }
-        primaryConsole.pause();
-    }
-
-    private boolean anyConsoleStopped() {
-        for (Console console : consoles) {
-            if (console.isStopped()) {
-                return true;
-            }
+        Console console = primaryConsole;
+        if (console != null) {
+            console.pause();
         }
-        return false;
     }
 
     private boolean allConsolesPaused() {
-        for (Console console : consoles) {
-            if (!console.isPaused()) {
-                return false;
+        synchronized (consolesLock) {
+            for (Console console : consoles) {
+                if (!console.isPaused()) {
+                    return false;
+                }
             }
+            return true;
         }
-        return true;
     }
 
     public void pauseSession() {
-        consoles.forEach(Console::pauseLinkedSession);
+        synchronized (consolesLock) {
+            consoles.forEach(Console::pauseLinkedSession);
+        }
     }
 
     public void resume() {
-        consoles.forEach(Console::resume);
+        synchronized (consolesLock) {
+            consoles.forEach(Console::resume);
+        }
     }
 
     public synchronized void stop() {
@@ -221,20 +283,31 @@ public class Emulator {
             return;
         }
         stopped = true;
-        consoles.forEach(Console::stop);
-        consoles.forEach(Console::detachDisplay);
+        synchronized (consolesLock) {
+            consoles.forEach(Console::stop);
+            consoles.forEach(Console::detachDisplay);
+            consoles.clear();
+            refreshPrimaryConsole();
+        }
     }
 
     public boolean isPaused() {
-        return primaryConsole.isPaused();
+        Console console = primaryConsole;
+        return console != null && console.isPaused();
     }
 
     public void stopAfterFrames(long frames) {
-        primaryConsole.stopAfterFrames(frames);
+        Console console = primaryConsole;
+        if (console != null) {
+            console.stopAfterFrames(frames);
+        }
     }
 
     public void skipBios() {
-        primaryConsole.skipBios();
+        Console console = primaryConsole;
+        if (console != null) {
+            console.skipBios();
+        }
     }
 
     public void openCheats() {
@@ -244,61 +317,118 @@ public class Emulator {
         }
     }
 
+    public void openDetachedDisplay(int index) {
+        Console console = consoleAt(index);
+        console.openDetachedDisplay("GBC EMU - Console " + (index + 1));
+    }
+
+    public void addConsole(PlayerConfig config, AppSettings settings) {
+        synchronized (consolesLock) {
+            if (consoles.size() >= 2) {
+                throw new IllegalStateException("Only two local consoles are supported for now.");
+            }
+            Console host = primaryConsole;
+            if (host == null) {
+                throw new IllegalStateException("Start a ROM before adding another console.");
+            }
+            if (!(host.debugLinkCable() instanceof DirectLinkCable hostCable)) {
+                throw new IllegalStateException("The current console was not started with a detachable local link cable.");
+            }
+            DirectLinkCable peerCable = hostCable.createPeer();
+            Console console = createLinkedConsole(config, settings, peerCable);
+            console.resetExternalThrottleClock();
+            console.markFrameClock(System.nanoTime());
+            consoles.add(console);
+            refreshPrimaryConsole();
+        }
+    }
+
+    public File stopConsole(int index) {
+        synchronized (consolesLock) {
+            if (index < 0 || index >= consoles.size()) {
+                throw new IllegalArgumentException("Console " + (index + 1) + " is not active.");
+            }
+            Console console = consoles.remove(index);
+            File romFile = console.romFile();
+            console.stop();
+            console.detachDisplay();
+            refreshPrimaryConsole();
+            return romFile;
+        }
+    }
+
     public void openAudioDebugger() {
-        if (consoles.size() == 1) {
-            primaryConsole.openAudioDebugger();
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        if (snapshot.size() == 1) {
+            snapshot.getFirst().openAudioDebugger();
             return;
         }
         List<AudioDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < consoles.size(); i++) {
-            Console console = consoles.get(i);
+        for (int i = 0; i < snapshot.size(); i++) {
+            Console console = snapshot.get(i);
             targets.add(new AudioDebugWindow.Target("Console " + (i + 1), console.debugApu()));
         }
         new AudioDebugWindow(targets);
     }
 
     public String serialTranscript() {
-        return primaryConsole.serialTranscript();
+        Console console = primaryConsole;
+        return console == null ? "" : console.serialTranscript();
     }
 
     public void applySettings(AppSettings settings) {
-        consoles.forEach(console -> console.applySettings(settings));
+        consoleSnapshot().forEach(console -> console.applySettings(settings));
     }
 
     public void openMemoryDebugger() {
-        if (consoles.size() == 1) {
-            primaryConsole.openMemoryDebugger();
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        if (snapshot.size() == 1) {
+            snapshot.getFirst().openMemoryDebugger();
             return;
         }
         List<MemoryDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < consoles.size(); i++) {
-            Console console = consoles.get(i);
+        for (int i = 0; i < snapshot.size(); i++) {
+            Console console = snapshot.get(i);
             targets.add(new MemoryDebugWindow.Target("Console " + (i + 1), console.debugBus(), console.debugPausedSupplier()));
         }
         new MemoryDebugWindow(targets);
     }
 
     public void openPpuDebugger() {
-        if (consoles.size() == 1) {
-            primaryConsole.openPpuDebugger();
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        if (snapshot.size() == 1) {
+            snapshot.getFirst().openPpuDebugger();
             return;
         }
         List<PpuDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < consoles.size(); i++) {
-            Console console = consoles.get(i);
+        for (int i = 0; i < snapshot.size(); i++) {
+            Console console = snapshot.get(i);
             targets.add(new PpuDebugWindow.Target("Console " + (i + 1), console.debugPpu(), console.debugSuperGameBoy()));
         }
         new PpuDebugWindow(targets);
     }
 
     public void openCpuDebugger() {
-        if (consoles.size() == 1) {
-            primaryConsole.openCpuDebugger();
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        if (snapshot.size() == 1) {
+            snapshot.getFirst().openCpuDebugger();
             return;
         }
         List<CpuDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < consoles.size(); i++) {
-            Console console = consoles.get(i);
+        for (int i = 0; i < snapshot.size(); i++) {
+            Console console = snapshot.get(i);
             targets.add(new CpuDebugWindow.Target(
                     "Console " + (i + 1),
                     console.debugCpu(),
@@ -312,26 +442,34 @@ public class Emulator {
     }
 
     public void openCartDebugger() {
-        if (consoles.size() == 1) {
-            primaryConsole.openCartDebugger();
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        if (snapshot.size() == 1) {
+            snapshot.getFirst().openCartDebugger();
             return;
         }
         List<CartDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < consoles.size(); i++) {
-            Console console = consoles.get(i);
+        for (int i = 0; i < snapshot.size(); i++) {
+            Console console = snapshot.get(i);
             targets.add(new CartDebugWindow.Target("Console " + (i + 1), console.debugCart()));
         }
         new CartDebugWindow(targets);
     }
 
     public File dumpDebugBundle() {
-        if (consoles.size() == 1) {
-            return primaryConsole.dumpDebugBundle();
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            throw new IllegalStateException("No active console to dump.");
+        }
+        if (snapshot.size() == 1) {
+            return snapshot.getFirst().dumpDebugBundle();
         }
         try {
             List<File> dumps = new ArrayList<>();
-            for (int i = 0; i < consoles.size(); i++) {
-                dumps.add(consoles.get(i).dumpDebugBundle("console-" + (i + 1)));
+            for (int i = 0; i < snapshot.size(); i++) {
+                dumps.add(snapshot.get(i).dumpDebugBundle("console-" + (i + 1)));
             }
             String baseName = "debug-bundle-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now()) + "-session.json";
             Path target = Path.of("target", baseName);
@@ -365,6 +503,7 @@ public class Emulator {
     }
 
     public File dumpMemoryBanks() {
+        ensureSingleConsole("Dump memory banks");
         return primaryConsole.dumpMemoryBanks();
     }
 
@@ -382,11 +521,14 @@ public class Emulator {
         if (isLinkConnectionActive()) {
             return false;
         }
-        return primaryConsole.rewindOneSnapshot();
+        Console console = primaryConsole;
+        return console != null && console.rewindOneSnapshot();
     }
 
     public boolean isLinkConnectionActive() {
-        return consoles.size() > 1 || primaryConsole.isLinkConnectionActive();
+        synchronized (consolesLock) {
+            return consoles.size() > 1 || primaryConsole != null && primaryConsole.isLinkConnectionActive();
+        }
     }
 
     public EmulatorState createEmulatorState() {
@@ -400,24 +542,47 @@ public class Emulator {
     }
 
     public Console console(int index) {
-        return consoles.get(index);
+        return consoleAt(index);
     }
 
     public int consoleCount() {
-        return consoles.size();
+        synchronized (consolesLock) {
+            return consoles.size();
+        }
+    }
+
+    private Console consoleAt(int index) {
+        synchronized (consolesLock) {
+            if (index < 0 || index >= consoles.size()) {
+                throw new IllegalArgumentException("Console " + (index + 1) + " is not active.");
+            }
+            return consoles.get(index);
+        }
+    }
+
+    private List<Console> consoleSnapshot() {
+        synchronized (consolesLock) {
+            return new ArrayList<>(consoles);
+        }
     }
 
     private void ensureSingleConsole(String operation) {
-        if (consoles.size() != 1) {
-            throw new IllegalStateException(operation + " is disabled while multiple consoles are active.");
+        synchronized (consolesLock) {
+            if (consoles.size() != 1 || primaryConsole == null) {
+                throw new IllegalStateException(operation + " is disabled while multiple consoles are active.");
+            }
         }
     }
 
     private Console chooseConsole(String title) {
-        if (consoles.size() == 1) {
-            return primaryConsole;
+        List<Console> snapshot = consoleSnapshot();
+        if (snapshot.isEmpty()) {
+            return null;
         }
-        String[] options = new String[consoles.size()];
+        if (snapshot.size() == 1) {
+            return snapshot.getFirst();
+        }
+        String[] options = new String[snapshot.size()];
         for (int i = 0; i < options.length; i++) {
             options[i] = "Console " + (i + 1);
         }
@@ -435,10 +600,10 @@ public class Emulator {
         }
         for (int i = 0; i < options.length; i++) {
             if (options[i].equals(selected)) {
-                return consoles.get(i);
+                return snapshot.get(i);
             }
         }
-        return primaryConsole;
+        return snapshot.getFirst();
     }
 
     public record PlayerConfig(

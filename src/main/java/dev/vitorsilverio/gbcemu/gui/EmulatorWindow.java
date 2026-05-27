@@ -34,6 +34,8 @@ public class EmulatorWindow {
     private final JPanel screen;
     private final Timer repaintTimer;
     private final Timer overlayTimer;
+    private final boolean displayOnly;
+    private final boolean persistWindowLocation;
     private Timer rewindHoldTimer;
     private int scale;
     private boolean smoothScaling;
@@ -51,17 +53,29 @@ public class EmulatorWindow {
     private OverlayIcon overlayIcon;
     private boolean windowLocationInitialized;
     private boolean controllerKeyDispatcherInstalled;
+    private boolean closed;
 
     public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings) {
         this(menuActions, settings, JFrame.EXIT_ON_CLOSE);
     }
 
     public EmulatorWindow(EmulatorMenuActions menuActions, AppSettings settings, int closeOperation) {
+        this("GBC EMU", menuActions, settings, closeOperation, false);
+    }
+
+    public static EmulatorWindow detachedDisplay(String title, AppSettings settings) {
+        return new EmulatorWindow(title, null, settings, JFrame.DISPOSE_ON_CLOSE, true);
+    }
+
+    private EmulatorWindow(String title, EmulatorMenuActions menuActions, AppSettings settings, int closeOperation, boolean displayOnly) {
+        this.displayOnly = displayOnly;
+        this.persistWindowLocation = !displayOnly;
         int scale = settings.screenScale();
         this.scale = Math.max(1, Math.min(8, scale));
         this.smoothScaling = settings.smoothScaling();
         this.xbrzFiltering = settings.xBrzFiltering();
-        this.fullscreen = settings.fullscreen();
+        this.fullscreen = !displayOnly && settings.fullscreen();
+        window.setTitle(title == null || title.isBlank() ? "GBC EMU" : title);
         window.setDefaultCloseOperation(closeOperation);
         window.setLocationByPlatform(true);
         screen = new JPanel() {
@@ -81,20 +95,36 @@ public class EmulatorWindow {
         updateScreenPreferredSize();
         window.setContentPane(screen);
         window.setResizable(false);
-        installControllerKeyDispatcher();
-        installMenu(menuActions);
-        installRewindHoldKey(menuActions);
-        installWindowLifecycle(menuActions);
-        installWindowPositionPersistence();
+        rewindHoldTimer = new Timer(90, event -> {
+        });
+        if (!displayOnly) {
+            installControllerKeyDispatcher();
+            installMenu(menuActions);
+            installRewindHoldKey(menuActions);
+            installWindowLifecycle(menuActions);
+            installWindowPositionPersistence();
+        } else {
+            installDisplayOnlyLifecycle();
+        }
         applyWindowMode();
     }
 
     public void show() {
+        closed = false;
         window.setVisible(true);
     }
 
     public Frame owner() {
         return window;
+    }
+
+    public boolean isOpen() {
+        return !closed;
+    }
+
+    public void dispose() {
+        closed = true;
+        SwingUtilities.invokeLater(window::dispose);
     }
 
     public void setScale(int scale) {
@@ -110,7 +140,7 @@ public class EmulatorWindow {
         this.scale = Math.max(1, Math.min(8, settings.screenScale()));
         this.smoothScaling = settings.smoothScaling();
         this.xbrzFiltering = settings.xBrzFiltering();
-        this.fullscreen = settings.fullscreen();
+        this.fullscreen = !displayOnly && settings.fullscreen();
         SwingUtilities.invokeLater(() -> {
             updateScreenPreferredSize();
             applyWindowMode();
@@ -130,7 +160,11 @@ public class EmulatorWindow {
         } else {
             window.setExtendedState(JFrame.NORMAL);
             window.pack();
-            restoreWindowLocationIfNeeded();
+            if (persistWindowLocation) {
+                restoreWindowLocationIfNeeded();
+            } else {
+                window.setLocationByPlatform(true);
+            }
         }
         if (visible) {
             window.setVisible(true);
@@ -179,32 +213,35 @@ public class EmulatorWindow {
         if (expectedPpu != null && ppu != expectedPpu && secondaryPpu != expectedPpu) {
             return;
         }
-        if (expectedPpu == null || ppu == expectedPpu) {
+        boolean detachPrimary = expectedPpu == null || ppu == expectedPpu;
+        boolean detachSecondary = expectedPpu == null || secondaryPpu == expectedPpu;
+        if (detachPrimary) {
             ppu = null;
             superGameBoy = null;
+            primaryFrameSnapshot = null;
+            detachKeyListener();
         }
-        if (expectedPpu == null || secondaryPpu == expectedPpu) {
+        if (detachSecondary) {
             secondaryPpu = null;
             secondarySuperGameBoy = null;
+            secondaryFrameSnapshot = null;
+            detachSecondaryKeyListener();
+        }
+        if (ppu == null && secondaryPpu != null) {
+            ppu = secondaryPpu;
+            superGameBoy = secondarySuperGameBoy;
+            primaryFrameSnapshot = secondaryFrameSnapshot;
+            keyListener = secondaryKeyListener;
+            secondaryPpu = null;
+            secondarySuperGameBoy = null;
+            secondaryFrameSnapshot = null;
+            secondaryKeyListener = null;
         }
         SwingUtilities.invokeLater(() -> {
-            if (expectedPpu == null || ppu == expectedPpu) {
-                primaryFrameSnapshot = null;
+            if (ppu == null && secondaryPpu == null) {
+                repaintTimer.stop();
+                rewindHoldTimer.stop();
             }
-            if (expectedPpu == null || secondaryPpu == expectedPpu) {
-                secondaryFrameSnapshot = null;
-            }
-            if (expectedPpu != null
-                    && ppu != null
-                    && secondaryPpu != null
-                    && ppu != expectedPpu
-                    && secondaryPpu != expectedPpu) {
-                return;
-            }
-            detachKeyListener();
-            detachSecondaryKeyListener();
-            repaintTimer.stop();
-            rewindHoldTimer.stop();
             updateScreenPreferredSize();
             screen.repaint();
         });
@@ -330,7 +367,8 @@ public class EmulatorWindow {
                 || "Cart / MBC Debug".equals(title)
                 || "GameShark Codes".equals(title)
                 || "Memory Debug".equals(title)
-                || "PPU Debug".equals(title);
+                || "PPU Debug".equals(title)
+                || title.startsWith("GBC EMU - Console ");
     }
 
     private boolean isTextEditingEvent(KeyEvent event) {
@@ -416,6 +454,10 @@ public class EmulatorWindow {
         openLinkedSession.addActionListener(event -> menuActions.openLinkedSession().run());
         emulatorMenu.add(openLinkedSession);
 
+        JMenuItem addSecondConsole = new JMenuItem("Add Console 2...");
+        addSecondConsole.addActionListener(event -> menuActions.addSecondConsole().run());
+        emulatorMenu.add(addSecondConsole);
+
         JMenuItem pause = new JMenuItem("Pause");
         pause.addActionListener(event -> menuActions.pause().run());
         pause.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
@@ -430,10 +472,29 @@ public class EmulatorWindow {
         stop.addActionListener(event -> menuActions.stop().run());
         emulatorMenu.add(stop);
 
+        JMenu stopConsoleMenu = new JMenu("Stop Console");
+        JMenuItem stopConsole1 = new JMenuItem("Console 1");
+        stopConsole1.addActionListener(event -> menuActions.stopConsole().accept(0));
+        stopConsoleMenu.add(stopConsole1);
+        JMenuItem stopConsole2 = new JMenuItem("Console 2");
+        stopConsole2.addActionListener(event -> menuActions.stopConsole().accept(1));
+        stopConsoleMenu.add(stopConsole2);
+        emulatorMenu.add(stopConsoleMenu);
+
         JMenuItem restart = new JMenuItem("Restart");
         restart.addActionListener(event -> menuActions.restart().run());
         restart.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F12, 0));
         emulatorMenu.add(restart);
+
+        JMenu displayMenu = new JMenu("Display");
+        JMenuItem openConsole1Display = new JMenuItem("Open Console 1 window");
+        openConsole1Display.addActionListener(event -> menuActions.openDetachedDisplay().accept(0));
+        displayMenu.add(openConsole1Display);
+
+        JMenuItem openConsole2Display = new JMenuItem("Open Console 2 window");
+        openConsole2Display.addActionListener(event -> menuActions.openDetachedDisplay().accept(1));
+        displayMenu.add(openConsole2Display);
+        emulatorMenu.add(displayMenu);
 
         emulatorMenu.addSeparator();
 
@@ -574,6 +635,15 @@ public class EmulatorWindow {
             @Override
             public void windowDeactivated(WindowEvent event) {
                 rewindHoldTimer.stop();
+            }
+        });
+    }
+
+    private void installDisplayOnlyLifecycle() {
+        window.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                closed = true;
             }
         });
     }

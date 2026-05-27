@@ -68,6 +68,7 @@ public class Console {
     private final InfraredPort infraredPort;
     private final CgbUndocumentedRegisters cgbUndocumentedRegisters;
     private final EmulatorWindow window;
+    private EmulatorWindow detachedDisplayWindow;
     private final KeyboardController keyboardController;
     private final GamepadController gamepadController;
     private final Controller controller;
@@ -319,6 +320,25 @@ public class Console {
         if (window != null) {
             window.detach(ppu);
         }
+        closeDetachedDisplay();
+    }
+
+    public void openDetachedDisplay(String title) {
+        if (detachedDisplayWindow != null && detachedDisplayWindow.isOpen()) {
+            detachedDisplayWindow.show();
+            return;
+        }
+        detachedDisplayWindow = EmulatorWindow.detachedDisplay(title, settings);
+        detachedDisplayWindow.attach(ppu, null, superGameBoy);
+        detachedDisplayWindow.show();
+        detachedDisplayWindow.renderFrame(ppu);
+    }
+
+    private void closeDetachedDisplay() {
+        if (detachedDisplayWindow != null) {
+            detachedDisplayWindow.dispose();
+            detachedDisplayWindow = null;
+        }
     }
 
     private void startPendingDebugStep() {
@@ -416,7 +436,9 @@ public class Console {
         } else if (gamepadController != null) {
             gamepadController.close();
         }
+        linkCable.disconnect();
         apu.close();
+        closeDetachedDisplay();
     }
 
     public void stopAfterFrames(long frames) {
@@ -445,6 +467,9 @@ public class Console {
                 this.settings.audioChannelMuted()
         );
         audioOutput.applyEnhancement(this.settings.normalizedAudioEnhancement());
+        if (detachedDisplayWindow != null && detachedDisplayWindow.isOpen()) {
+            detachedDisplayWindow.applySettings(this.settings);
+        }
         rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
         if (keyboardController != null) {
             keyboardController.applySettings(this.settings);
@@ -516,6 +541,10 @@ public class Console {
 
     public File dumpDebugBundle() {
         return dumpDebugBundle("");
+    }
+
+    public File romFile() {
+        return romFile;
     }
 
     File dumpDebugBundle(String label) {
@@ -1067,8 +1096,17 @@ public class Console {
         apu.tick();
         if (ppu.consumeFrameReady()) {
             boolean transferFrame = superGameBoy.consumeTransferFrame();
-            if (window != null && shouldRenderFrame() && !transferFrame && !superGameBoy.shouldSuppressFrame()) {
-                window.renderFrame(ppu);
+            if (shouldRenderFrame() && !transferFrame && !superGameBoy.shouldSuppressFrame()) {
+                if (window != null) {
+                    window.renderFrame(ppu);
+                }
+                if (detachedDisplayWindow != null) {
+                    if (detachedDisplayWindow.isOpen()) {
+                        detachedDisplayWindow.renderFrame(ppu);
+                    } else {
+                        detachedDisplayWindow = null;
+                    }
+                }
             }
         }
         dots++;

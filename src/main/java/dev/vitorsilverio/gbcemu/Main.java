@@ -102,6 +102,9 @@ public class Main {
                 Main::resumeEmulator,
                 Main::stopEmulator,
                 Main::restartEmulator,
+                Main::openDetachedDisplay,
+                Main::addSecondConsole,
+                Main::stopConsole,
                 Main::saveSnapshot,
                 Main::restoreSnapshot,
                 Main::rewindSnapshot,
@@ -211,6 +214,97 @@ public class Main {
     private static void openCartDebugger() {
         if (activeEmulator != null) {
             activeEmulator.openCartDebugger();
+        }
+    }
+
+    private static void openDetachedDisplay(int consoleIndex) {
+        if (activeEmulator == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Load a ROM before opening a detached display.",
+                    "Display",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        try {
+            activeEmulator.openDetachedDisplay(consoleIndex);
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(null,
+                    e.getMessage(),
+                    "Display",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private static void addSecondConsole() {
+        if (activeEmulator == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Start a ROM before adding a second console.",
+                    "Link session",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (activeEmulator.consoleCount() >= 2) {
+            JOptionPane.showMessageDialog(null,
+                    "Console 2 is already active.",
+                    "Link session",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        File player2Rom = chooseRomFile("Open Console 2 ROM");
+        if (player2Rom == null) {
+            return;
+        }
+        Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
+        Options player2Options = baseOptions.withRomFile(player2Rom);
+        addRecentRom(player2Rom);
+        KeyboardController player2Controller = new KeyboardController(player2KeyCodes(), 0, false);
+        CompositeController player2Input = new CompositeController(player2Controller, new GamepadController(settings.gamepadConfig(1)));
+        try {
+            activeEmulator.addConsole(
+                    new Emulator.PlayerConfig(
+                            player2Options.biosFile(),
+                            player2Options.romFile(),
+                            player2Options.saveFile(),
+                            window,
+                            player2Input,
+                            player2Controller,
+                            player2Options.skipBios(),
+                            true
+                    ),
+                    settings
+            );
+            activeOptions = null;
+            showOverlay(EmulatorWindow.OverlayIcon.PLAY);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null,
+                    "Failed to add Console 2: " + e.getMessage(),
+                    "Link session",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static void stopConsole(int consoleIndex) {
+        if (activeEmulator == null) {
+            return;
+        }
+        try {
+            activeEmulator.stopConsole(consoleIndex);
+            if (activeEmulator.consoleCount() == 0) {
+                activeEmulator = null;
+                activeOptions = null;
+                if (window != null) {
+                    window.resetTitle();
+                }
+                showOverlay(EmulatorWindow.OverlayIcon.STOP);
+                return;
+            }
+            activeOptions = null;
+            showOverlay(EmulatorWindow.OverlayIcon.STOP);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null,
+                    e.getMessage(),
+                    "Stop console",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 

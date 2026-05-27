@@ -138,9 +138,14 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
     - [x] CPU/Disassembly.
     - [x] Audio.
     - [x] Cart/MBC.
-  - [ ] Permitir iniciar/adicionar um segundo console durante a sessao, nao apenas iniciar sempre com dois.
-  - [ ] Permitir fechar um console/sessao individual sem interromper tudo.
-  - [ ] Permitir destacar a tela de um console para janela/monitor separado.
+  - [x] Permitir iniciar/adicionar um segundo console durante a sessao, nao apenas iniciar sempre com dois.
+    - `Emulator > Add Console 2...` cria um novo console, conecta ao cabo local em memoria e anexa como segunda tela.
+  - [x] Permitir fechar um console/sessao individual sem interromper tudo.
+    - `Emulator > Stop Console` para apenas o console escolhido.
+    - Se o Console 1 for fechado e o Console 2 continuar, a janela principal promove a tela restante para a posicao primaria.
+  - [x] Permitir destacar a tela de um console para janela/monitor separado.
+    - Janela destacada e display-only: nao instala outro dispatcher de teclado e espelha o frame do console escolhido.
+    - Input continua centralizado pela janela principal para evitar eventos duplicados.
   - [ ] Validar Tetris primeiro, depois Pokemon.
   - [ ] No futuro, reavaliar TCP como netplay remoto com lockstep explicito.
 
@@ -393,9 +398,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
    - Perfil por controle.
    - Rumble fica como baixa prioridade.
 3. Melhorar usabilidade do link local.
-   - Separar/destacar janelas.
-   - Adicionar um segundo console depois que a sessao ja iniciou.
-   - Fechar uma sessao/console individual sem derrubar tudo.
+   - Evoluir a janela destacada para virar detach real se a tela lado a lado ficar pequena demais em sessoes futuras.
+   - Validar o fluxo de adicionar/parar console em Pokemon/Tetris e corrigir o que aparecer na pratica.
 4. Escolher proxima tarefa de compatibilidade baseada em jogo/teste real.
 
 ### Menores / Depois

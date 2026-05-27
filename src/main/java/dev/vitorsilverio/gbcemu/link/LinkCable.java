@@ -186,6 +186,11 @@ public class LinkCable implements MachineCycle, PhysicalConnectionListener {
         return connection;
     }
 
+    public void disconnect() {
+        connection.disconnect();
+        resetSession();
+    }
+
     public void onInternalClockComplete(int outgoingByte) {
         if (!connection.isConnected()) {
             return;

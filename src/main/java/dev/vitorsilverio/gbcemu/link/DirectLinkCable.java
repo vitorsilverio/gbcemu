@@ -42,9 +42,27 @@ public final class DirectLinkCable extends LinkCable {
         Object lock = new Object();
         DirectLinkCable left = new DirectLinkCable(true, lock);
         DirectLinkCable right = new DirectLinkCable(false, lock);
-        left.peer = right;
-        right.peer = left;
+        left.connectPeerLocked(right);
         return new Pair(left, right);
+    }
+
+    public static DirectLinkCable createStandalone() {
+        return new DirectLinkCable(true, new Object());
+    }
+
+    public DirectLinkCable createPeer() {
+        synchronized (lock) {
+            DirectLinkCable linkedPeer = new DirectLinkCable(false, lock);
+            connectPeerLocked(linkedPeer);
+            return linkedPeer;
+        }
+    }
+
+    private void connectPeerLocked(DirectLinkCable linkedPeer) {
+        this.peer = linkedPeer;
+        linkedPeer.peer = this;
+        pendingClockPulse = null;
+        linkedPeer.pendingClockPulse = null;
     }
 
     @Override
@@ -230,6 +248,25 @@ public final class DirectLinkCable extends LinkCable {
     @Override
     public int normalizeSerialControlWrite(int serialControl) {
         return serialControl;
+    }
+
+    @Override
+    public void disconnect() {
+        synchronized (lock) {
+            DirectLinkCable linkedPeer = peer;
+            peer = null;
+            pendingClockPulse = null;
+            if (serialListener != null) {
+                serialListener.onLinkDisconnected();
+            }
+            if (linkedPeer != null && linkedPeer.peer == this) {
+                linkedPeer.peer = null;
+                linkedPeer.pendingClockPulse = null;
+                if (linkedPeer.serialListener != null) {
+                    linkedPeer.serialListener.onLinkDisconnected();
+                }
+            }
+        }
     }
 
     @Override
