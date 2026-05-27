@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class CompositeController implements Controller, AutoCloseable {
+public class CompositeController implements Controller, AutoCloseable, RumbleSink {
 
     private final List<Controller> controllers;
 
@@ -67,6 +67,15 @@ public class CompositeController implements Controller, AutoCloseable {
                     closeable.close();
                 } catch (Exception ignored) {
                 }
+            }
+        }
+    }
+
+    @Override
+    public void setRumble(boolean active) {
+        for (Controller controller : controllers) {
+            if (controller instanceof RumbleSink rumbleSink) {
+                rumbleSink.setRumble(active);
             }
         }
     }

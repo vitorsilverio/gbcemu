@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 
-public class GamepadController implements Controller, AutoCloseable {
+public class GamepadController implements Controller, AutoCloseable, RumbleSink {
 
     private static final Logger logger = LoggerFactory.getLogger(GamepadController.class);
     private static final long POLL_INTERVAL_MILLIS = 4L;
@@ -37,6 +37,8 @@ public class GamepadController implements Controller, AutoCloseable {
     private volatile boolean buttonDown;
     private volatile boolean buttonLeft;
     private volatile boolean buttonRight;
+    private volatile boolean rumbleActive;
+    private volatile Object rumbleDevice;
     private long buttonAReleaseAt;
     private long buttonBReleaseAt;
     private long buttonStartReleaseAt;
@@ -56,6 +58,8 @@ public class GamepadController implements Controller, AutoCloseable {
     }
 
     public void applySettings(AppSettings.GamepadConfig config) {
+        setRumble(false);
+        rumbleDevice = null;
         this.config = config;
         releaseAll();
     }
@@ -267,6 +271,18 @@ public class GamepadController implements Controller, AutoCloseable {
             return null;
         }
         return all.get(deviceIndex);
+    }
+
+    private Object deviceForRumble() {
+        try {
+            Object device = deviceForPlayer();
+            rumbleDevice = device;
+            return device;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            logger.debug("Failed to locate rumble device", e);
+            rumbleDevice = null;
+            return null;
+        }
     }
 
     private Collection<?> allDevices(Object devices) throws ReflectiveOperationException {
@@ -592,7 +608,27 @@ public class GamepadController implements Controller, AutoCloseable {
     }
 
     @Override
+    public void setRumble(boolean active) {
+        if (rumbleActive == active) {
+            return;
+        }
+        rumbleActive = active;
+        Object device = rumbleDevice == null ? deviceForRumble() : rumbleDevice;
+        if (device == null) {
+            return;
+        }
+        try {
+            device.getClass().getMethod("rumble", float[].class)
+                    .invoke(device, (Object) (active ? new float[]{1.0f, 1.0f} : new float[]{0.0f, 0.0f}));
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            logger.debug("Failed to set gamepad rumble", e);
+            rumbleDevice = null;
+        }
+    }
+
+    @Override
     public void close() {
+        setRumble(false);
         running = false;
         if (pollThread != null) {
             pollThread.interrupt();

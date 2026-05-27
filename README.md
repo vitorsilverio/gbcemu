@@ -29,6 +29,7 @@ Menus principais:
   - No mapeamento de gamepad, use `Capture` para detectar botoes/eixos automaticamente, ou edite nomes separados por virgula; eixos aceitam `+`/`-`, como `AXIS_Y-` para cima.
   - O botao `Components...` mostra os nomes/valores atuais reportados pelo controle selecionado.
   - O controle escolhido tambem e lembrado pelo nome reportado pelo sistema, e mapeamento/deadzone ficam salvos como perfil desse controle.
+  - Cartuchos com rumble acionam a vibracao do gamepad selecionado quando o backend `input4j` e o dispositivo suportarem esse recurso.
   - O teclado e capturado pela aplicacao enquanto uma janela do GBCEMU estiver focada, exceto durante edicao de campos de texto.
   - Internamente, cada jogo roda como um `Console` dentro da mesma sessao `Emulator`, que coordena o tick dos dois.
 - `Emulator > Display`: abre uma janela destacada para o Console 1 ou Console 2, util para colocar cada tela em um monitor sem separar a sessao.
@@ -121,8 +122,7 @@ Observacoes:
 - Timing CGB/double speed ainda precisa de validacao sistematica.
 - A corrupcao testada por `oam_bug` e DMG-only; o foco atual e manter os bloqueios CGB reais de OAM/VRAM.
 - Link cable local ainda e experimental: a sessao usa cabo em memoria e pode abrir/adicionar um segundo console durante a execucao. Telas podem ser abertas em janelas destacadas e consoles podem ser fechados individualmente. O protocolo ainda deve ser revisitado com jogos reais especificos.
-- Gamepad tem integracao opcional por `input4j`; perfis por controle ainda ficam para evolucao.
-- Rumble de cartuchos compativeis ainda precisa ser ligado a um backend de controle.
+- Gamepad tem integracao opcional por `input4j`; suporte a rumble depende do driver/dispositivo reportar vibracao pelo backend.
 - Build nativo com GraalVM no Windows ainda pode exigir ajustes de metadata AWT/Swing.
 - Os filtros DSP e SoundFont sao opcionais/experimentais; a APU base deve continuar priorizando comportamento de hardware.
 

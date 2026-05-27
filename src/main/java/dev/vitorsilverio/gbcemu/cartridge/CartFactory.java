@@ -37,7 +37,7 @@ public final class CartFactory {
                     new Mbc3Cart(rom, saveFile, currentEpochSeconds);
             case MBC5, MBC5_RAM, MBC5_RAM_BATTERY, MBC5_RUMBLE, MBC5_RUMBLE_RAM, MBC5_RUMBLE_RAM_BATTERY ->
                     new Mbc5Cart(rom, saveFile);
-            case HuC3 -> new Huc3Cart(rom, saveFile);
+            case HuC3 -> new Huc3Cart(rom, saveFile, currentEpochSeconds);
             case HuC1_RAM_BATTERY -> new Huc1Cart(rom, saveFile);
             default -> throw new UnsupportedOperationException("Unsupported cartridge type: " + header.getCartridgeType());
         };

@@ -77,8 +77,8 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Captura automatica de botoes/eixos pressionados.
   - [x] Persistir nome do controle selecionado para sobreviver a mudanca de ordem dos dispositivos.
   - [x] Persistir perfil por controle quando possivel.
-  - [ ] Suportar rumble para cartuchos/jogos compativeis, com baixa prioridade por haver poucos jogos.
-  - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e futura integracao com controle.
+  - [x] Suportar rumble para cartuchos/jogos compativeis quando `input4j` e o controle selecionado expuserem vibracao.
+  - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e integracao com controle.
 
 - [ ] Configuracao de audio mais completa.
   - Latencia/buffer.
@@ -347,12 +347,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - Priorizar conforme jogos reais.
   - [x] MBC2 com ROM banking, RAM interna 512 x 4-bit e save bruto de 512 bytes.
   - [x] HuC1 inicial com ROM/RAM banking e modo IR basico.
-  - [x] HuC3 inicial com ROM/RAM banking, selecao de modos e mailbox RTC minimo.
-  - [x] HuC3 persiste mailbox/registradores RTC internos em sidecar `.huc3rtc`, mantendo `.sav` bruto.
+  - [x] HuC3 com ROM/RAM banking, selecao de modos e mailbox RTC nibbleado alinhado ao fluxo implementado pelo mGBA.
+  - [x] HuC3 persiste mailbox, registradores RTC internos e ultimo latch em sidecar `.huc3rtc`, mantendo `.sav` bruto.
   - [x] MMM01 inicial com modo unmapped mapeando o menu nos ultimos 32 KiB e entrada em modo mapped estilo MBC1.
   - [x] MMM01 aplica mascaras basicas de ROM/RAM para bits reservados pela selecao de jogo.
   - Possiveis proximos: MBC1M, MMM01 multiplex completo, Pocket Camera, rumble nuances.
-  - HuC3 ainda precisa RTC completo e speaker.
+  - HuC3 ainda precisa validar speaker/alarme com jogo real.
 
 ## Testes
 
@@ -394,9 +394,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 1. Revisar timing CGB/double speed de forma sistematica.
    - Nao ha bug especifico aberto; e uma auditoria para garantir que CPU/timer/serial/PPU/DMA/APU estao no clock certo em normal/double speed.
-2. Evoluir perfis de controle.
-   - Perfil por controle.
-   - Rumble fica como baixa prioridade.
+2. Evoluir perfis de controle conforme feedback de dispositivos reais.
 3. Melhorar usabilidade do link local.
    - Evoluir a janela destacada para virar detach real se a tela lado a lado ficar pequena demais em sessoes futuras.
    - Validar o fluxo de adicionar/parar console em Pokemon/Tetris e corrigir o que aparecer na pratica.
@@ -406,7 +404,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - Turbo acima de 3.5x com menos custo de renderizacao/audio.
 - APU/fidelidade sonora: monitorar regressao, mas sem pendencia audivel conhecida no momento.
-- HuC3 RTC completo e speaker.
+- HuC3 speaker/alarme com jogo real.
 - Pocket Camera e mappers raros conforme necessidade de jogos reais.
 - GraalVM native-image no Windows com metadata AWT/Swing estavel.
 - Infrared fisico via dispositivo externo.

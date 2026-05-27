@@ -655,6 +655,39 @@ class CartTest {
         assertEquals(0x77, loaded.read(0xA000) & 0xFF);
     }
 
+    @Test
+    void huc3LatchCommandCopiesElapsedClockIntoReadableRegisters() throws IOException {
+        AtomicLong now = new AtomicLong(1_000);
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC3, 0x02, 0x00), null, now::get);
+
+        now.addAndGet(65 * 60);
+        huc3Command(cart, 0x60);
+        huc3SetIndex(cart, 0x00);
+
+        assertEquals(0x91, huc3ReadNext(cart));
+        assertEquals(0x94, huc3ReadNext(cart));
+        assertEquals(0x90, huc3ReadNext(cart));
+    }
+
+    @Test
+    void huc3SetRtcCommandCopiesWritableRegistersBackToLiveClock() throws IOException {
+        AtomicLong now = new AtomicLong(1_000);
+        Cart cart = CartFactory.fromFile(writeRom(CartridgeType.HuC3, 0x02, 0x00), null, now::get);
+
+        huc3SetIndex(cart, 0x00);
+        huc3Command(cart, 0x35);
+        huc3Command(cart, 0x30);
+        huc3Command(cart, 0x30);
+        huc3Command(cart, 0x30);
+        huc3Command(cart, 0x30);
+        huc3Command(cart, 0x30);
+        huc3Command(cart, 0x61);
+        now.addAndGet(60);
+        huc3SetIndex(cart, 0x10);
+
+        assertEquals(0x96, huc3ReadNext(cart));
+    }
+
     private File writeRom(CartridgeType cartridgeType, byte bank0Value, byte bank1Value) throws IOException {
         byte[] rom = new byte[0x8000];
         rom[0] = bank0Value;
@@ -701,5 +734,23 @@ class CartTest {
             }
         }
         return bytes.toByteArray();
+    }
+
+    private void huc3SetIndex(Cart cart, int index) {
+        huc3Command(cart, 0x40 | (index & 0x0F));
+        huc3Command(cart, 0x50 | ((index >> 4) & 0x0F));
+    }
+
+    private void huc3Command(Cart cart, int value) {
+        cart.write(0x0000, (byte) 0x0B);
+        cart.write(0xA000, (byte) value);
+        cart.write(0x0000, (byte) 0x0D);
+        cart.write(0xA000, (byte) 0xFE);
+    }
+
+    private int huc3ReadNext(Cart cart) {
+        huc3Command(cart, 0x10);
+        cart.write(0x0000, (byte) 0x0C);
+        return cart.read(0xA000) & 0xFF;
     }
 }

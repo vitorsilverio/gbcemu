@@ -12,6 +12,7 @@ import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.GamepadController;
 import dev.vitorsilverio.gbcemu.controller.IdleController;
 import dev.vitorsilverio.gbcemu.controller.KeyboardController;
+import dev.vitorsilverio.gbcemu.controller.RumbleSink;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.cpu.CpuState;
 import dev.vitorsilverio.gbcemu.debug.CpuDebugWindow;
@@ -99,6 +100,7 @@ public class Console {
     private int debugStepStartLine;
     private long stopAfterFrames = -1;
     private boolean fastForwardAudioMuted;
+    private boolean rumbleOutputActive;
     private static final DateTimeFormatter DEBUG_DUMP_TIMESTAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
     private final LinkCable linkCable;
@@ -436,6 +438,7 @@ public class Console {
         } else if (gamepadController != null) {
             gamepadController.close();
         }
+        updateRumbleOutput(false);
         linkCable.disconnect();
         apu.close();
         closeDetachedDisplay();
@@ -1115,6 +1118,7 @@ public class Console {
             superGameBoy.tickFrame();
             frameNumber++;
             recordRewindSnapshot();
+            updateRumbleOutput(cart.isRumbleActive());
             updatePerformanceStats();
             if (stopAfterFrames > 0 && frameNumber >= stopAfterFrames) {
                 stop();
@@ -1215,6 +1219,16 @@ public class Console {
             return;
         }
         rewindBuffer.add(createRewindSaveStateFile());
+    }
+
+    private void updateRumbleOutput(boolean active) {
+        if (rumbleOutputActive == active) {
+            return;
+        }
+        rumbleOutputActive = active;
+        if (controller instanceof RumbleSink rumbleSink) {
+            rumbleSink.setRumble(active);
+        }
     }
 
     private void sleepNanos(long nanos) {
