@@ -83,6 +83,9 @@ public class Console {
     private long nextFrameDeadline = frameStart + NANOS_PER_FRAME;
     private long performanceStatsStart = System.nanoTime();
     private int performanceStatsFrames;
+    private boolean diagnosticSkipApu;
+    private boolean diagnosticSkipPpu;
+    private boolean diagnosticSkipRender;
     private DebugStepMode debugStepMode = DebugStepMode.NONE;
     private long debugStepTargetFrame;
     private int debugStepStartLine;
@@ -324,6 +327,12 @@ public class Console {
 
     void markFrameClock(long now) {
         frameStart = now;
+    }
+
+    public void setDiagnosticBypassOptions(boolean skipApu, boolean skipPpu, boolean skipRender) {
+        this.diagnosticSkipApu = skipApu;
+        this.diagnosticSkipPpu = skipPpu;
+        this.diagnosticSkipRender = skipRender;
     }
 
     long targetFrameNanos() {
@@ -1051,12 +1060,16 @@ public class Console {
         linkCable.tick();
         timer.tick();
         serial.tick();
-        ppu.tick();
+        if (!diagnosticSkipPpu) {
+            ppu.tick();
+        }
         updateFastForwardAudioMode();
-        apu.tick();
+        if (!diagnosticSkipApu) {
+            apu.tick();
+        }
         if (ppu.consumeFrameReady()) {
             boolean transferFrame = superGameBoy.consumeTransferFrame();
-            if (shouldRenderFrame() && !transferFrame && !superGameBoy.shouldSuppressFrame()) {
+            if (!diagnosticSkipRender && shouldRenderFrame() && !transferFrame && !superGameBoy.shouldSuppressFrame()) {
                 if (display != null) {
                     display.renderFrame(ppu);
                 }
@@ -1110,6 +1123,7 @@ public class Console {
         performanceStatsStart = now;
         if (display != null) {
             display.updatePerformanceStats(fps, speedPercent);
+            display.updatePerformanceDetails("");
         }
     }
 

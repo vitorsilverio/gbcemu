@@ -527,11 +527,12 @@ public class Decoder {
         instructionSet.put(0xCBFF, new SetInstruction(7, SourceA.INSTANCE, DestinationA.INSTANCE, 8));
     }
 
-
     public Optional<Instruction> decode(int opcode) {
         Instruction instruction = instructionSet.get(opcode);
         if(instruction != null) {
-            logger.debug("Decoded instruction: {}", instruction);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Decoded instruction: {}", instruction);
+            }
             return Optional.of(instruction);
         } else {
             // Handle unknown opcode

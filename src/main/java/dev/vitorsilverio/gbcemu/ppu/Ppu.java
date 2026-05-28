@@ -8,14 +8,10 @@ import dev.vitorsilverio.gbcemu.memory.MemoryBankProvider;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import dev.vitorsilverio.gbcemu.util.RawImage;
-import org.slf4j.Logger;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, Stateful<PpuState> {
-
-    private static final Logger logger = org.slf4j.LoggerFactory.getLogger(Ppu.class);
 
     private static final int OAM_SCANLINE_CYCLES = 80;
     private static final int SCANLINE_CYCLES = 456;
@@ -40,12 +36,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final int OBPI = 0xFF6A;
     private final int OBPD = 0xFF6B;
     private final int OPRI = 0xFF6C;
-
-    private final List<Integer> REGISTERS = Arrays.asList(
-            LCDC, STAT, SCY, SCX, LY, LYC,
-            BGP, OBP0, OBP1, WY, WX, VBK,
-            BGPI, BGPD, OBPI, OBPD, OPRI
-    );
 
     private final PpuControl control = new PpuControl();
     private final VideoRam videoRam = new VideoRam();
@@ -132,8 +122,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             return;
         }
 
-        logger.trace("Ppu tick: mode={}, line={}, column={}, cycles={}", mode, currentLine, currentColumn, cycles);
-
         // Execute logic based on the current mode
         switch (mode) {
             case OAM_READ:
@@ -149,11 +137,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 execVBlank();
                 break;
         }
-        statInterrupt();
         cycles++;
     }
 
-    private void statInterrupt() {
+    private void updateStatSignal() {
         boolean signal = (stat.isLycInterrupt() && (currentLine & 0xff) == (lineCompare & 0xff)) ||
                 (stat.isOamInterrupt() && mode == PpuMode.OAM_READ) ||
                 (stat.isVBlankInterrupt() && mode == PpuMode.VBLANK) ||
@@ -164,10 +151,20 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         previousStatSignal = signal;
     }
 
+    private void setMode(PpuMode mode) {
+        this.mode = mode;
+        updateStatSignal();
+    }
+
+    private void setCurrentLine(int currentLine) {
+        this.currentLine = currentLine;
+        updateStatSignal();
+    }
+
     private void execVRAMRead() {
         if (currentColumn >= 160) {
             currentColumn = 160;
-            mode = PpuMode.HBLANK;
+            setMode(PpuMode.HBLANK);
             cycles = -1;
             hBlankCycles = Math.max(1, hBlankCycles);
             return;
@@ -197,7 +194,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         if (currentColumn == 160) {
             // End of the scanline
             hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - (cycles + 1);
-            mode = PpuMode.HBLANK;
+            setMode(PpuMode.HBLANK);
             cycles = -1;
         }
 
@@ -373,7 +370,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
         if (cycles == OAM_SCANLINE_CYCLES - 1) {
             prepareSpriteCandidatesForLine();
-            mode = PpuMode.VRAM_READ;
+            setMode(PpuMode.VRAM_READ);
             cycles = -1;
             currentColumn = 0;
             penaltyDelay = scrollX % 8;
@@ -384,16 +381,16 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         // Execute HBlank
         if (cycles == hBlankCycles - 1) {
             finishVisibleScanline();
-            currentLine++;
+            setCurrentLine(currentLine + 1);
             cycles = -1;
             if (currentLine == 144) {
-                mode = PpuMode.VBLANK;
+                setMode(PpuMode.VBLANK);
                 resetWindowFrameState();
                 frameReady = true;
                 frameNumber++;
                 bus.requestInterrupt(Interrupt.VBLANK);
             } else {
-                mode = PpuMode.OAM_READ;
+                setMode(PpuMode.OAM_READ);
                 beginVisibleScanline();
             }
         }
@@ -404,11 +401,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         if (cycles != VBLANK_CYCLES - 1) {
             return;
         }
-        currentLine++;
+        setCurrentLine(currentLine + 1);
         cycles = -1;
         if (currentLine > 153) {
-            currentLine = 0;
-            mode = PpuMode.OAM_READ;
+            setCurrentLine(0);
+            setMode(PpuMode.OAM_READ);
             resetWindowFrameState();
             beginVisibleScanline();
         }
@@ -416,10 +413,19 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     @Override
     public boolean contains(int address) {
-        return REGISTERS.contains(address) ||
+        return isRegister(address) ||
                 videoRam.contains(address) ||
                 oam.contains(address) ||
                 (address >= 0xfea0 && address <= 0xfeff); // OAM + Prohibited area
+    }
+
+    private boolean isRegister(int address) {
+        return switch (address) {
+            case LCDC, STAT, SCY, SCX, LY, LYC,
+                 BGP, OBP0, OBP1, WY, WX, VBK,
+                 BGPI, BGPD, OBPI, OBPD, OPRI -> true;
+            default -> false;
+        };
     }
 
     @Override
@@ -537,9 +543,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 return;
             case LYC:
                 lineCompare = value;
+                updateStatSignal();
                 return;
             case STAT:
                 stat.setData(value);
+                updateStatSignal();
                 return;
             case BGPI:
                 bgPalette.setPaletteIndex(value);
@@ -603,6 +611,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
         mode = PpuMode.HBLANK;
         previousStatSignal = false;
+        updateStatSignal();
         resetWindowFrameState();
     }
 
@@ -614,6 +623,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         hBlankCycles = SCANLINE_CYCLES - OAM_SCANLINE_CYCLES - MIN_VRAM_READ_CYCLES;
         mode = PpuMode.OAM_READ;
         previousStatSignal = false;
+        updateStatSignal();
         resetWindowFrameState();
         beginVisibleScanline();
     }
@@ -809,6 +819,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             mode = PpuMode.HBLANK;
             currentColumn = 160;
         }
+        updateStatSignal();
     }
 
     public DebugSnapshot debugSnapshot() {
@@ -1019,7 +1030,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     @Override
     public List<MemoryBank> memoryBanks() {
-        return Arrays.asList(videoRam);
+        return List.of(videoRam);
     }
 
     public record DebugSnapshot(

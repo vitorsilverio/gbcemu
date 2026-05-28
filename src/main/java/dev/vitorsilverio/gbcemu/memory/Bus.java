@@ -14,6 +14,7 @@ public class Bus {
 
     private final List<MemorySpace> memorySpaces;
     private final InterruptManager interruptManager;
+    private final MemorySpace[] memorySpaceCache = new MemorySpace[0x10000];
     private volatile MemoryAccessListener memoryAccessListener;
 
     public Bus() {
@@ -24,7 +25,7 @@ public class Bus {
 
     public void addMemorySpace(MemorySpace memorySpace) {
         memorySpaces.add(memorySpace);
-
+        clearMemorySpaceCache();
     }
 
     public List<MemoryMapEntry> memoryMap() {
@@ -90,23 +91,14 @@ public class Bus {
 
     public byte read(int address) {
         address = address & 0xFFFF; // Ensure address is within 16-bit range
+        MemorySpace cachedMemorySpace = memorySpaceCache[address];
+        if (cachedMemorySpace != null && cachedMemorySpace.contains(address)) {
+            return readFrom(cachedMemorySpace, address);
+        }
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {
-                try {
-                    byte value = memorySpace.read(address);
-                    MemoryAccessListener listener = memoryAccessListener;
-                    if (listener != null) {
-                        listener.onRead(address, value);
-                    }
-                    return value;
-                } catch (Exception e) {
-                    logger.error(String.format("""
-                                Error reading from address %s
-                                Memory space: %s
-                                Contains?: %s
-                            """, Integer.toHexString(address), memorySpace.getClass().getName(), memorySpace.contains(address)), e);
-                    throw new RuntimeException("Failed to read from address " + Integer.toHexString(address), e);
-                }
+                memorySpaceCache[address] = memorySpace;
+                return readFrom(memorySpace, address);
             }
         }
         logger.warn("Address " + Integer.toHexString(address) + " not found in any memory space");
@@ -115,17 +107,51 @@ public class Bus {
 
     public void write(int address, byte value) {
         address = address & 0xFFFF;
+        MemorySpace cachedMemorySpace = memorySpaceCache[address];
+        if (cachedMemorySpace != null && cachedMemorySpace.contains(address)) {
+            writeTo(cachedMemorySpace, address, value);
+            return;
+        }
         for (MemorySpace memorySpace : memorySpaces) {
             if (memorySpace.contains(address)) {
-                memorySpace.write(address, value);
-                MemoryAccessListener listener = memoryAccessListener;
-                if (listener != null) {
-                    listener.onWrite(address, value);
-                }
+                memorySpaceCache[address] = memorySpace;
+                writeTo(memorySpace, address, value);
                 return;
             }
         }
         logger.warn("Address " + Integer.toHexString(address) + " not found in any memory space");
+    }
+
+    private byte readFrom(MemorySpace memorySpace, int address) {
+        try {
+            byte value = memorySpace.read(address);
+            MemoryAccessListener listener = memoryAccessListener;
+            if (listener != null) {
+                listener.onRead(address, value);
+            }
+            return value;
+        } catch (Exception e) {
+            logger.error(String.format("""
+                        Error reading from address %s
+                        Memory space: %s
+                        Contains?: %s
+                    """, Integer.toHexString(address), memorySpace.getClass().getName(), memorySpace.contains(address)), e);
+            throw new RuntimeException("Failed to read from address " + Integer.toHexString(address), e);
+        }
+    }
+
+    private void writeTo(MemorySpace memorySpace, int address, byte value) {
+        memorySpace.write(address, value);
+        MemoryAccessListener listener = memoryAccessListener;
+        if (listener != null) {
+            listener.onWrite(address, value);
+        }
+    }
+
+    private void clearMemorySpaceCache() {
+        for (int i = 0; i < memorySpaceCache.length; i++) {
+            memorySpaceCache[i] = null;
+        }
     }
 
     public void requestInterrupt(Interrupt interrupt) {

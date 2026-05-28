@@ -9,9 +9,14 @@ import dev.vitorsilverio.gbcemu.core.Emulator;
 import java.io.File;
 
 public class AndroidConsoleHost {
+    private static final boolean THROTTLE_ENABLED = false;
+    private static final boolean DIAGNOSTIC_SKIP_APU = false;
+    private static final boolean DIAGNOSTIC_SKIP_PPU = false;
+    private static final boolean DIAGNOSTIC_SKIP_RENDER = false;
+
     private final GbcEmulatorSurface display;
     private final AndroidInputState inputState = new AndroidInputState();
-    private final AndroidAudioOutput audioOutput = new AndroidAudioOutput(32_000);
+    private final AndroidAudioOutput audioOutput = new AndroidAudioOutput(48_000);
     private final AndroidRumbleOutput rumbleOutput;
     private File romFile;
     private Emulator emulator;
@@ -20,6 +25,7 @@ public class AndroidConsoleHost {
 
     public AndroidConsoleHost(Context context, GbcEmulatorSurface display) {
         this.display = display;
+        this.display.setPerformanceSuffix(performanceSuffix());
         this.rumbleOutput = new AndroidRumbleOutput(context);
     }
 
@@ -104,7 +110,8 @@ public class AndroidConsoleHost {
                 true,
                 false
         );
-        emulator = new Emulator(console, true);
+        console.setDiagnosticBypassOptions(DIAGNOSTIC_SKIP_APU, DIAGNOSTIC_SKIP_PPU, DIAGNOSTIC_SKIP_RENDER);
+        emulator = new Emulator(console, THROTTLE_ENABLED);
         emulator.skipBios();
         emulatorThread = new Thread(emulator::start, "gbcemu-android-runtime");
         emulatorThread.setPriority(Thread.MAX_PRIORITY);
@@ -134,5 +141,29 @@ public class AndroidConsoleHost {
         String baseName = dot > 0 ? name.substring(0, dot) : name;
         File parent = romFile.getParentFile();
         return new File(parent == null ? new File(".") : parent, baseName + ".sav");
+    }
+
+    private static String performanceSuffix() {
+        StringBuilder builder = new StringBuilder();
+        if (!THROTTLE_ENABLED) {
+            builder.append("UNTHROTTLED");
+        }
+        if (DIAGNOSTIC_SKIP_APU) {
+            appendSuffix(builder, "NO_APU");
+        }
+        if (DIAGNOSTIC_SKIP_PPU) {
+            appendSuffix(builder, "NO_PPU");
+        }
+        if (DIAGNOSTIC_SKIP_RENDER) {
+            appendSuffix(builder, "NO_RENDER");
+        }
+        return builder.toString();
+    }
+
+    private static void appendSuffix(StringBuilder builder, String value) {
+        if (builder.length() > 0) {
+            builder.append(' ');
+        }
+        builder.append(value);
     }
 }

@@ -5,6 +5,7 @@ import java.io.Serializable;
 public class CgbPalette implements Serializable {
 
     private final byte[] paletteData = new byte[64];
+    private final int[] argbColors = new int[32];
     private boolean autoIncrement = false;
     private int currentAddress = 0;
 
@@ -13,6 +14,7 @@ public class CgbPalette implements Serializable {
             paletteData[i] = (byte) 0xFF;
             paletteData[i + 1] = 0x7F;
         }
+        refreshAllColors();
     }
 
     public int getColor(int paletteIndex, int colorIndex) {
@@ -22,19 +24,11 @@ public class CgbPalette implements Serializable {
         if (colorIndex < 0 || colorIndex > 3) {
             throw new IllegalArgumentException("Index must be between 0 and 3");
         }
-        var palette = (paletteIndex * 4 + colorIndex);
-        int color = (paletteData[palette * 2] & 0xFF) | ((paletteData[palette * 2 + 1] & 0xFF) << 8);
-        return toArgb(color);
+        return argbColors[paletteIndex * 4 + colorIndex];
     }
 
     public int[] colors() {
-        int[] colors = new int[32];
-        for (int palette = 0; palette < 8; palette++) {
-            for (int color = 0; color < 4; color++) {
-                colors[palette * 4 + color] = getColor(palette, color);
-            }
-        }
-        return colors;
+        return argbColors.clone();
     }
 
     private int toArgb(int color) {
@@ -68,6 +62,7 @@ public class CgbPalette implements Serializable {
     public void setPaletteData(byte value, boolean writable) {
         if (writable) {
             paletteData[currentAddress] = value;
+            refreshColor(currentAddress >> 1);
         }
         if (autoIncrement) {
             currentAddress = (currentAddress + 1) & 0x3F;
@@ -91,11 +86,27 @@ public class CgbPalette implements Serializable {
             throw new IllegalArgumentException("Palette data must contain " + length + " bytes");
         }
         System.arraycopy(data, 0, paletteData, paletteIndex * length, length);
+        for (int color = 0; color < 4; color++) {
+            refreshColor(paletteIndex * 4 + color);
+        }
     }
 
     public void restoreData(byte[] data, byte index) {
         System.arraycopy(data, 0, paletteData, 0, Math.min(data.length, paletteData.length));
+        refreshAllColors();
         setPaletteIndex(index);
+    }
+
+    private void refreshAllColors() {
+        for (int color = 0; color < argbColors.length; color++) {
+            refreshColor(color);
+        }
+    }
+
+    private void refreshColor(int colorIndex) {
+        int offset = (colorIndex & 0x1F) << 1;
+        int color = (paletteData[offset] & 0xFF) | ((paletteData[offset + 1] & 0xFF) << 8);
+        argbColors[colorIndex & 0x1F] = toArgb(color);
     }
 
 }

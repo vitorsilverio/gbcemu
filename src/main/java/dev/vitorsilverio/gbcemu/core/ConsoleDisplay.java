@@ -13,6 +13,9 @@ public interface ConsoleDisplay {
 
     void updatePerformanceStats(double fps, double speedPercent);
 
+    default void updatePerformanceDetails(String details) {
+    }
+
     void applySettings(AppSettings settings);
 
     void show();

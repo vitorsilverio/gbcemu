@@ -30,6 +30,8 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
     private boolean dirty = true;
     private volatile String statusText = "Select a ROM";
     private volatile String performanceText = "";
+    private volatile String performanceDetailText = "";
+    private volatile String performanceSuffix = "";
     private int[] framePixels = new int[GB_WIDTH * GB_HEIGHT];
 
     public GbcEmulatorSurface(Context context) {
@@ -94,7 +96,18 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
 
     @Override
     public void updatePerformanceStats(double fps, double speedPercent) {
-        performanceText = String.format("%.1f FPS (%.0f%%)", fps, speedPercent);
+        performanceText = String.format("%.1f FPS (%.0f%%)%s", fps, speedPercent, performanceSuffix);
+        requestRender();
+    }
+
+    @Override
+    public void updatePerformanceDetails(String details) {
+        performanceDetailText = details == null ? "" : details;
+        requestRender();
+    }
+
+    public void setPerformanceSuffix(String performanceSuffix) {
+        this.performanceSuffix = performanceSuffix == null || performanceSuffix.isBlank() ? "" : " " + performanceSuffix;
         requestRender();
     }
 
@@ -220,7 +233,12 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
             return;
         }
         float padding = 14.0f;
-        canvas.drawText(text, canvas.getWidth() - padding, canvas.getHeight() - padding, statsPaint);
+        float y = canvas.getHeight() - padding;
+        String details = performanceDetailText;
+        if (details != null && !details.trim().isEmpty()) {
+            canvas.drawText(details, canvas.getWidth() - padding, y - 28.0f, statsPaint);
+        }
+        canvas.drawText(text, canvas.getWidth() - padding, y, statsPaint);
     }
 
     private void updateDestination(int width, int height) {

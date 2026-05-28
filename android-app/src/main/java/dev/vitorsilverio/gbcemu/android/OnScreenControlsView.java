@@ -16,6 +16,8 @@ public class OnScreenControlsView extends View {
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF dpad = new RectF();
+    private final RectF dpadHorizontal = new RectF();
+    private final RectF dpadVertical = new RectF();
     private final RectF buttonA = new RectF();
     private final RectF buttonB = new RectF();
     private final RectF select = new RectF();
@@ -45,7 +47,7 @@ public class OnScreenControlsView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         layoutControls();
-        drawRound(canvas, dpad, 24f);
+        drawDpad(canvas);
         drawRound(canvas, buttonA, 999f);
         drawRound(canvas, buttonB, 999f);
         drawRound(canvas, select, 999f);
@@ -72,16 +74,17 @@ public class OnScreenControlsView extends View {
     private void layoutControls() {
         float width = getWidth();
         float height = getHeight();
-        float pad = Math.min(width, height) * 0.18f;
         float margin = Math.min(width, height) * 0.08f;
         float button = Math.min(width, height) * 0.13f;
         boolean portrait = height >= width;
+        float pad = Math.min(width, height) * (portrait ? 0.31f : 0.21f);
         if (portrait) {
             float bottom = height - margin;
             float systemBottom = bottom;
             float systemTop = systemBottom - button * 0.48f;
             float actionBottom = systemTop - button * 0.34f;
-            dpad.set(margin, bottom - pad, margin + pad, bottom);
+            float dpadBottom = actionBottom + button * 0.20f;
+            dpad.set(margin, dpadBottom - pad, margin + pad, dpadBottom);
             buttonB.set(width - margin - button * 2.20f, actionBottom - button, width - margin - button * 1.20f, actionBottom);
             buttonA.set(width - margin - button, actionBottom - button * 1.65f, width - margin, actionBottom - button * 0.65f);
             select.set(width * 0.40f - button * 0.52f, systemTop, width * 0.40f + button * 0.52f, systemBottom);
@@ -93,6 +96,17 @@ public class OnScreenControlsView extends View {
         buttonB.set(width - margin - button * 2.2f, height - margin - pad * 0.45f, width - margin - button * 1.2f, height - margin - pad * 0.45f + button);
         select.set(width * 0.42f - button * 0.55f, height - margin - button * 0.55f, width * 0.42f + button * 0.55f, height - margin);
         start.set(width * 0.58f - button * 0.55f, height - margin - button * 0.55f, width * 0.58f + button * 0.55f, height - margin);
+    }
+
+    private void drawDpad(Canvas canvas) {
+        float arm = dpad.width() * 0.34f;
+        dpadHorizontal.set(dpad.left, dpad.centerY() - arm * 0.5f, dpad.right, dpad.centerY() + arm * 0.5f);
+        dpadVertical.set(dpad.centerX() - arm * 0.5f, dpad.top, dpad.centerX() + arm * 0.5f, dpad.bottom);
+        float radius = arm * 0.28f;
+        canvas.drawRoundRect(dpadHorizontal, radius, radius, fill);
+        canvas.drawRoundRect(dpadVertical, radius, radius, fill);
+        canvas.drawRoundRect(dpadHorizontal, radius, radius, stroke);
+        canvas.drawRoundRect(dpadVertical, radius, radius, stroke);
     }
 
     private void drawRound(Canvas canvas, RectF rect, float radius) {
