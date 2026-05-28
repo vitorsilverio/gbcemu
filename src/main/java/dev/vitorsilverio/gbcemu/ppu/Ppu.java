@@ -648,13 +648,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         return RawImage.wrapCopy(160, 144, frameImagePixels);
     }
 
-    public void copyFrameBufferTo(int[] target) {
-        if (target.length < frameImagePixels.length) {
-            throw new IllegalArgumentException("Target buffer is too small");
-        }
-        System.arraycopy(frameImagePixels, 0, target, 0, frameImagePixels.length);
-    }
-
     public int getResolvedColorIndex(int x, int y) {
         if (x < 0 || x >= 160 || y < 0 || y >= 144) {
             return 0;
