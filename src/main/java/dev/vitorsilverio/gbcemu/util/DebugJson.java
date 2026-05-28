@@ -4,12 +4,23 @@ import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 public final class DebugJson {
+    private static final String DEBUG_DIRECTORY = "debug";
 
     private DebugJson() {
+    }
+
+    public static File debugDirectory() {
+        File debug = new File(DEBUG_DIRECTORY);
+        if (!debug.exists()) {
+            debug.mkdirs();
+        }
+        return debug;
     }
 
     public static void appendString(StringBuilder builder, String name, String value, boolean comma, int indent) {
@@ -89,25 +100,28 @@ public final class DebugJson {
     }
 
     public static File writeTargetFile(String filename, String content, String errorMessage) {
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
+        File target = debugDirectory();
         File file = new File(target, filename);
         File parent = file.getParentFile();
         if (parent != null && !parent.exists()) {
             parent.mkdirs();
         }
         try {
-            Files.writeString(file.toPath(), content);
+            writeTextFile(file.toPath(), content);
             return file;
         } catch (IOException e) {
             throw new IllegalStateException(errorMessage, e);
         }
     }
 
+    public static void writeTextFile(Path path, String content) throws IOException {
+        Files.write(path, content.getBytes(StandardCharsets.UTF_8));
+    }
+
     public static void appendIndent(StringBuilder builder, int indent) {
-        builder.append(" ".repeat(indent));
+        for (int i = 0; i < indent; i++) {
+            builder.append(' ');
+        }
     }
 
     public static void appendCommaAndNewline(StringBuilder builder, boolean comma) {

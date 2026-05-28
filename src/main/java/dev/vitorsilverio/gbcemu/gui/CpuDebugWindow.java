@@ -1,14 +1,17 @@
-package dev.vitorsilverio.gbcemu.debug;
+package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
-import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
+import dev.vitorsilverio.gbcemu.debug.*;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
+import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.cpu.CpuState;
 import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.misc.Key1;
+import dev.vitorsilverio.gbcemu.misc.Key1State;
 import dev.vitorsilverio.gbcemu.peripherals.Serial;
 import dev.vitorsilverio.gbcemu.peripherals.SerialState;
 import dev.vitorsilverio.gbcemu.peripherals.TimerState;
@@ -18,6 +21,7 @@ import dev.vitorsilverio.gbcemu.util.DebugJson;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -38,10 +42,11 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class CpuDebugWindow {
 
-    public record Target(String name, Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, LinkCable linkCable) {
+    public record Target(String name, Cpu cpu, Bus bus, DebugMemoryInterface memory, Ppu ppu, DebuggerInterface debugger, LinkCable linkCable) {
         @Override
         public String toString() {
             return name;
@@ -50,11 +55,13 @@ public class CpuDebugWindow {
 
     private Cpu cpu;
     private Bus bus;
+    private DebugMemoryInterface memory;
     private Ppu ppu;
-    private DebugController debugController;
+    private DebuggerInterface debugger;
     private LinkCable linkCable;
     private DisassemblyCache disassemblyCache;
     private final JComboBox<Target> targetSelector;
+    private final Supplier<List<Target>> targetSupplier;
     private final JFrame window = new JFrame("CPU / Disassembly");
     private final Map<String, JTextField> stateFields = new LinkedHashMap<>();
     private final DefaultTableModel instructionModel = new DefaultTableModel() {
@@ -72,24 +79,33 @@ public class CpuDebugWindow {
             refresh();
         }
     });
+    private boolean updatingTargetSelector;
 
-    public CpuDebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebugController debugController, LinkCable linkCable) {
+    public CpuDebugWindow(Cpu cpu, Bus bus, Ppu ppu, DebuggerInterface debugger, LinkCable linkCable) {
         this.cpu = cpu;
         this.bus = bus;
+        this.memory = new BusDebugMemoryInterface(bus);
         this.ppu = ppu;
-        this.debugController = debugController;
+        this.debugger = debugger;
         this.linkCable = linkCable;
         this.targetSelector = null;
-        this.disassemblyCache = new DisassemblyCache(bus);
+        this.targetSupplier = null;
+        this.disassemblyCache = new DisassemblyCache(memory);
         initialize();
         refresh();
         window.setVisible(true);
     }
 
     public CpuDebugWindow(List<Target> targets) {
+        this(() -> targets);
+    }
+
+    public CpuDebugWindow(Supplier<List<Target>> targetSupplier) {
+        List<Target> targets = targetSupplier.get();
         if (targets.isEmpty()) {
             throw new IllegalArgumentException("At least one CPU debug target is required");
         }
+        this.targetSupplier = targetSupplier;
         this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
         applyTarget(targets.getFirst());
         initialize();
@@ -105,6 +121,9 @@ public class CpuDebugWindow {
         JPanel toolbar = new JPanel();
         if (targetSelector != null) {
             targetSelector.addActionListener(event -> {
+                if (updatingTargetSelector) {
+                    return;
+                }
                 Target target = (Target) targetSelector.getSelectedItem();
                 if (target != null) {
                     applyTarget(target);
@@ -115,6 +134,8 @@ public class CpuDebugWindow {
         }
         JButton refresh = new JButton("Refresh");
         refresh.addActionListener(event -> refresh());
+        JButton pause = new JButton("Break");
+        pause.addActionListener(event -> requestPause());
         JButton step = new JButton("Step");
         step.addActionListener(event -> stepInstruction());
         JButton stepLine = new JButton("Step Line");
@@ -132,6 +153,7 @@ public class CpuDebugWindow {
         JButton dumpJson = new JButton("Dump JSON");
         dumpJson.addActionListener(event -> dumpJson());
         toolbar.add(refresh);
+        toolbar.add(pause);
         toolbar.add(autoRefresh);
         toolbar.add(step);
         toolbar.add(stepLine);
@@ -146,9 +168,9 @@ public class CpuDebugWindow {
         toolbar.add(new JLabel("="));
         toolbar.add(watchValue);
         JButton watchRead = new JButton("Read");
-        watchRead.addActionListener(event -> addWatchpoint(DebugController.AccessType.READ));
+        watchRead.addActionListener(event -> addWatchpoint(DebuggerInterface.AccessType.READ));
         JButton watchWrite = new JButton("Write");
-        watchWrite.addActionListener(event -> addWatchpoint(DebugController.AccessType.WRITE));
+        watchWrite.addActionListener(event -> addWatchpoint(DebuggerInterface.AccessType.WRITE));
         JButton clearWatch = new JButton("Clear Watch");
         clearWatch.addActionListener(event -> clearWatchpoints());
         toolbar.add(watchRead);
@@ -169,10 +191,11 @@ public class CpuDebugWindow {
     private void applyTarget(Target target) {
         this.cpu = target.cpu();
         this.bus = target.bus();
+        this.memory = target.memory();
         this.ppu = target.ppu();
-        this.debugController = target.debugController();
+        this.debugger = target.debugger();
         this.linkCable = target.linkCable();
-        this.disassemblyCache = new DisassemblyCache(bus);
+        this.disassemblyCache = new DisassemblyCache(memory);
     }
 
     private JPanel statePanel() {
@@ -244,8 +267,29 @@ public class CpuDebugWindow {
     }
 
     private void refresh() {
+        refreshTargets();
         refreshStateFields();
         refreshInstructionTable();
+    }
+
+    private void refreshTargets() {
+        if (targetSupplier == null || targetSelector == null) {
+            return;
+        }
+        List<Target> targets = targetSupplier.get();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Target selected = (Target) targetSelector.getSelectedItem();
+        Target next = selected != null && targets.contains(selected) ? selected : targets.getFirst();
+        updatingTargetSelector = true;
+        try {
+            targetSelector.setModel(new DefaultComboBoxModel<>(targets.toArray(Target[]::new)));
+            targetSelector.setSelectedItem(next);
+        } finally {
+            updatingTargetSelector = false;
+        }
+        applyTarget(next);
     }
 
     private void refreshStateFields() {
@@ -273,7 +317,7 @@ public class CpuDebugWindow {
         setState("Halted", "%s", cpuState.halted());
         setState("Stopped", "%s", cpuState.stopped());
         setState("Speed", "%dx", cpuState.speedRate());
-        stateFields.get("Break").setText(debugController.breakReason());
+        stateFields.get("Break").setText(debugger.breakReason());
         stateFields.get("Watch").setText(watchpointsText());
         setState("LCDC", "%02X", ppuSnapshot.lcdc());
         setState("STAT", "%02X", ppuSnapshot.stat());
@@ -320,7 +364,7 @@ public class CpuDebugWindow {
     private void addInstructionRow(Disassembler.Decoded decoded) {
         instructionModel.addRow(new Object[]{
                 String.format("%04X", decoded.address()),
-                debugController.hasPcBreakpoint(decoded.address()) ? "*" : "",
+                debugger.hasPcBreakpoint(decoded.address()) ? "*" : "",
                 disassemblyCache.location(decoded.address()),
                 decoded.bytes(),
                 decoded.instruction()
@@ -336,36 +380,40 @@ public class CpuDebugWindow {
         if (address < 0 || address > 0xFFFF) {
             return;
         }
-        debugController.togglePcBreakpoint(address);
+        debugger.togglePcBreakpoint(address);
         refreshInstructionTable();
     }
 
     private void stepInstruction() {
-        debugController.ignorePcBreakpointOnce(cpu.getPc());
-        debugController.requestInstructionStep();
+        debugger.ignorePcBreakpointOnce(cpu.getPc());
+        debugger.requestInstructionStep();
+    }
+
+    private void requestPause() {
+        debugger.requestPause("Manual CPU debugger break");
     }
 
     private void stepScanline() {
-        debugController.ignorePcBreakpointOnce(cpu.getPc());
-        debugController.requestScanlineStep();
+        debugger.ignorePcBreakpointOnce(cpu.getPc());
+        debugger.requestScanlineStep();
     }
 
     private void stepFrame() {
-        debugController.ignorePcBreakpointOnce(cpu.getPc());
-        debugController.requestFrameStep();
+        debugger.ignorePcBreakpointOnce(cpu.getPc());
+        debugger.requestFrameStep();
     }
 
     private void runUntilHBlank() {
-        debugController.ignorePcBreakpointOnce(cpu.getPc());
-        debugController.requestRunUntilHBlank();
+        debugger.ignorePcBreakpointOnce(cpu.getPc());
+        debugger.requestRunUntilHBlank();
     }
 
     private void runUntilVBlank() {
-        debugController.ignorePcBreakpointOnce(cpu.getPc());
-        debugController.requestRunUntilVBlank();
+        debugger.ignorePcBreakpointOnce(cpu.getPc());
+        debugger.requestRunUntilVBlank();
     }
 
-    private void addWatchpoint(DebugController.AccessType accessType) {
+    private void addWatchpoint(DebuggerInterface.AccessType accessType) {
         int address = parseHex(watchAddress.getText(), -1);
         if (address < 0 || address > 0xFFFF) {
             return;
@@ -374,17 +422,17 @@ public class CpuDebugWindow {
         if (value > 0xFF) {
             return;
         }
-        debugController.addWatchpoint(accessType, address, value < 0 ? null : value);
+        debugger.addWatchpoint(accessType, address, value < 0 ? null : value);
         refreshStateFields();
     }
 
     private void clearWatchpoints() {
-        debugController.clearWatchpoints();
+        debugger.clearWatchpoints();
         refreshStateFields();
     }
 
     private String watchpointsText() {
-        java.util.List<DebugController.Watchpoint> watchpoints = debugController.watchpoints();
+        java.util.List<DebuggerInterface.Watchpoint> watchpoints = debugger.watchpoints();
         if (watchpoints.isEmpty()) {
             return "";
         }
@@ -408,10 +456,7 @@ public class CpuDebugWindow {
     }
 
     private void dump() {
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
+        File target = DebugJson.debugDirectory();
         try {
             java.nio.file.Files.writeString(new File(target, "debug-cpu-window.txt").toPath(), dumpText());
         } catch (IOException e) {
@@ -452,6 +497,9 @@ public class CpuDebugWindow {
                 .map(Serial::saveState)
                 .orElse(new SerialState(0, 0, 0, 0, ""));
         Serial serial = bus.findMemorySpace(Serial.class).orElse(null);
+        Key1State key1State = bus.findMemorySpace(Key1.class)
+                .map(Key1::saveState)
+                .orElse(new Key1State(false, false));
         Cart cart = bus.findMemorySpace(Cart.class).orElse(null);
         StringBuilder builder = new StringBuilder();
         builder.append("{\n");
@@ -522,9 +570,10 @@ public class CpuDebugWindow {
         appendSerialTransferHistoryJson(builder, serial, 4);
         builder.append("  },\n");
         appendLinkJson(builder);
+        appendClockTimingJson(builder, cpuState, timerState, serialState, key1State);
         appendCartJson(builder, cart);
         appendMemoryBanksJson(builder);
-        DebugJson.appendString(builder, "breakReason", debugController.breakReason(), true, 2);
+        DebugJson.appendString(builder, "breakReason", debugger.breakReason(), true, 2);
         appendWatchpointsJson(builder);
         builder.append("  \"disassembly\": [\n");
         for (int row = 0; row < instructionModel.getRowCount(); row++) {
@@ -543,6 +592,36 @@ public class CpuDebugWindow {
         builder.append("  ]\n");
         builder.append("}\n");
         return builder.toString();
+    }
+
+    private void appendClockTimingJson(StringBuilder builder, CpuState cpuState, TimerState timerState, SerialState serialState, Key1State key1State) {
+        int tac = timerState.timerControl() & 0x07;
+        int timerBit = switch (tac & 0x03) {
+            case 0 -> 9;
+            case 1 -> 3;
+            case 2 -> 5;
+            case 3 -> 7;
+            default -> 9;
+        };
+        boolean internalSerialClock = (serialState.sc() & 0x01) != 0;
+        boolean fastSerialClock = (serialState.sc() & 0x02) != 0;
+        int serialCyclesPerTransfer = fastSerialClock ? 128 : 4096;
+        if (internalSerialClock && key1State.doubleSpeed()) {
+            serialCyclesPerTransfer /= 2;
+        }
+        builder.append("  \"clockTiming\": {\n");
+        DebugJson.appendNumber(builder, "cpuSpeedRate", cpuState.speedRate(), true, 4);
+        DebugJson.appendBoolean(builder, "key1DoubleSpeed", key1State.doubleSpeed(), true, 4);
+        DebugJson.appendBoolean(builder, "key1PrepareSpeedSwitch", key1State.prepareSpeedSwitch(), true, 4);
+        DebugJson.appendNumber(builder, "timerSystemCounterIncrementsPerMachineCycle", key1State.doubleSpeed() ? 2 : 1, true, 4);
+        DebugJson.appendNumber(builder, "timerSelectedCounterBit", timerBit, true, 4);
+        DebugJson.appendBoolean(builder, "timerEnabled", (tac & 0x04) != 0, true, 4);
+        DebugJson.appendNumber(builder, "apuFrameSequencerCounterBit", key1State.doubleSpeed() ? 13 : 12, true, 4);
+        DebugJson.appendBoolean(builder, "serialInternalClock", internalSerialClock, true, 4);
+        DebugJson.appendBoolean(builder, "serialFastClock", fastSerialClock, true, 4);
+        DebugJson.appendNumber(builder, "serialCyclesPerTransfer", serialCyclesPerTransfer, true, 4);
+        DebugJson.appendNumber(builder, "serialCyclesRemaining", serialState.transferCyclesRemaining(), false, 4);
+        builder.append("  },\n");
     }
 
     private void appendLinkJson(StringBuilder builder) {
@@ -624,7 +703,7 @@ public class CpuDebugWindow {
 
     private void appendMemoryBanksJson(StringBuilder builder) {
         builder.append("  \"memoryBanks\": [\n");
-        java.util.List<MemoryBank> banks = bus.memoryBanks();
+        java.util.List<MemoryBank> banks = memory.memoryBanks();
         for (int index = 0; index < banks.size(); index++) {
             MemoryBank bank = banks.get(index);
             builder.append("    {\n");
@@ -644,9 +723,9 @@ public class CpuDebugWindow {
 
     private void appendWatchpointsJson(StringBuilder builder) {
         builder.append("  \"watchpoints\": [\n");
-        java.util.List<DebugController.Watchpoint> watchpoints = debugController.watchpoints();
+        java.util.List<DebuggerInterface.Watchpoint> watchpoints = debugger.watchpoints();
         for (int index = 0; index < watchpoints.size(); index++) {
-            DebugController.Watchpoint watchpoint = watchpoints.get(index);
+            DebuggerInterface.Watchpoint watchpoint = watchpoints.get(index);
             builder.append("    {\n");
             DebugJson.appendString(builder, "type", watchpoint.accessType().name(), true, 6);
             DebugJson.appendHex(builder, "address", watchpoint.address(), true, 6, 4);

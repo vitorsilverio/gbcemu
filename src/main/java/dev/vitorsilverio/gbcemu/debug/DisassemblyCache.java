@@ -1,6 +1,5 @@
 package dev.vitorsilverio.gbcemu.debug;
 
-import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 
 import java.util.ArrayList;
@@ -9,13 +8,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class DisassemblyCache {
+public class DisassemblyCache {
 
-    private final Bus bus;
+    private final DebugMemoryInterface memory;
     private final Map<Key, Disassembler.Decoded> decoded = new HashMap<>();
 
-    DisassemblyCache(Bus bus) {
-        this.bus = bus;
+    public DisassemblyCache(DebugMemoryInterface memory) {
+        this.memory = memory;
     }
 
     Disassembler.Decoded decode(int address) {
@@ -24,7 +23,7 @@ class DisassemblyCache {
         if (cached != null && bytesMatch(cached)) {
             return cached;
         }
-        Disassembler.Decoded fresh = Disassembler.decode(address, valueAddress -> bus.read(valueAddress) & 0xFF);
+        Disassembler.Decoded fresh = Disassembler.decode(address, valueAddress -> memory.read(valueAddress) & 0xFF);
         decoded.put(key, fresh);
         return fresh;
     }
@@ -35,14 +34,15 @@ class DisassemblyCache {
             if (offset > 0) {
                 current.append(' ');
             }
-            current.append(String.format("%02X", bus.read(cached.address() + offset) & 0xFF));
+            current.append(String.format("%02X", memory.read(cached.address() + offset) & 0xFF));
         }
         return cached.bytes().contentEquals(current);
     }
 
-    List<Disassembler.Decoded> previousInstructions(int pc, int limit) {
+    public List<Disassembler.Decoded> previousInstructions(int pc, int limit) {
         Key pcKey = key(pc);
-        return decoded.entrySet().stream()
+        List<Disassembler.Decoded> values = new ArrayList<>();
+        decoded.entrySet().stream()
                 .filter(entry -> entry.getKey().space.equals(pcKey.space))
                 .filter(entry -> entry.getKey().bank == pcKey.bank)
                 .filter(entry -> entry.getKey().address < pc)
@@ -50,10 +50,11 @@ class DisassemblyCache {
                 .limit(limit)
                 .map(Map.Entry::getValue)
                 .sorted(Comparator.comparingInt(Disassembler.Decoded::address))
-                .toList();
+                .forEach(values::add);
+        return values;
     }
 
-    List<Disassembler.Decoded> decodeForward(int address, int count) {
+    public List<Disassembler.Decoded> decodeForward(int address, int count) {
         List<Disassembler.Decoded> values = new ArrayList<>();
         int cursor = address;
         for (int i = 0; i < count; i++) {
@@ -64,7 +65,7 @@ class DisassemblyCache {
         return values;
     }
 
-    String location(int address) {
+    public String location(int address) {
         Key key = key(address);
         return key.bank < 0 ? key.space : key.space + ":" + key.bank;
     }
@@ -90,7 +91,7 @@ class DisassemblyCache {
     }
 
     private int currentBank(String name) {
-        for (MemoryBank bank : bus.memoryBanks()) {
+        for (MemoryBank bank : memory.memoryBanks()) {
             if (bank.bankName().equals(name)) {
                 return bank.currentBank();
             }

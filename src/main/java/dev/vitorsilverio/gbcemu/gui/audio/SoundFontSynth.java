@@ -1,4 +1,4 @@
-package dev.vitorsilverio.gbcemu.audio;
+package dev.vitorsilverio.gbcemu.gui.audio;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 

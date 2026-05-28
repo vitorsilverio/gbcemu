@@ -18,6 +18,7 @@ public record EmulatorMenuActions(
         Runnable restart,
         Consumer<Integer> openDetachedDisplay,
         Runnable addSecondConsole,
+        Consumer<File> addSecondConsoleFromRecentRom,
         Consumer<Integer> stopConsole,
         Runnable saveSnapshoot,
         Runnable restoreSnapshot,

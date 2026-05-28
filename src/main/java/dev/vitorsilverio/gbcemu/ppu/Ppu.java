@@ -7,11 +7,10 @@ import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.memory.MemoryBankProvider;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
+import dev.vitorsilverio.gbcemu.util.RawImage;
 import org.slf4j.Logger;
 
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
+import java.util.Arrays;
 import java.util.List;
 
 public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, Stateful<PpuState> {
@@ -42,7 +41,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final int OBPD = 0xFF6B;
     private final int OPRI = 0xFF6C;
 
-    private final List<Integer> REGISTERS = List.of(
+    private final List<Integer> REGISTERS = Arrays.asList(
             LCDC, STAT, SCY, SCX, LY, LYC,
             BGP, OBP0, OBP1, WY, WX, VBK,
             BGPI, BGPD, OBPI, OBPD, OPRI
@@ -62,7 +61,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final int[][] bgColorIndexes; // 160x144 pixels
     private final int[][] resolvedColorIndexes; // 160x144 pixels
     private final boolean[][] bgPriorities; // 160x144 pixels
-    private final BufferedImage frameImage;
     private final int[] frameImagePixels;
     private boolean cgbMode;
 
@@ -112,8 +110,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         this.bgColorIndexes = new int[160][144];
         this.resolvedColorIndexes = new int[160][144];
         this.bgPriorities = new boolean[160][144];
-        this.frameImage = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
-        this.frameImagePixels = ((DataBufferInt) frameImage.getRaster().getDataBuffer()).getData();
+        this.frameImagePixels = new int[160 * 144];
         if (!cgbMode) {
             objectPriorityMode = ObjectPriorityMode.DMG;
             initializeDmgGrayCgbPalettes();
@@ -640,8 +637,15 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         }
     }
 
-    public BufferedImage getFrameBuffer() {
-        return frameImage;
+    public RawImage getFrameBuffer() {
+        return RawImage.wrapCopy(160, 144, frameImagePixels);
+    }
+
+    public void copyFrameBufferTo(int[] target) {
+        if (target.length < frameImagePixels.length) {
+            throw new IllegalArgumentException("Target buffer is too small");
+        }
+        System.arraycopy(frameImagePixels, 0, target, 0, frameImagePixels.length);
     }
 
     public int getResolvedColorIndex(int x, int y) {
@@ -881,15 +885,15 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         return true;
     }
 
-    public BufferedImage debugTileImage(int bank) {
-        BufferedImage image = new BufferedImage(16 * 8, 24 * 8, BufferedImage.TYPE_INT_RGB);
+    public RawImage debugTileImage(int bank) {
+        RawImage image = new RawImage(16 * 8, 24 * 8);
         for (int tileIndex = 0; tileIndex < 384; tileIndex++) {
             Tile tile = videoRam.getTile(TileArea.METHOD_8000, bank & 1, tileIndex);
             int baseX = (tileIndex % 16) * 8;
             int baseY = (tileIndex / 16) * 8;
             for (int y = 0; y < 8; y++) {
                 for (int x = 0; x < 8; x++) {
-                    image.setRGB(baseX + x, baseY + y, grayColor(tile.getPixel(x, y)));
+                    image.setArgb(baseX + x, baseY + y, grayColor(tile.getPixel(x, y)));
                 }
             }
         }
@@ -922,8 +926,8 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         return pixels;
     }
 
-    public BufferedImage debugTileMapImage(TileMapArea area) {
-        BufferedImage image = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
+    public RawImage debugTileMapImage(TileMapArea area) {
+        RawImage image = new RawImage(256, 256);
         for (int mapIndex = 0; mapIndex < 1024; mapIndex++) {
             TileMap map = videoRam.getTileMap(area, mapIndex);
             int bank = cgbMode ? map.getBank() : 0;
@@ -938,28 +942,30 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                     int paletteIndex = cgbMode ? map.getPaletteIndex() : 0;
                     int mappedColorIndex = cgbMode ? colorIndex : bgPaletteDmg.getColor(colorIndex);
                     int color = bgPalette.getColor(paletteIndex, mappedColorIndex);
-                    image.setRGB(baseX + x, baseY + y, color);
+                    image.setArgb(baseX + x, baseY + y, color);
                 }
             }
         }
         return image;
     }
 
-    public BufferedImage debugPaletteImage(boolean objects) {
+    public RawImage debugPaletteImage(boolean objects) {
         int[] colors = objects ? objPalette.colors() : bgPalette.colors();
-        BufferedImage image = new BufferedImage(128, 32, BufferedImage.TYPE_INT_RGB);
-        Graphics2D graphics = image.createGraphics();
-        try {
-            for (int palette = 0; palette < 8; palette++) {
-                for (int color = 0; color < 4; color++) {
-                    graphics.setColor(new Color(colors[palette * 4 + color], true));
-                    graphics.fillRect(color * 32, palette * 4, 32, 4);
-                }
+        RawImage image = new RawImage(128, 32);
+        for (int palette = 0; palette < 8; palette++) {
+            for (int color = 0; color < 4; color++) {
+                fillRect(image, color * 32, palette * 4, 32, 4, colors[palette * 4 + color]);
             }
-        } finally {
-            graphics.dispose();
         }
         return image;
+    }
+
+    private void fillRect(RawImage image, int x, int y, int width, int height, int color) {
+        for (int yy = y; yy < y + height; yy++) {
+            for (int xx = x; xx < x + width; xx++) {
+                image.setArgb(xx, yy, color);
+            }
+        }
     }
 
     public void setCgbBackgroundPaletteBytes(int paletteIndex, byte[] data) {
@@ -1013,7 +1019,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     @Override
     public List<MemoryBank> memoryBanks() {
-        return List.of(videoRam);
+        return Arrays.asList(videoRam);
     }
 
     public record DebugSnapshot(

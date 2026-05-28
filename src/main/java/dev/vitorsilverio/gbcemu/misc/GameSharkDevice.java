@@ -23,7 +23,7 @@ public class GameSharkDevice implements MemorySpace {
     public void setCheats(String cheats) {
         this.cheats.clear();
         for (var line: cheats.split("\n")){
-            var cheat = Cheat.fromString(line.strip());
+            var cheat = Cheat.fromString(line.trim());
             if (cheat != null) {
                 this.cheats.put(cheat.address, cheat);
             }
@@ -31,7 +31,16 @@ public class GameSharkDevice implements MemorySpace {
     }
 
     public String getCheats() {
-        return String.join("\n", cheats.values().stream().map(Cheat::toString).toList());
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        for (Cheat cheat : cheats.values()) {
+            if (!first) {
+                builder.append('\n');
+            }
+            builder.append(cheat);
+            first = false;
+        }
+        return builder.toString();
     }
 
     @Override

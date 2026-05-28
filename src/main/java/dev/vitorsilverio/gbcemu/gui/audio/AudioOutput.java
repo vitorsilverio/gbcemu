@@ -1,12 +1,16 @@
-package dev.vitorsilverio.gbcemu.audio;
+package dev.vitorsilverio.gbcemu.gui.audio;
 
-public final class AudioOutput implements AudioSampleOutput {
+import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.core.ConsoleAudioOutput;
+
+public final class AudioOutput implements ConsoleAudioOutput {
     private static final int CGB_HIGH_PASS_FACTOR = 912;
     private static final int HIGH_PASS_DIVISOR = 1000;
     private static final int FILTER_DIVISOR = 1000;
     private static final int PCM_SCALE = 48;
 
-    private final AudioSink sink;
+    private final int sampleRate;
+    private volatile AudioSink sink;
     private final AudioEnhancer enhancer = new AudioEnhancer();
     private final SoundFontSynth soundFontSynth = new SoundFontSynth();
     private final int[] enhancedSample = new int[2];
@@ -18,18 +22,26 @@ public final class AudioOutput implements AudioSampleOutput {
     private int previousRightOutput;
     private int lowPassAlpha = 350;
     private boolean sinkMuted;
+    private AppSettings.AudioEnhancementConfig currentConfig;
 
-    AudioOutput(AudioSink sink) {
+    AudioOutput(int sampleRate, AudioSink sink) {
+        this.sampleRate = sampleRate;
         this.sink = sink;
     }
 
-    public static AudioOutput createDefault(int sampleRate) {
-        return new AudioOutput(AudioSinkFactory.createDefault(sampleRate));
+    public static AudioOutput createDefault(int sampleRate, AppSettings.AudioEnhancementConfig config) {
+        AudioOutput output = new AudioOutput(sampleRate, AudioSinkFactory.createDefault(sampleRate, config));
+        output.currentConfig = config;
+        return output;
     }
 
     public static AudioOutput muted() {
-        return new AudioOutput((buffer, length) -> {
+        return new AudioOutput(48_000, (buffer, length) -> {
         });
+    }
+
+    public static java.util.List<String> outputDeviceNames(int sampleRate) {
+        return AudioSinkFactory.outputDeviceNames(sampleRate);
     }
 
     @Override
@@ -55,6 +67,27 @@ public final class AudioOutput implements AudioSampleOutput {
         sampleBufferPosition = 0;
         soundFontSynth.close();
         sink.close();
+    }
+
+    public void applyAudioOutputConfig(AppSettings.AudioEnhancementConfig config) {
+        AudioSink previous = sink;
+        sampleBufferPosition = 0;
+        sink = AudioSinkFactory.createDefault(sampleRate, config);
+        previous.close();
+        currentConfig = config;
+    }
+
+    @Override
+    public void applyOutputSettings(AppSettings.AudioEnhancementConfig config) {
+        AppSettings.AudioEnhancementConfig normalized = config == null
+                ? AppSettings.defaults().normalizedAudioEnhancement()
+                : config;
+        if (currentConfig == null
+                || !currentConfig.outputDeviceName().equals(normalized.outputDeviceName())
+                || currentConfig.outputBufferMillis() != normalized.outputBufferMillis()) {
+            applyAudioOutputConfig(normalized);
+        }
+        applyEnhancement(normalized);
     }
 
     @Override
@@ -110,7 +143,12 @@ public final class AudioOutput implements AudioSampleOutput {
         sampleBufferPosition = 0;
     }
 
-    public void applyEnhancement(dev.vitorsilverio.gbcemu.config.AppSettings.AudioEnhancementConfig config) {
+    @Override
+    public void setOutputMuted(boolean muted) {
+        setSinkMuted(muted);
+    }
+
+    public void applyEnhancement(AppSettings.AudioEnhancementConfig config) {
         enhancer.apply(config);
         soundFontSynth.apply(config);
     }
@@ -131,6 +169,11 @@ public final class AudioOutput implements AudioSampleOutput {
     @Override
     public void updateChannelState(int channel, boolean enabled, double frequencyHz, int volume, boolean noise) {
         soundFontSynth.updateChannelState(channel, enabled, frequencyHz, volume, noise);
+    }
+
+    @Override
+    public boolean observesChannelState() {
+        return true;
     }
 
     @Override

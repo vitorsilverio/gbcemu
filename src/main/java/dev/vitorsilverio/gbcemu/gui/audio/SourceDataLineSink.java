@@ -1,23 +1,26 @@
-package dev.vitorsilverio.gbcemu.audio;
+package dev.vitorsilverio.gbcemu.gui.audio;
 
 import javax.sound.sampled.SourceDataLine;
 
 final class SourceDataLineSink implements AudioSink {
     private static final int FRAME_SIZE = 4;
-    private static final int BUFFER_SIZE = 131072;
-    private static final int PREBUFFER_BYTES = 16384;
     private static final int WRITE_CHUNK_SIZE = 2048;
 
     private final SourceDataLine line;
-    private final byte[] buffer = new byte[BUFFER_SIZE];
+    private final byte[] buffer;
+    private final int prebufferBytes;
     private int readPosition;
     private int writePosition;
     private int size;
     private boolean primed;
     private boolean closed;
 
-    SourceDataLineSink(SourceDataLine line) {
+    SourceDataLineSink(SourceDataLine line, int bufferSize) {
         this.line = line;
+        int alignedSize = Math.max(FRAME_SIZE * 4096, bufferSize);
+        alignedSize -= alignedSize % FRAME_SIZE;
+        this.buffer = new byte[alignedSize];
+        this.prebufferBytes = Math.max(FRAME_SIZE * 512, Math.min(alignedSize / 2, line.getBufferSize() / 4));
         Thread thread = new Thread(this::run, "gbcemu-audio");
         thread.setDaemon(true);
         thread.start();
@@ -30,7 +33,7 @@ final class SourceDataLineSink implements AudioSink {
         }
         int written = 0;
         while (written < length) {
-            while (!closed && size == BUFFER_SIZE) {
+            while (!closed && size == buffer.length) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -42,14 +45,14 @@ final class SourceDataLineSink implements AudioSink {
                 return;
             }
 
-            int writable = Math.min(length - written, BUFFER_SIZE - size);
-            int firstCopy = Math.min(writable, BUFFER_SIZE - writePosition);
+            int writable = Math.min(length - written, buffer.length - size);
+            int firstCopy = Math.min(writable, buffer.length - writePosition);
             System.arraycopy(source, written, buffer, writePosition, firstCopy);
             int secondCopy = writable - firstCopy;
             if (secondCopy > 0) {
                 System.arraycopy(source, written + firstCopy, buffer, 0, secondCopy);
             }
-            writePosition = (writePosition + writable) % BUFFER_SIZE;
+            writePosition = (writePosition + writable) % buffer.length;
             size += writable;
             written += writable;
             notifyAll();
@@ -57,7 +60,7 @@ final class SourceDataLineSink implements AudioSink {
     }
 
     private synchronized int read(byte[] destination) throws InterruptedException {
-        while (!closed && !primed && size < PREBUFFER_BYTES) {
+        while (!closed && !primed && size < prebufferBytes) {
             wait();
         }
         if (closed) {
@@ -74,13 +77,13 @@ final class SourceDataLineSink implements AudioSink {
             return 0;
         }
 
-        int firstCopy = Math.min(length, BUFFER_SIZE - readPosition);
+        int firstCopy = Math.min(length, buffer.length - readPosition);
         System.arraycopy(buffer, readPosition, destination, 0, firstCopy);
         int secondCopy = length - firstCopy;
         if (secondCopy > 0) {
             System.arraycopy(buffer, 0, destination, firstCopy, secondCopy);
         }
-        readPosition = (readPosition + length) % BUFFER_SIZE;
+        readPosition = (readPosition + length) % buffer.length;
         size -= length;
         notifyAll();
         return length;
@@ -101,7 +104,7 @@ final class SourceDataLineSink implements AudioSink {
 
     @Override
     public String debugDescription() {
-        return line.getFormat() + " nativeBuffer=" + line.getBufferSize();
+        return line.getFormat() + " nativeBuffer=" + line.getBufferSize() + " queueBuffer=" + buffer.length + " prebuffer=" + prebufferBytes;
     }
 
     private void run() {

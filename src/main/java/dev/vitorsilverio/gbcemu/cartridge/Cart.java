@@ -13,6 +13,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -145,7 +146,7 @@ public abstract class Cart implements MemorySpace, MemoryBankProvider, Stateful<
 
     @Override
     public List<MemoryBank> memoryBanks() {
-        return List.of(romMemoryBank, ram);
+        return Arrays.asList(romMemoryBank, ram);
     }
 
     protected int currentRomBank() {

@@ -7,6 +7,7 @@ import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
@@ -15,7 +16,7 @@ public class Timer implements MemorySpace, MachineCycle, Stateful<TimerState> {
     private static final int TIMER_COUNTER_REG = 0xFF05;
     private static final int TIMER_MODULO_REG = 0xFF06;
     private static final int TIMER_CONTROL_REG = 0xFF07;
-    private static final List<Integer> REGISTERS = List.of(DIVIDER_REG, TIMER_COUNTER_REG, TIMER_MODULO_REG, TIMER_CONTROL_REG);
+    private static final List<Integer> REGISTERS = Arrays.asList(DIVIDER_REG, TIMER_COUNTER_REG, TIMER_MODULO_REG, TIMER_CONTROL_REG);
     private static final int[] TIMER_BITS = {9, 3, 5, 7};
 
 

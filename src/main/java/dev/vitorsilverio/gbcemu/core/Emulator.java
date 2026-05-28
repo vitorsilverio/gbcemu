@@ -1,21 +1,14 @@
 package dev.vitorsilverio.gbcemu.core;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
-import dev.vitorsilverio.gbcemu.controller.Controller;
-import dev.vitorsilverio.gbcemu.debug.CpuDebugWindow;
-import dev.vitorsilverio.gbcemu.gui.AudioDebugWindow;
-import dev.vitorsilverio.gbcemu.gui.CartDebugWindow;
-import dev.vitorsilverio.gbcemu.gui.EmulatorWindow;
-import dev.vitorsilverio.gbcemu.gui.MemoryDebugWindow;
-import dev.vitorsilverio.gbcemu.gui.PpuDebugWindow;
+import dev.vitorsilverio.gbcemu.debug.ConsoleDebugPort;
+import dev.vitorsilverio.gbcemu.debug.DebugImageSink;
 import dev.vitorsilverio.gbcemu.link.DirectLinkCable;
 import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.snapshot.EmulatorState;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
-import javax.swing.JOptionPane;
-import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,6 +17,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
@@ -46,36 +40,12 @@ public class Emulator {
     private final boolean throttled;
     private volatile boolean stopped;
 
-    public Emulator(File biosFile, File romFile, File saveFile) {
-        this(biosFile, romFile, saveFile, false, null);
+    public Emulator(Console console, boolean throttled) {
+        this(Arrays.asList(console), throttled);
     }
 
     public Emulator(File biosFile, File romFile, File saveFile, boolean headless) {
-        this(biosFile, romFile, saveFile, headless, null);
-    }
-
-    public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window) {
-        this(biosFile, romFile, saveFile, headless, window, AppSettings.defaults());
-    }
-
-    public Emulator(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window, AppSettings settings) {
-        this(new Console(
-                biosFile,
-                romFile,
-                saveFile,
-                headless,
-                window,
-                settings,
-                null,
-                null,
-                headless ? null : DirectLinkCable.createStandalone(),
-                false,
-                true
-        ), !headless);
-    }
-
-    private Emulator(Console console, boolean throttled) {
-        this(List.of(console), throttled);
+        this(new Console(biosFile, romFile, saveFile, headless), !headless);
     }
 
     private Emulator(List<Console> consoles, boolean throttled) {
@@ -83,30 +53,30 @@ public class Emulator {
             throw new IllegalArgumentException("At least one console is required");
         }
         this.consoles = new ArrayList<>(consoles);
-        this.primaryConsole = this.consoles.getFirst();
+        this.primaryConsole = this.consoles.get(0);
         this.throttled = throttled;
     }
 
-    public static Emulator linked(PlayerConfig player1, PlayerConfig player2, AppSettings settings) {
+    public static Emulator linked(PlayerConfig player1, PlayerConfig player2) {
         DirectLinkCable.Pair cablePair = DirectLinkCable.createPair();
         List<Console> consoles = new ArrayList<>();
-        consoles.add(createLinkedConsole(player1, settings, cablePair.player1()));
-        consoles.add(createLinkedConsole(player2, settings, cablePair.player2()));
+        consoles.add(createLinkedConsole(player1, cablePair.player1()));
+        consoles.add(createLinkedConsole(player2, cablePair.player2()));
         return new Emulator(consoles, true);
     }
 
-    private static Console createLinkedConsole(PlayerConfig config, AppSettings settings, LinkCable linkCable) {
+    private static Console createLinkedConsole(PlayerConfig config, LinkCable linkCable) {
         Console console = new Console(
                 config.biosFile(),
                 config.romFile(),
                 config.saveFile(),
                 false,
-                config.window(),
-                settings,
-                config.controller(),
-                config.keyListener(),
+                config.display(),
+                config.settings(),
+                config.input(),
+                config.audioOutput(),
                 linkCable,
-                config.secondaryDisplay(),
+                config.detachedDisplayFactory(),
                 true
         );
         if (config.skipBios()) {
@@ -119,11 +89,53 @@ public class Emulator {
         synchronized (consolesLock) {
             consoles.forEach(Console::resetExternalThrottleClock);
         }
+        while (!stopped) {
+            int count = consoleCount();
+            if (count == 0) {
+                break;
+            }
+            if (count == 1) {
+                runSingleConsoleLoop();
+            } else {
+                runCoordinatedLoop();
+            }
+        }
+        stop();
+    }
+
+    private void runSingleConsoleLoop() {
+        Console console = primaryConsole;
+        if (console == null) {
+            return;
+        }
+        long observedFrame = console.frameNumber();
+        long nextFrameDeadline = System.nanoTime() + console.targetFrameNanos();
+        while (!stopped && primaryConsole == console && !console.isStopped()) {
+            if (console.isPaused()) {
+                LockSupport.parkNanos(2_000_000L);
+                nextFrameDeadline = System.nanoTime() + console.targetFrameNanos();
+                observedFrame = console.frameNumber();
+                continue;
+            }
+
+            console.tick();
+            long frame = console.frameNumber();
+            if (frame != observedFrame) {
+                if (consoleCount() != 1) {
+                    break;
+                }
+                observedFrame = frame;
+                nextFrameDeadline = throttleExternalFrame(console, nextFrameDeadline);
+            }
+        }
+    }
+
+    private void runCoordinatedLoop() {
         List<Long> consoleCycles = initialConsoleCycles();
         Console frameConsole = primaryConsole;
         long observedFrame = frameConsole.frameNumber();
         long nextFrameDeadline = System.nanoTime() + NANOS_PER_FRAME;
-        while (!stopped) {
+        while (!stopped && consoleCount() > 1) {
             pruneStoppedConsoles(consoleCycles);
             frameConsole = primaryConsole;
             if (frameConsole == null) {
@@ -153,25 +165,30 @@ public class Emulator {
             long frame = frameConsole.frameNumber();
             if (frame != observedFrame) {
                 observedFrame = frame;
-                long targetFrameNanos = frameConsole.targetFrameNanos();
-                if (throttled) {
-                    long now = System.nanoTime();
-                    long remaining = nextFrameDeadline - now;
-                    if (remaining > 0) {
-                        LockSupport.parkNanos(remaining);
-                    }
-                    long frameClock = System.nanoTime();
-                    synchronized (consolesLock) {
-                        consoles.forEach(console -> console.markFrameClock(frameClock));
-                    }
-                    nextFrameDeadline += targetFrameNanos;
-                    if (System.nanoTime() > nextFrameDeadline + targetFrameNanos * 3) {
-                        nextFrameDeadline = System.nanoTime() + targetFrameNanos;
-                    }
-                }
+                nextFrameDeadline = throttleExternalFrame(frameConsole, nextFrameDeadline);
             }
         }
-        stop();
+    }
+
+    private long throttleExternalFrame(Console frameConsole, long nextFrameDeadline) {
+        long targetFrameNanos = frameConsole.targetFrameNanos();
+        if (!throttled) {
+            return System.nanoTime() + targetFrameNanos;
+        }
+        long now = System.nanoTime();
+        long remaining = nextFrameDeadline - now;
+        if (remaining > 0) {
+            LockSupport.parkNanos(remaining);
+        }
+        long frameClock = System.nanoTime();
+        synchronized (consolesLock) {
+            consoles.forEach(console -> console.markFrameClock(frameClock));
+        }
+        long nextDeadline = nextFrameDeadline + targetFrameNanos;
+        if (System.nanoTime() > nextDeadline + targetFrameNanos * 3) {
+            nextDeadline = System.nanoTime() + targetFrameNanos;
+        }
+        return nextDeadline;
     }
 
     private List<Long> initialConsoleCycles() {
@@ -219,7 +236,7 @@ public class Emulator {
             consoleCycles.add(consoles.get(consoleCycles.size()).systemCycles());
         }
         while (consoleCycles.size() > consoles.size()) {
-            consoleCycles.removeLast();
+            consoleCycles.remove(consoleCycles.size() - 1);
         }
     }
 
@@ -239,7 +256,7 @@ public class Emulator {
     }
 
     private void refreshPrimaryConsole() {
-        primaryConsole = consoles.isEmpty() ? null : consoles.getFirst();
+        primaryConsole = consoles.isEmpty() ? null : consoles.get(0);
     }
 
     private record TickTarget(Console console) {
@@ -310,19 +327,12 @@ public class Emulator {
         }
     }
 
-    public void openCheats() {
-        Console console = chooseConsole("Cheats");
-        if (console != null) {
-            console.openCheats();
-        }
-    }
-
     public void openDetachedDisplay(int index) {
         Console console = consoleAt(index);
         console.openDetachedDisplay("GBC EMU - Console " + (index + 1));
     }
 
-    public void addConsole(PlayerConfig config, AppSettings settings) {
+    public void addConsole(PlayerConfig config) {
         synchronized (consolesLock) {
             if (consoles.size() >= 2) {
                 throw new IllegalStateException("Only two local consoles are supported for now.");
@@ -331,11 +341,11 @@ public class Emulator {
             if (host == null) {
                 throw new IllegalStateException("Start a ROM before adding another console.");
             }
-            if (!(host.debugLinkCable() instanceof DirectLinkCable hostCable)) {
+            if (!(host.debugPort().linkCable() instanceof DirectLinkCable hostCable)) {
                 throw new IllegalStateException("The current console was not started with a detachable local link cable.");
             }
             DirectLinkCable peerCable = hostCable.createPeer();
-            Console console = createLinkedConsole(config, settings, peerCable);
+            Console console = createLinkedConsole(config, peerCable);
             console.resetExternalThrottleClock();
             console.markFrameClock(System.nanoTime());
             consoles.add(console);
@@ -357,23 +367,6 @@ public class Emulator {
         }
     }
 
-    public void openAudioDebugger() {
-        List<Console> snapshot = consoleSnapshot();
-        if (snapshot.isEmpty()) {
-            return;
-        }
-        if (snapshot.size() == 1) {
-            snapshot.getFirst().openAudioDebugger();
-            return;
-        }
-        List<AudioDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < snapshot.size(); i++) {
-            Console console = snapshot.get(i);
-            targets.add(new AudioDebugWindow.Target("Console " + (i + 1), console.debugApu()));
-        }
-        new AudioDebugWindow(targets);
-    }
-
     public String serialTranscript() {
         Console console = primaryConsole;
         return console == null ? "" : console.serialTranscript();
@@ -383,98 +376,36 @@ public class Emulator {
         consoleSnapshot().forEach(console -> console.applySettings(settings));
     }
 
-    public void openMemoryDebugger() {
+    public List<DebugTarget> debugTargets() {
         List<Console> snapshot = consoleSnapshot();
-        if (snapshot.isEmpty()) {
-            return;
-        }
-        if (snapshot.size() == 1) {
-            snapshot.getFirst().openMemoryDebugger();
-            return;
-        }
-        List<MemoryDebugWindow.Target> targets = new ArrayList<>();
+        List<DebugTarget> targets = new ArrayList<>();
         for (int i = 0; i < snapshot.size(); i++) {
-            Console console = snapshot.get(i);
-            targets.add(new MemoryDebugWindow.Target("Console " + (i + 1), console.debugBus(), console.debugPausedSupplier()));
+            targets.add(new DebugTarget("Console " + (i + 1), snapshot.get(i).debugPort()));
         }
-        new MemoryDebugWindow(targets);
-    }
-
-    public void openPpuDebugger() {
-        List<Console> snapshot = consoleSnapshot();
-        if (snapshot.isEmpty()) {
-            return;
-        }
-        if (snapshot.size() == 1) {
-            snapshot.getFirst().openPpuDebugger();
-            return;
-        }
-        List<PpuDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < snapshot.size(); i++) {
-            Console console = snapshot.get(i);
-            targets.add(new PpuDebugWindow.Target("Console " + (i + 1), console.debugPpu(), console.debugSuperGameBoy()));
-        }
-        new PpuDebugWindow(targets);
-    }
-
-    public void openCpuDebugger() {
-        List<Console> snapshot = consoleSnapshot();
-        if (snapshot.isEmpty()) {
-            return;
-        }
-        if (snapshot.size() == 1) {
-            snapshot.getFirst().openCpuDebugger();
-            return;
-        }
-        List<CpuDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < snapshot.size(); i++) {
-            Console console = snapshot.get(i);
-            targets.add(new CpuDebugWindow.Target(
-                    "Console " + (i + 1),
-                    console.debugCpu(),
-                    console.debugBus(),
-                    console.debugPpu(),
-                    console.debugController(),
-                    console.debugLinkCable()
-            ));
-        }
-        new CpuDebugWindow(targets);
-    }
-
-    public void openCartDebugger() {
-        List<Console> snapshot = consoleSnapshot();
-        if (snapshot.isEmpty()) {
-            return;
-        }
-        if (snapshot.size() == 1) {
-            snapshot.getFirst().openCartDebugger();
-            return;
-        }
-        List<CartDebugWindow.Target> targets = new ArrayList<>();
-        for (int i = 0; i < snapshot.size(); i++) {
-            Console console = snapshot.get(i);
-            targets.add(new CartDebugWindow.Target("Console " + (i + 1), console.debugCart()));
-        }
-        new CartDebugWindow(targets);
+        return targets;
     }
 
     public File dumpDebugBundle() {
+        return dumpDebugBundle(DebugImageSink.NOOP);
+    }
+
+    public File dumpDebugBundle(DebugImageSink imageSink) {
         List<Console> snapshot = consoleSnapshot();
         if (snapshot.isEmpty()) {
             throw new IllegalStateException("No active console to dump.");
         }
         if (snapshot.size() == 1) {
-            return snapshot.getFirst().dumpDebugBundle();
+            return snapshot.get(0).dumpDebugBundle("", imageSink);
         }
         try {
             List<File> dumps = new ArrayList<>();
             for (int i = 0; i < snapshot.size(); i++) {
-                dumps.add(snapshot.get(i).dumpDebugBundle("console-" + (i + 1)));
+                dumps.add(snapshot.get(i).dumpDebugBundle("console-" + (i + 1), imageSink));
             }
             String baseName = "debug-bundle-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now()) + "-session.json";
-            Path target = Path.of("target", baseName);
+            Path target = DebugJson.debugDirectory().toPath().resolve(baseName);
             Files.createDirectories(target.getParent());
-            Files.writeString(target, sessionDebugIndexJson(dumps));
+            DebugJson.writeTextFile(target, sessionDebugIndexJson(dumps));
             return target.toFile();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to dump emulator session debug bundle", e);
@@ -574,47 +505,19 @@ public class Emulator {
         }
     }
 
-    private Console chooseConsole(String title) {
-        List<Console> snapshot = consoleSnapshot();
-        if (snapshot.isEmpty()) {
-            return null;
-        }
-        if (snapshot.size() == 1) {
-            return snapshot.getFirst();
-        }
-        String[] options = new String[snapshot.size()];
-        for (int i = 0; i < options.length; i++) {
-            options[i] = "Console " + (i + 1);
-        }
-        Object selected = JOptionPane.showInputDialog(
-                null,
-                "Choose console:",
-                title,
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                options,
-                options[0]
-        );
-        if (selected == null) {
-            return null;
-        }
-        for (int i = 0; i < options.length; i++) {
-            if (options[i].equals(selected)) {
-                return snapshot.get(i);
-            }
-        }
-        return snapshot.getFirst();
+    public record DebugTarget(String label, ConsoleDebugPort debugPort) {
     }
 
     public record PlayerConfig(
             File biosFile,
             File romFile,
             File saveFile,
-            EmulatorWindow window,
-            Controller controller,
-            KeyListener keyListener,
-            boolean skipBios,
-            boolean secondaryDisplay
+            ConsoleDisplay display,
+            AppSettings settings,
+            ConsoleInput input,
+            ConsoleAudioOutput audioOutput,
+            java.util.function.Function<String, ConsoleDisplay> detachedDisplayFactory,
+            boolean skipBios
     ) {
     }
 }

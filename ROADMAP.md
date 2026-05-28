@@ -68,7 +68,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Persistir caminhos recentes e remover entradas inexistentes.
   - [x] Ter acao para limpar historico.
 
-- [ ] Gamepad.
+- [x] Gamepad.
   - [x] Integrar `input4j` de forma opcional em runtime.
   - [x] Detectar controles.
   - [x] Mapear botoes/eixos comuns para Player 1 e Player 2.
@@ -77,18 +77,20 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Captura automatica de botoes/eixos pressionados.
   - [x] Persistir nome do controle selecionado para sobreviver a mudanca de ordem dos dispositivos.
   - [x] Persistir perfil por controle quando possivel.
+  - [x] Organizar a aba de controles por Player 1/Player 2 para facilitar configuracao de dois controles.
   - [x] Suportar rumble para cartuchos/jogos compativeis quando `input4j` e o controle selecionado expuserem vibracao.
   - [x] Cartucho expoe suporte/estado de rumble de forma generica para debug e integracao com controle.
 
 - [ ] Configuracao de audio mais completa.
-  - Latencia/buffer.
-  - Device de audio.
+  - [x] Latencia/buffer.
+  - [x] Device de audio.
   - Perfil de filtro de saida.
   - [x] Aba de som com controles de DSP divertido opcional.
   - [x] DSP presets pos-mixagem: Raw, Warm, Wide, Room, Toy Synth.
   - [x] Controles de intensidade, chorus e reverb.
   - [x] Manter DSP e mute de turbo no driver de audio, fora da logica de hardware da APU.
   - [x] Backend experimental de SoundFont `.sf2` por eventos da APU via Java MIDI.
+  - [x] Troca de device/buffer pelo driver de audio, sem envolver a logica de hardware da APU.
   - [ ] Refinar mapeamento de instrumentos/programas por canal e presets por jogo.
 
 - [ ] Rewind continuo.
@@ -135,14 +137,18 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Evoluir janelas de debug para manter combo interno permanente e trocar a visao sem reabrir janela.
     - [x] Memory Debug.
     - [x] PPU Debug.
+    - [x] CPU, Audio e Cart/MBC Debug.
+    - [x] Combos das janelas de debug acompanham consoles adicionados/parados durante a sessao.
     - [x] CPU/Disassembly.
     - [x] Audio.
     - [x] Cart/MBC.
   - [x] Permitir iniciar/adicionar um segundo console durante a sessao, nao apenas iniciar sempre com dois.
     - `Emulator > Add Console 2...` cria um novo console, conecta ao cabo local em memoria e anexa como segunda tela.
+    - `Emulator > Add Console 2 from Recent ROMs` permite testar combinacoes recentes sem reabrir o seletor de arquivo.
   - [x] Permitir fechar um console/sessao individual sem interromper tudo.
     - `Emulator > Stop Console` para apenas o console escolhido.
     - Se o Console 1 for fechado e o Console 2 continuar, a janela principal promove a tela restante para a posicao primaria.
+    - A sessao preserva as opcoes da ROM restante para restart/save state quando voltar a ter apenas um console.
   - [x] Permitir destacar a tela de um console para janela/monitor separado.
     - Janela destacada e display-only: nao instala outro dispatcher de teclado e espelha o frame do console escolhido.
     - Input continua centralizado pela janela principal para evitar eventos duplicados.
@@ -192,6 +198,64 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
     - Paletas SGB ficam separadas da palette RAM CGB usada por DMG compatibility.
   - [x] Implementar apenas bordas fornecidas pela ROM; sem bordas customizadas de usuario.
 
+- [ ] Frontends multiplos e core portavel.
+  - Plano detalhado em [ANDROID_FRONTEND_PLAN.md](ANDROID_FRONTEND_PLAN.md).
+  - Objetivo: `Console` deve representar apenas o hardware emulado, enquanto desktop/Android conectam tela, audio, input, rumble, storage e lifecycle por adaptadores.
+  - [ ] Remover dependencias diretas de Swing/AWT de `Console`.
+    - Janelas, menus, dialogs e debug visual ficam no frontend desktop.
+    - O core deve expor snapshots/debug data neutros, sem construir janelas.
+    - [x] Remover de `Console` a abertura direta de janelas de debug/cheats; a sessao `Emulator` agora decide a UI usando dados expostos pelo console.
+    - [x] Introduzir `ConsoleDisplay` no core e `SwingConsoleDisplay` no frontend desktop para tirar `EmulatorWindow` diretamente de `Console`.
+    - [x] Remover de `Emulator` a abertura direta de janelas de debug/cheats; ele agora expoe `DebugTarget` neutro e o desktop cria as janelas.
+    - [x] Remover de `Emulator` a criacao direta de `DesktopConsoleInput`, `SwingConsoleDisplay` e `AudioOutput`; o desktop monta `Console`/`PlayerConfig` com adaptadores.
+    - [x] Remover import direto de AWT/ImageIO de `Console`; escrita PNG de debug ficou atras de `DebugImageSink`, com implementacao desktop em `PngDebugImageSink`.
+    - [x] Remover dependencia de `java.awt.event.KeyEvent` de `AppSettings`; defaults de teclado agora sao codigos numericos persistidos.
+    - [x] Remover `BufferedImage`/AWT da PPU e do Super Game Boy; o core agora expoe `RawImage` e o frontend desktop converte para Swing.
+    - [x] Mover `KeyboardController`, `GamepadController` e `CpuDebugWindow` para o pacote desktop `gui`, deixando `controller` e `debug` com interfaces/dados neutros.
+  - [ ] Remover dependencias diretas de Java Sound de `Console`.
+    - APU continua produzindo samples de hardware.
+    - Driver desktop aplica device, buffer, DSP e SoundFont fora da APU.
+    - Android deve poder usar `AudioTrack`/AAudio sem tocar na APU.
+    - [x] Introduzir `ConsoleAudioOutput`; `Console` recebe audio por interface e nao cria `AudioOutput`/Java Sound.
+    - [x] Mover `AudioOutput`, `AudioSinkFactory`, `SourceDataLineSink`, `SoundFontSynth` e DSP de host para `gui.audio`.
+    - [x] Manter o pacote `audio` focado em APU, canais, registradores, estados, debug snapshot e `AudioSampleOutput`.
+  - [ ] Remover dependencias diretas de teclado/input4j de `Console`.
+    - Frontends traduzem teclado, gamepad fisico ou controles de tela para estado de botoes.
+    - `Controller`/input state deve continuar sendo a fronteira do core.
+    - [x] Introduzir `ConsoleInput`; `Console` recebe input/rumble/turbo por interface e nao cria `KeyboardController`/`GamepadController`.
+    - [x] Criar `DesktopConsoleInput` para compor teclado, gamepad, turbo e rumble no frontend desktop.
+  - [ ] Formalizar interfaces pequenas:
+    - [x] `ConsoleDisplay` inicial para attach/detach/render/performance de frames.
+    - [x] `ConsoleInput` inicial para botoes, turbo e rumble.
+    - [x] `ConsoleAudioOutput` inicial para samples, mute de turbo e configuracao de saida.
+    - `FrameSink` menor para frames 160x144 ou SGB 256x224, quando a renderizacao estiver desacoplada de `Ppu`.
+    - `AudioSampleSink` para samples stereo.
+    - `InputProvider` para estado de botoes por console/player.
+    - `RumbleOutput` para cartuchos com rumble.
+    - `StorageProvider` para ROM, `.sav`, `.rtc`, save states e configuracoes.
+  - [ ] Separar modulos quando as fronteiras estiverem estaveis:
+    - `gbcemu-core`.
+    - `gbcemu-desktop`.
+    - `gbcemu-android`.
+  - [ ] Criar build Android.
+    - Preferencia: modulo Android com Gradle/Android plugin.
+    - [x] Maven expoe um perfil `-Pandroid-apk` como wrapper/conveniencia delegando para o Gradle Android.
+    - [x] Criar scaffold `android-app` em Java com Android Gradle Plugin.
+  - [ ] Frontend Android.
+    - [x] Scaffold de Activity fullscreen.
+    - [x] SurfaceView inicial para frame 160x144 escalado.
+    - [x] Controles virtuais na tela.
+    - [x] Mapeamento inicial de controles fisicos Android por `KeyEvent`.
+    - [x] Seletor de ROM via Storage Access Framework, copia privada da ROM e lembranca da ultima ROM escolhida.
+    - [x] Host inicial para `AudioTrack` e rumble via `Vibrator`.
+    - [x] Primeira integracao jogavel com o core real por `Console`/`Emulator`.
+    - [x] Android usa `AndroidInputState`, `GbcEmulatorSurface` e `AndroidAudioOutput` como adaptadores de input/tela/audio.
+    - [x] `.sav` basico ao lado da copia privada da ROM importada.
+    - Perfil configuravel de controles fisicos Android.
+    - Rumble nativo quando cartucho/dispositivo suportarem.
+    - [x] Lifecycle pause/resume/stop inicial.
+    - Storage Android para ROMs, saves, save states e configuracoes.
+
 ## Debug
 
 - [x] Watchpoints.
@@ -213,7 +277,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Permitir inicialmente apenas quando pausado.
 
 - [x] Export de debug para Codex.
-  - [x] JSON inicial da janela de CPU em `target/debug-cpu-window.json`.
+  - [x] JSON inicial da janela de CPU em `debug/debug-cpu-window.json`.
   - [x] Incluir CPU, PPU basica, motivo de breakpoint e tabela atual do disassembler.
   - [x] Incluir interrupcoes, timer, cart/MBC e resumo dos bancos selecionados.
   - [x] Incluir serial.
@@ -226,7 +290,16 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
   - [x] Dump bundle pelo menu `Debug`, sem precisar abrir janelas individuais.
   - [x] Incluir disassembly forward no dump bundle.
   - [x] Incluir DMA, HDMA, registradores CGB e memory map no dump bundle.
+  - [x] Separar a UI de debug do controle de breakpoints/watchpoints por meio de `DebuggerInterface`.
+  - [x] Separar a janela de memoria do `Bus` direto por meio de `DebugMemoryInterface`.
+  - [x] Consolidar o acesso de debug por console em `ConsoleDebugPort`, evitando varios getters soltos no `Console`.
+  - [x] Fazer o cache do disassembler ler por `DebugMemoryInterface`, preservando a nocao de bancos sem prender no `Bus`.
+  - [x] Separar a janela de audio da APU concreta por meio de `DebugAudioInterface`.
+  - [x] Separar a janela de Cart/MBC do `Cart` concreto por meio de `DebugCartInterface`.
+  - [x] Permitir pausa manual pelo `DebuggerInterface` para a janela de CPU solicitar break sem conhecer o loop do console.
+  - [x] Mover dumps manuais e bundles de debug de `target/` para `debug/`.
   - [x] Incluir metadata de execucao no dump bundle.
+  - [x] Incluir resumo `clockTiming` com velocidade CGB, timer, APU frame sequencer e serial para auditoria de double speed.
   - [x] Exportar dumps completos de memoria por regiao/banco quando solicitado.
   - [x] Incluir screenshot do frame atual no dump bundle.
 
@@ -274,6 +347,7 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 
 - [ ] Timing CGB.
   - Estado atual: nenhum bug especifico aberto, mas ainda falta uma revisao dirigida para fechar o assunto.
+  - [x] Expor no debug bundle/CPU dump um resumo dos dominios de clock usados na implementacao atual.
   - Validar double speed em CPU, timer, serial, PPU, DMA, HDMA e APU contra referencias/test ROMs quando tivermos suite apropriada.
   - Garantir que componentes que nao dobram no CGB continuem no clock correto.
   - Documentar quais subsistemas usam clock de CPU, dot clock, machine cycle ou frame sequencer para evitar regressao futura.
@@ -398,7 +472,12 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 3. Melhorar usabilidade do link local.
    - Evoluir a janela destacada para virar detach real se a tela lado a lado ficar pequena demais em sessoes futuras.
    - Validar o fluxo de adicionar/parar console em Pokemon/Tetris e corrigir o que aparecer na pratica.
-4. Escolher proxima tarefa de compatibilidade baseada em jogo/teste real.
+4. Separar core e frontend para preparar Android sem carregar dependencias desktop no nucleo.
+   - PPU/SGB ja expoem imagens cruas por `RawImage`.
+   - Java Sound/MIDI/DSP desktop ja foi movido para `gui.audio`.
+   - Android ja consome o core real pelo source set principal filtrado.
+   - Proxima fatia provavel: criar o modulo `gbcemu-core` Java puro e ajustar desktop/Android para depender dele.
+5. Escolher proxima tarefa de compatibilidade baseada em jogo/teste real.
 
 ### Menores / Depois
 
@@ -408,3 +487,4 @@ Este documento e a fonte unica de metas do emulador. Ele substitui listas soltas
 - Pocket Camera e mappers raros conforme necessidade de jogos reais.
 - GraalVM native-image no Windows com metadata AWT/Swing estavel.
 - Infrared fisico via dispositivo externo.
+- Frontend Android: configuracoes, save states, rewind, SGB composto, recentes completos e perfis de controles fisicos.

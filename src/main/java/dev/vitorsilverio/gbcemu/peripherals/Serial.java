@@ -12,6 +12,7 @@ import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
 
@@ -29,7 +30,7 @@ public class Serial implements MemorySpace, MachineCycle, Stateful<SerialState> 
     private static final int FAST_SPEED_CYCLES_PER_TRANSFER = 128;
     private static final int TRANSFER_HISTORY_SIZE = 32;
 
-    private final List<Integer> registers = List.of(SB_REGISTER, SC_REGISTER);
+    private final List<Integer> registers = Arrays.asList(SB_REGISTER, SC_REGISTER);
     private final Bus bus;
     private final StringBuilder text = new StringBuilder();
     private final StringBuilder transcript = new StringBuilder();

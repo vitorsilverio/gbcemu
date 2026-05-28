@@ -1,7 +1,8 @@
 package dev.vitorsilverio.gbcemu.gui;
 
-import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
+import dev.vitorsilverio.gbcemu.debug.CartDebugInterface;
+import dev.vitorsilverio.gbcemu.debug.DebugCartInterface;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
@@ -15,24 +16,27 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.Timer;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class CartDebugWindow {
 
-    public record Target(String name, Cart cart) {
+    public record Target(String name, DebugCartInterface cart) {
         @Override
         public String toString() {
             return name;
         }
     }
 
-    private Cart cart;
+    private DebugCartInterface cart;
     private final JComboBox<Target> targetSelector;
+    private final Supplier<List<Target>> targetSupplier;
     private final JFrame frame = new JFrame("Cart / MBC Debug");
     private final DefaultTableModel propertiesModel = tableModel("Property", "Value");
     private final DefaultTableModel banksModel = tableModel("Memory", "Current", "Banks", "Bank Size");
@@ -40,24 +44,32 @@ public class CartDebugWindow {
     private final JTable banksTable = new JTable(banksModel);
     private final JTextArea headerText = new JTextArea();
     private final JCheckBox autoRefresh = new JCheckBox("Auto refresh");
+    private boolean updatingTargetSelector;
     private final Timer autoRefreshTimer = new Timer(1000, event -> {
         if (autoRefresh.isSelected() && frame.isVisible()) {
             refresh();
         }
     });
 
-    public CartDebugWindow(Cart cart) {
-        this.cart = cart;
+    public CartDebugWindow(dev.vitorsilverio.gbcemu.cartridge.Cart cart) {
+        this.cart = new CartDebugInterface(cart);
         this.targetSelector = null;
+        this.targetSupplier = null;
         initialize();
         refresh();
         frame.setVisible(true);
     }
 
     public CartDebugWindow(List<Target> targets) {
+        this(() -> targets);
+    }
+
+    public CartDebugWindow(Supplier<List<Target>> targetSupplier) {
+        List<Target> targets = targetSupplier.get();
         if (targets.isEmpty()) {
             throw new IllegalArgumentException("At least one cart debug target is required");
         }
+        this.targetSupplier = targetSupplier;
         this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
         applyTarget(targets.getFirst());
         initialize();
@@ -73,6 +85,9 @@ public class CartDebugWindow {
         JPanel toolbar = new JPanel();
         if (targetSelector != null) {
             targetSelector.addActionListener(event -> {
+                if (updatingTargetSelector) {
+                    return;
+                }
                 Target target = (Target) targetSelector.getSelectedItem();
                 if (target != null) {
                     applyTarget(target);
@@ -118,8 +133,9 @@ public class CartDebugWindow {
     }
 
     private void refresh() {
+        refreshTargets();
         propertiesModel.setRowCount(0);
-        for (Map.Entry<String, String> entry : cart.debugProperties().entrySet()) {
+        for (Map.Entry<String, String> entry : cart.properties().entrySet()) {
             propertiesModel.addRow(new Object[]{entry.getKey(), entry.getValue()});
         }
 
@@ -132,14 +148,31 @@ public class CartDebugWindow {
                     String.format("%04X", bank.bankSize())
             });
         }
-        headerText.setText(cart.getHeader().toString());
+        headerText.setText(cart.header().toString());
+    }
+
+    private void refreshTargets() {
+        if (targetSupplier == null || targetSelector == null) {
+            return;
+        }
+        List<Target> targets = targetSupplier.get();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Target selected = (Target) targetSelector.getSelectedItem();
+        Target next = selected != null && targets.contains(selected) ? selected : targets.getFirst();
+        updatingTargetSelector = true;
+        try {
+            targetSelector.setModel(new DefaultComboBoxModel<>(targets.toArray(Target[]::new)));
+            targetSelector.setSelectedItem(next);
+        } finally {
+            updatingTargetSelector = false;
+        }
+        applyTarget(next);
     }
 
     private void dump() {
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
+        File target = DebugJson.debugDirectory();
         try {
             java.nio.file.Files.writeString(new File(target, "debug-cart-window.txt").toPath(), dumpText());
         } catch (IOException e) {
@@ -175,10 +208,10 @@ public class CartDebugWindow {
     }
 
     private String dumpJsonText() {
-        CartState state = cart.saveState();
+        CartState state = cart.state();
         StringBuilder builder = new StringBuilder();
         builder.append("{\n");
-        DebugJson.appendObject(builder, "properties", cart.debugProperties(), true, 2);
+        DebugJson.appendObject(builder, "properties", cart.properties(), true, 2);
         builder.append("  \"externalRam\": {\n");
         DebugJson.appendNumber(builder, "size", state.externalRam().data().length, true, 4);
         DebugJson.appendNumber(builder, "currentBank", state.externalRam().currentBank(), false, 4);

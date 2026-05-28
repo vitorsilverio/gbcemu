@@ -458,6 +458,24 @@ public class EmulatorWindow {
         addSecondConsole.addActionListener(event -> menuActions.addSecondConsole().run());
         emulatorMenu.add(addSecondConsole);
 
+        JMenu addSecondConsoleRecent = new JMenu("Add Console 2 from Recent ROMs");
+        addSecondConsoleRecent.addMenuListener(new javax.swing.event.MenuListener() {
+            @Override
+            public void menuSelected(javax.swing.event.MenuEvent event) {
+                rebuildAddSecondConsoleRecentMenu(addSecondConsoleRecent, menuActions);
+            }
+
+            @Override
+            public void menuDeselected(javax.swing.event.MenuEvent event) {
+            }
+
+            @Override
+            public void menuCanceled(javax.swing.event.MenuEvent event) {
+            }
+        });
+        rebuildAddSecondConsoleRecentMenu(addSecondConsoleRecent, menuActions);
+        emulatorMenu.add(addSecondConsoleRecent);
+
         JMenuItem pause = new JMenuItem("Pause");
         pause.addActionListener(event -> menuActions.pause().run());
         pause.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
@@ -572,6 +590,23 @@ public class EmulatorWindow {
 
 
 
+    }
+
+    private void rebuildAddSecondConsoleRecentMenu(JMenu menu, EmulatorMenuActions menuActions) {
+        menu.removeAll();
+        List<File> recentRoms = menuActions.recentRoms().get();
+        if (recentRoms.isEmpty()) {
+            JMenuItem empty = new JMenuItem("(empty)");
+            empty.setEnabled(false);
+            menu.add(empty);
+            return;
+        }
+        for (File rom : recentRoms) {
+            JMenuItem item = new JMenuItem(rom.getName());
+            item.setToolTipText(rom.getAbsolutePath());
+            item.addActionListener(event -> menuActions.addSecondConsoleFromRecentRom().accept(rom));
+            menu.add(item);
+        }
     }
 
     private void rebuildRecentRomsMenu(JMenu menu, EmulatorMenuActions menuActions) {
@@ -727,7 +762,7 @@ public class EmulatorWindow {
             return;
         }
         if (sgb != null && sgb.hasBorder()) {
-            Image border = sgb.borderImage();
+            Image border = SwingImages.toBufferedImage(sgb.borderImage());
             graphics.drawImage(border, x, y, drawWidth, drawHeight, null);
             int gameX = x + scaleCoordinate(SuperGameBoy.GAME_SCREEN_X, drawWidth, SuperGameBoy.BORDER_WIDTH);
             int gameY = y + scaleCoordinate(SuperGameBoy.GAME_SCREEN_Y, drawHeight, SuperGameBoy.BORDER_HEIGHT);
@@ -747,7 +782,7 @@ public class EmulatorWindow {
         if (source == null) {
             return;
         }
-        Image frame = frameSnapshot != null ? frameSnapshot : source.getFrameBuffer();
+        Image frame = frameSnapshot != null ? frameSnapshot : SwingImages.toBufferedImage(source.getFrameBuffer());
         if (xbrzFiltering) {
             frame = AwtXbrz.scaleImage(frame, scale);
         }
@@ -759,13 +794,13 @@ public class EmulatorWindow {
             return null;
         }
         if (sgb != null && sgb.hasBorder()) {
-            BufferedImage border = sgb.copyBorderImage();
+            BufferedImage border = SwingImages.toBufferedImage(sgb.copyBorderImage());
             if (border != null) {
                 BufferedImage composed = new BufferedImage(SuperGameBoy.BORDER_WIDTH, SuperGameBoy.BORDER_HEIGHT, BufferedImage.TYPE_INT_RGB);
                 Graphics2D graphics = composed.createGraphics();
                 try {
                     graphics.drawImage(border, 0, 0, null);
-                    graphics.drawImage(sgb.colorizeFrame(source.getFrameBuffer()), SuperGameBoy.GAME_SCREEN_X, SuperGameBoy.GAME_SCREEN_Y, WIDTH, HEIGHT, null);
+                    graphics.drawImage(SwingImages.toBufferedImage(sgb.colorizeFrame(source.getFrameBuffer())), SuperGameBoy.GAME_SCREEN_X, SuperGameBoy.GAME_SCREEN_Y, WIDTH, HEIGHT, null);
                 } finally {
                     graphics.dispose();
                 }
@@ -773,19 +808,8 @@ public class EmulatorWindow {
             }
         }
         return sgb != null && sgb.isEnabled()
-                ? sgb.colorizeFrame(source.getFrameBuffer())
-                : copyImage(source.getFrameBuffer());
-    }
-
-    private BufferedImage copyImage(Image source) {
-        BufferedImage copy = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
-        Graphics2D graphics = copy.createGraphics();
-        try {
-            graphics.drawImage(source, 0, 0, null);
-        } finally {
-            graphics.dispose();
-        }
-        return copy;
+                ? SwingImages.toBufferedImage(sgb.colorizeFrame(source.getFrameBuffer()))
+                : SwingImages.toBufferedImage(source.getFrameBuffer());
     }
 
     private int scaleCoordinate(int value, int targetSize, int sourceSize) {

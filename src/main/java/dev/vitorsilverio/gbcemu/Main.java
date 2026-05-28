@@ -2,14 +2,27 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
-import dev.vitorsilverio.gbcemu.controller.CompositeController;
-import dev.vitorsilverio.gbcemu.controller.GamepadController;
-import dev.vitorsilverio.gbcemu.controller.KeyboardController;
+import dev.vitorsilverio.gbcemu.core.Console;
+import dev.vitorsilverio.gbcemu.core.ConsoleAudioOutput;
+import dev.vitorsilverio.gbcemu.core.ConsoleDisplay;
 import dev.vitorsilverio.gbcemu.core.Emulator;
+import dev.vitorsilverio.gbcemu.debug.ConsoleDebugPort;
+import dev.vitorsilverio.gbcemu.gui.AudioDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.CartDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.CheatsWindow;
+import dev.vitorsilverio.gbcemu.gui.CpuDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.DesktopAppSettingsStore;
+import dev.vitorsilverio.gbcemu.gui.DesktopConsoleInput;
 import dev.vitorsilverio.gbcemu.gui.EmulatorMenuActions;
 import dev.vitorsilverio.gbcemu.gui.EmulatorWindow;
+import dev.vitorsilverio.gbcemu.gui.MemoryDebugWindow;
+import dev.vitorsilverio.gbcemu.gui.PngDebugImageSink;
+import dev.vitorsilverio.gbcemu.gui.PpuDebugWindow;
 import dev.vitorsilverio.gbcemu.gui.SaveStateDialog;
 import dev.vitorsilverio.gbcemu.gui.SettingsDialog;
+import dev.vitorsilverio.gbcemu.gui.SwingConsoleDisplay;
+import dev.vitorsilverio.gbcemu.gui.audio.AudioOutput;
+import dev.vitorsilverio.gbcemu.link.DirectLinkCable;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateStore;
 
 import javax.swing.*;
@@ -26,9 +39,10 @@ public class Main {
     private static final String LAST_ROM_DIRECTORY = "lastRomDirectory";
     private static final String RECENT_ROM_PREFIX = "recentRom";
     private static final int MAX_RECENT_ROMS = 10;
-    private static AppSettings settings = AppSettings.load(PREFERENCES);
+    private static AppSettings settings = DesktopAppSettingsStore.load(PREFERENCES);
     private static Emulator activeEmulator;
     private static Options activeOptions;
+    private static final List<Options> activeConsoleOptions = new ArrayList<>();
     private static EmulatorWindow window;
     private static final SaveStateStore SAVE_STATE_STORE = new SaveStateStore();
 
@@ -54,12 +68,14 @@ public class Main {
                 return;
             }
             activeOptions = options;
+            activeConsoleOptions.clear();
             window = new EmulatorWindow(menuActions(), settings);
             window.show();
             return;
         }
 
         activeOptions = options;
+        activeConsoleOptions.clear();
         if (!options.headless()) {
             window = new EmulatorWindow(menuActions(), settings);
             window.show();
@@ -104,6 +120,7 @@ public class Main {
                 Main::restartEmulator,
                 Main::openDetachedDisplay,
                 Main::addSecondConsole,
+                Main::addSecondConsoleFromRecent,
                 Main::stopConsole,
                 Main::saveSnapshot,
                 Main::restoreSnapshot,
@@ -152,7 +169,7 @@ public class Main {
             return;
         }
         try {
-            File dumpFile = activeEmulator.dumpDebugBundle();
+            File dumpFile = activeEmulator.dumpDebugBundle(new PngDebugImageSink());
             JOptionPane.showMessageDialog(null,
                     "Debug dump written to:\n" + dumpFile.getAbsolutePath(),
                     "Debug dump",
@@ -166,8 +183,9 @@ public class Main {
     }
 
     private static void configureCheats() {
-        if (activeEmulator != null) {
-            activeEmulator.openCheats();
+        ConsoleDebugPort debug = chooseDebugTarget("Cheats");
+        if (debug != null) {
+            new CheatsWindow(debug.gameSharkDevice());
         }
     }
 
@@ -178,7 +196,7 @@ public class Main {
 
     private static void applySettings(AppSettings newSettings) {
         settings = newSettings.normalized();
-        settings.save(PREFERENCES);
+        DesktopAppSettingsStore.save(PREFERENCES, settings);
         if (window != null) {
             window.applySettings(settings);
         }
@@ -189,31 +207,31 @@ public class Main {
 
     private static void openAudioDebugger() {
         if (activeEmulator != null) {
-            activeEmulator.openAudioDebugger();
+            new AudioDebugWindow(Main::audioTargets);
         }
     }
 
     private static void openMemoryDebugger() {
         if (activeEmulator != null) {
-            activeEmulator.openMemoryDebugger();
+            new MemoryDebugWindow(Main::memoryTargets);
         }
     }
 
     private static void openPpuDebugger() {
         if (activeEmulator != null) {
-            activeEmulator.openPpuDebugger();
+            new PpuDebugWindow(Main::ppuTargets);
         }
     }
 
     private static void openCpuDebugger() {
         if (activeEmulator != null) {
-            activeEmulator.openCpuDebugger();
+            new CpuDebugWindow(Main::cpuTargets);
         }
     }
 
     private static void openCartDebugger() {
         if (activeEmulator != null) {
-            activeEmulator.openCartDebugger();
+            new CartDebugWindow(Main::cartTargets);
         }
     }
 
@@ -236,6 +254,29 @@ public class Main {
     }
 
     private static void addSecondConsole() {
+        File player2Rom = chooseRomFile("Open Console 2 ROM");
+        if (player2Rom == null) {
+            return;
+        }
+        addSecondConsole(player2Rom);
+    }
+
+    private static void addSecondConsoleFromRecent(File romFile) {
+        if (romFile == null) {
+            return;
+        }
+        if (!romFile.isFile()) {
+            removeRecentRom(romFile);
+            JOptionPane.showMessageDialog(null,
+                    "Recent ROM no longer exists:\n" + romFile.getAbsolutePath(),
+                    "Recent ROMs",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        addSecondConsole(romFile);
+    }
+
+    private static void addSecondConsole(File player2Rom) {
         if (activeEmulator == null) {
             JOptionPane.showMessageDialog(null,
                     "Start a ROM before adding a second console.",
@@ -250,30 +291,15 @@ public class Main {
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        File player2Rom = chooseRomFile("Open Console 2 ROM");
-        if (player2Rom == null) {
-            return;
-        }
         Options baseOptions = activeOptions == null ? Options.empty() : activeOptions;
         Options player2Options = baseOptions.withRomFile(player2Rom);
         addRecentRom(player2Rom);
-        KeyboardController player2Controller = new KeyboardController(player2KeyCodes(), 0, false);
-        CompositeController player2Input = new CompositeController(player2Controller, new GamepadController(settings.gamepadConfig(1)));
+        ensurePrimaryConsoleOptionsTracked();
+        DesktopConsoleInput player2Input = new DesktopConsoleInput(settings, 1);
         try {
-            activeEmulator.addConsole(
-                    new Emulator.PlayerConfig(
-                            player2Options.biosFile(),
-                            player2Options.romFile(),
-                            player2Options.saveFile(),
-                            window,
-                            player2Input,
-                            player2Controller,
-                            player2Options.skipBios(),
-                            true
-                    ),
-                    settings
-            );
-            activeOptions = null;
+            activeEmulator.addConsole(playerConfig(player2Options, 1, true, player2Input));
+            activeConsoleOptions.add(player2Options);
+            activeOptions = activeConsoleOptions.size() == 1 ? activeConsoleOptions.getFirst() : null;
             showOverlay(EmulatorWindow.OverlayIcon.PLAY);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null,
@@ -289,16 +315,18 @@ public class Main {
         }
         try {
             activeEmulator.stopConsole(consoleIndex);
+            removeActiveConsoleOptions(consoleIndex);
             if (activeEmulator.consoleCount() == 0) {
                 activeEmulator = null;
                 activeOptions = null;
+                activeConsoleOptions.clear();
                 if (window != null) {
                     window.resetTitle();
                 }
                 showOverlay(EmulatorWindow.OverlayIcon.STOP);
                 return;
             }
-            activeOptions = null;
+            activeOptions = activeConsoleOptions.size() == 1 ? activeConsoleOptions.getFirst() : null;
             showOverlay(EmulatorWindow.OverlayIcon.STOP);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null,
@@ -315,7 +343,8 @@ public class Main {
         if (isLinkOperationBlocked("Load state")) {
             return;
         }
-        SAVE_STATE_STORE.load(activeOptions.romFile(), 0)
+        Options options = primaryActiveOptions();
+        SAVE_STATE_STORE.load(options.romFile(), 0)
                 .ifPresentOrElse(
                         slot -> {
                             activeEmulator.restoreSaveStateFile(slot.saveStateFile());
@@ -366,7 +395,7 @@ public class Main {
             return;
         }
         try {
-            SAVE_STATE_STORE.save(activeOptions.romFile(), 0, activeEmulator.createSaveStateFile());
+            SAVE_STATE_STORE.save(primaryActiveOptions().romFile(), 0, activeEmulator.createSaveStateFile());
             showOverlay(EmulatorWindow.OverlayIcon.SAVE);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null,
@@ -377,7 +406,8 @@ public class Main {
     }
 
     private static boolean hasActiveRomForSaveStates() {
-        if (activeEmulator == null || activeOptions == null || activeOptions.romFile() == null) {
+        Options options = primaryActiveOptions();
+        if (activeEmulator == null || options == null || options.romFile() == null) {
             JOptionPane.showMessageDialog(null,
                     "Load a ROM before using save states.",
                     "Save states",
@@ -394,8 +424,9 @@ public class Main {
         if (isLinkOperationBlocked("Save states")) {
             return;
         }
+        Options options = primaryActiveOptions();
         SaveStateDialog dialog = new SaveStateDialog(
-                activeOptions.romFile(),
+                options.romFile(),
                 SAVE_STATE_STORE,
                 activeEmulator::createSaveStateFile,
                 activeEmulator::restoreSaveStateFile
@@ -445,50 +476,24 @@ public class Main {
         addRecentRom(player2Rom);
         stopCurrentRuntime();
         activeOptions = null;
+        activeConsoleOptions.clear();
 
         if (window == null) {
             window = new EmulatorWindow(menuActions(), settings);
             window.show();
         }
-        KeyboardController player1Controller = new KeyboardController(settings);
-        KeyboardController player2Controller = new KeyboardController(player2KeyCodes(), 0, false);
-        CompositeController player1Input = new CompositeController(player1Controller, new GamepadController(settings.gamepadConfig(0)));
-        CompositeController player2Input = new CompositeController(player2Controller, new GamepadController(settings.gamepadConfig(1)));
+        DesktopConsoleInput player1Input = new DesktopConsoleInput(settings, 0);
+        DesktopConsoleInput player2Input = new DesktopConsoleInput(settings, 1);
         activeEmulator = Emulator.linked(
-                new Emulator.PlayerConfig(
-                        player1Options.biosFile(),
-                        player1Options.romFile(),
-                        player1Options.saveFile(),
-                        window,
-                        player1Input,
-                        player1Controller,
-                        player1Options.skipBios(),
-                        false
-                ),
-                new Emulator.PlayerConfig(
-                        player2Options.biosFile(),
-                        player2Options.romFile(),
-                        player2Options.saveFile(),
-                        window,
-                        player2Input,
-                        player2Controller,
-                        player2Options.skipBios(),
-                        true
-                ),
-                settings
+                playerConfig(player1Options, 0, false, player1Input),
+                playerConfig(player2Options, 1, true, player2Input)
         );
+        activeConsoleOptions.add(player1Options);
+        activeConsoleOptions.add(player2Options);
         Thread thread = new Thread(activeEmulator::start, "gbcemu-runtime");
         thread.setDaemon(false);
         thread.start();
         showOverlay(EmulatorWindow.OverlayIcon.PLAY);
-    }
-
-    private static int[] player2KeyCodes() {
-        int[] keyCodes = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length];
-        for (int i = 0; i < keyCodes.length; i++) {
-            keyCodes[i] = settings.player2ControllerKeyCode(i);
-        }
-        return keyCodes;
     }
 
     private static void pauseEmulator() {
@@ -513,6 +518,8 @@ public class Main {
         if (activeEmulator != null) {
             activeEmulator.stop();
             activeEmulator = null;
+            activeOptions = null;
+            activeConsoleOptions.clear();
             if (window != null) {
                 window.resetTitle();
             }
@@ -521,14 +528,15 @@ public class Main {
     }
 
     private static void restartEmulator() {
-        if (activeOptions == null || activeOptions.romFile() == null) {
+        Options options = singleConsoleOptionsForRestart();
+        if (options == null || options.romFile() == null) {
             JOptionPane.showMessageDialog(null,
                     "Load a ROM before restarting.",
                     "Restart",
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        startEmulator(activeOptions);
+        startEmulator(options);
         showOverlay(EmulatorWindow.OverlayIcon.PLAY);
     }
 
@@ -575,17 +583,15 @@ public class Main {
     private static synchronized void startEmulator(Options options) {
         stopCurrentRuntime();
         activeOptions = options;
+        activeConsoleOptions.clear();
+        if (options.romFile() != null) {
+            activeConsoleOptions.add(options);
+        }
         if (!options.headless() && options.romFile() != null) {
             addRecentRom(options.romFile());
         }
-        Emulator emulator = new Emulator(
-                options.biosFile(),
-                options.romFile(),
-                options.saveFile(),
-                options.headless(),
-                options.headless() ? null : window,
-                settings
-        );
+        Console console = createConsole(options, 0, false, options.headless() ? null : new DesktopConsoleInput(settings, 0));
+        Emulator emulator = new Emulator(console, !options.headless());
         if (options.skipBios()) {
             emulator.skipBios();
         }
@@ -607,13 +613,45 @@ public class Main {
             activeEmulator.stop();
             activeEmulator = null;
         }
+        activeOptions = null;
+        activeConsoleOptions.clear();
+    }
+
+    private static Options primaryActiveOptions() {
+        if (!activeConsoleOptions.isEmpty()) {
+            return activeConsoleOptions.getFirst();
+        }
+        return activeOptions;
+    }
+
+    private static void ensurePrimaryConsoleOptionsTracked() {
+        if (activeConsoleOptions.isEmpty() && activeOptions != null && activeOptions.romFile() != null) {
+            activeConsoleOptions.add(activeOptions);
+        }
+    }
+
+    private static Options singleConsoleOptionsForRestart() {
+        if (activeEmulator != null && activeEmulator.consoleCount() > 1) {
+            JOptionPane.showMessageDialog(null,
+                    "Restart the whole linked session from Start linked session, or stop one console first.",
+                    "Restart",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        return primaryActiveOptions();
+    }
+
+    private static void removeActiveConsoleOptions(int consoleIndex) {
+        if (consoleIndex >= 0 && consoleIndex < activeConsoleOptions.size()) {
+            activeConsoleOptions.remove(consoleIndex);
+        }
     }
 
     private static void dumpDebugOnExit(Options options, Emulator emulator) {
         if (!options.dumpDebugOnExit()) {
             return;
         }
-        File dumpFile = emulator.dumpDebugBundle();
+        File dumpFile = emulator.dumpDebugBundle(new PngDebugImageSink());
         System.out.println("Debug dump written to: " + dumpFile.getAbsolutePath());
     }
 
@@ -643,6 +681,147 @@ public class Main {
 
     private static File currentDirectory() {
         return new File(System.getProperty("user.dir"));
+    }
+
+    private static Console createConsole(Options options, int playerIndex, boolean secondaryDisplay, DesktopConsoleInput input) {
+        boolean headless = options.headless();
+        ConsoleDisplay display = null;
+        if (!headless && window != null && input != null) {
+            display = secondaryDisplay
+                    ? SwingConsoleDisplay.secondary(window, input.keyListener())
+                    : SwingConsoleDisplay.primary(window, input.keyListener());
+        }
+        return new Console(
+                options.biosFile(),
+                options.romFile(),
+                options.saveFile(),
+                headless,
+                display,
+                settings,
+                input,
+                headless ? ConsoleAudioOutput.MUTED : AudioOutput.createDefault(48_000, settings.normalizedAudioEnhancement()),
+                headless ? null : DirectLinkCable.createStandalone(),
+                headless ? null : title -> SwingConsoleDisplay.detached(title, settings),
+                true
+        );
+    }
+
+    private static Emulator.PlayerConfig playerConfig(Options options, int playerIndex, boolean secondaryDisplay, DesktopConsoleInput input) {
+        ConsoleDisplay display = secondaryDisplay
+                ? SwingConsoleDisplay.secondary(window, input.keyListener())
+                : SwingConsoleDisplay.primary(window, input.keyListener());
+        return new Emulator.PlayerConfig(
+                options.biosFile(),
+                options.romFile(),
+                options.saveFile(),
+                display,
+                settings,
+                input,
+                AudioOutput.createDefault(48_000, settings.normalizedAudioEnhancement()),
+                title -> SwingConsoleDisplay.detached(title, settings),
+                options.skipBios()
+        );
+    }
+
+    private static List<AudioDebugWindow.Target> audioTargets() {
+        if (activeEmulator == null) {
+            return List.of();
+        }
+        List<AudioDebugWindow.Target> targets = new ArrayList<>();
+        for (Emulator.DebugTarget target : activeEmulator.debugTargets()) {
+            targets.add(new AudioDebugWindow.Target(target.label(), target.debugPort().audio()));
+        }
+        return targets;
+    }
+
+    private static List<MemoryDebugWindow.Target> memoryTargets() {
+        if (activeEmulator == null) {
+            return List.of();
+        }
+        List<MemoryDebugWindow.Target> targets = new ArrayList<>();
+        for (Emulator.DebugTarget target : activeEmulator.debugTargets()) {
+            ConsoleDebugPort debug = target.debugPort();
+            targets.add(new MemoryDebugWindow.Target(target.label(), debug.memory(), debug.pausedSupplier()));
+        }
+        return targets;
+    }
+
+    private static List<PpuDebugWindow.Target> ppuTargets() {
+        if (activeEmulator == null) {
+            return List.of();
+        }
+        List<PpuDebugWindow.Target> targets = new ArrayList<>();
+        for (Emulator.DebugTarget target : activeEmulator.debugTargets()) {
+            ConsoleDebugPort debug = target.debugPort();
+            targets.add(new PpuDebugWindow.Target(target.label(), debug.ppu(), debug.superGameBoy()));
+        }
+        return targets;
+    }
+
+    private static List<CpuDebugWindow.Target> cpuTargets() {
+        if (activeEmulator == null) {
+            return List.of();
+        }
+        List<CpuDebugWindow.Target> targets = new ArrayList<>();
+        for (Emulator.DebugTarget target : activeEmulator.debugTargets()) {
+            ConsoleDebugPort debug = target.debugPort();
+            targets.add(new CpuDebugWindow.Target(
+                    target.label(),
+                    debug.cpu(),
+                    debug.bus(),
+                    debug.memory(),
+                    debug.ppu(),
+                    debug.debugger(),
+                    debug.linkCable()
+            ));
+        }
+        return targets;
+    }
+
+    private static List<CartDebugWindow.Target> cartTargets() {
+        if (activeEmulator == null) {
+            return List.of();
+        }
+        List<CartDebugWindow.Target> targets = new ArrayList<>();
+        for (Emulator.DebugTarget target : activeEmulator.debugTargets()) {
+            targets.add(new CartDebugWindow.Target(target.label(), target.debugPort().cart()));
+        }
+        return targets;
+    }
+
+    private static ConsoleDebugPort chooseDebugTarget(String title) {
+        if (activeEmulator == null) {
+            return null;
+        }
+        List<Emulator.DebugTarget> targets = activeEmulator.debugTargets();
+        if (targets.isEmpty()) {
+            return null;
+        }
+        if (targets.size() == 1) {
+            return targets.getFirst().debugPort();
+        }
+        String[] options = new String[targets.size()];
+        for (int i = 0; i < targets.size(); i++) {
+            options[i] = targets.get(i).label();
+        }
+        Object selected = JOptionPane.showInputDialog(
+                null,
+                "Choose console:",
+                title,
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
+        if (selected == null) {
+            return null;
+        }
+        for (Emulator.DebugTarget target : targets) {
+            if (target.label().equals(selected)) {
+                return target.debugPort();
+            }
+        }
+        return targets.getFirst().debugPort();
     }
 
     private static File lastRomDirectory() {

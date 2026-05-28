@@ -2,8 +2,8 @@ package dev.vitorsilverio.gbcemu.sgb;
 
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
+import dev.vitorsilverio.gbcemu.util.RawImage;
 
-import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
 public class SuperGameBoy implements Stateful<SuperGameBoyState> {
@@ -79,7 +79,7 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
     private long packetsReceived;
     private long invalidPackets;
     private long ignoredPackets;
-    private BufferedImage borderImage;
+    private RawImage borderImage;
     private String lastCommandName = "";
     private final String[] recentCommandNames = new String[16];
     private int recentCommandCursor;
@@ -242,46 +242,43 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
         return 0x0F - selectedJoypad;
     }
 
-    public BufferedImage borderImage() {
+    public RawImage borderImage() {
         return borderImage;
     }
 
-    public BufferedImage copyBorderImage() {
+    public RawImage copyBorderImage() {
         if (borderImage == null) {
             return null;
         }
-        BufferedImage copy = new BufferedImage(BORDER_WIDTH, BORDER_HEIGHT, BufferedImage.TYPE_INT_ARGB);
-        int[] pixels = borderImage.getRGB(0, 0, BORDER_WIDTH, BORDER_HEIGHT, null, 0, BORDER_WIDTH);
-        copy.setRGB(0, 0, BORDER_WIDTH, BORDER_HEIGHT, pixels, 0, BORDER_WIDTH);
-        return copy;
+        return borderImage.copy();
     }
 
-    public BufferedImage colorizeFrame(BufferedImage frame) {
+    public RawImage colorizeFrame(RawImage frame) {
         if (!enabled || frame == null) {
             return frame;
         }
-        BufferedImage colorized = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
+        RawImage colorized = new RawImage(160, 144);
         for (int y = 0; y < 144; y++) {
             int attributeY = Math.min(17, y / 8);
             for (int x = 0; x < 160; x++) {
                 int attributeX = Math.min(19, x / 8);
                 int palette = screenAttributes[attributeY * 20 + attributeX] & 0x03;
                 int colorIndex = ppu.getResolvedColorIndex(x, y);
-                colorized.setRGB(x, y, screenPalettes[palette][colorIndex]);
+                colorized.setArgb(x, y, screenPalettes[palette][colorIndex]);
             }
         }
         return colorized;
     }
 
-    public BufferedImage debugAttributeImage() {
-        BufferedImage image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_RGB);
+    public RawImage debugAttributeImage() {
+        RawImage image = new RawImage(160, 144);
         int[] colors = {0xFF202020, 0xFFE34A4A, 0xFF4AC46B, 0xFF5277D8};
         for (int y = 0; y < 144; y++) {
             int attributeY = Math.min(17, y / 8);
             for (int x = 0; x < 160; x++) {
                 int attributeX = Math.min(19, x / 8);
                 int palette = screenAttributes[attributeY * 20 + attributeX] & 0x03;
-                image.setRGB(x, y, colors[palette]);
+                image.setArgb(x, y, colors[palette]);
             }
         }
         return image;
@@ -348,7 +345,7 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
         for (int i = 0; i < recentCommandNames.length; i++) {
             int index = (recentCommandCursor + i) % recentCommandNames.length;
             String commandName = recentCommandNames[index];
-            if (commandName == null || commandName.isBlank()) {
+            if (commandName == null || commandName.trim().isEmpty()) {
                 continue;
             }
             if (builder.length() > 0) {
@@ -878,7 +875,7 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
     }
 
     private void buildBorderImage() {
-        BufferedImage image = new BufferedImage(BORDER_WIDTH, BORDER_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+        RawImage image = new RawImage(BORDER_WIDTH, BORDER_HEIGHT);
         for (int tileY = 0; tileY < 28; tileY++) {
             for (int tileX = 0; tileX < 32; tileX++) {
                 int mapOffset = (tileY * 32 + tileX) * 2;
@@ -937,7 +934,7 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
         }
     }
 
-    private void drawBorderTile(BufferedImage image, int baseX, int baseY, int entry) {
+    private void drawBorderTile(RawImage image, int baseX, int baseY, int entry) {
         int tileIndex = entry & 0xFF;
         int palette = (entry >> 10) & 0x07;
         boolean hFlip = (entry & 0x4000) != 0;
@@ -957,7 +954,7 @@ public class SuperGameBoy implements Stateful<SuperGameBoyState> {
                         | (((high >> sourceX) & 1) << 1)
                         | (((extraLow >> sourceX) & 1) << 2)
                         | (((extraHigh >> sourceX) & 1) << 3);
-                image.setRGB(targetX, targetY, paletteColor(palette, colorIndex));
+                image.setArgb(targetX, targetY, paletteColor(palette, colorIndex));
             }
         }
     }

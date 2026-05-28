@@ -1,7 +1,7 @@
 package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
-import dev.vitorsilverio.gbcemu.controller.GamepadController;
+import dev.vitorsilverio.gbcemu.gui.audio.AudioOutput;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -21,6 +21,7 @@ import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -56,6 +57,8 @@ public class SettingsDialog extends JDialog {
     private final JSlider audioDspIntensity;
     private final JSlider audioChorusAmount;
     private final JSlider audioReverbAmount;
+    private final JComboBox<String> audioOutputDevice;
+    private final JSpinner audioOutputBufferMillis;
     private final JComboBox<String> soundFontMode;
     private final JTextField soundFontPath;
     private final JSlider[] channelVolumes = new JSlider[4];
@@ -94,6 +97,8 @@ public class SettingsDialog extends JDialog {
         this.audioDspIntensity = slider(enhancement.dspIntensity());
         this.audioChorusAmount = slider(enhancement.chorusAmount());
         this.audioReverbAmount = slider(enhancement.reverbAmount());
+        this.audioOutputDevice = audioOutputDeviceCombo(enhancement.outputDeviceName());
+        this.audioOutputBufferMillis = spinner(enhancement.outputBufferMillis(), 20, 500, 10);
         this.soundFontMode = combo(new String[]{"Off", "Overlay", "Replace original", "Percussion overlay"}, enhancement.soundFontMode());
         this.soundFontPath = new JTextField(enhancement.soundFontPath(), 28);
         for (int i = 0; i < channelVolumes.length; i++) {
@@ -196,13 +201,15 @@ public class SettingsDialog extends JDialog {
         addRow(fields, 0, "Master volume", masterVolume);
         addRow(fields, 1, "Left volume", leftVolume);
         addRow(fields, 2, "Right volume", rightVolume);
+        addRow(fields, 3, "Output device", audioOutputDevice);
+        addRow(fields, 4, "Buffer ms", audioOutputBufferMillis);
         for (int i = 0; i < channelVolumes.length; i++) {
             JPanel channel = new JPanel(new BorderLayout(6, 0));
             channel.add(channelVolumes[i], BorderLayout.CENTER);
             channel.add(channelMuted[i], BorderLayout.EAST);
-            addRow(fields, i + 3, "Channel " + (i + 1) + " volume", channel);
+            addRow(fields, i + 5, "Channel " + (i + 1) + " volume", channel);
         }
-        int row = channelVolumes.length + 4;
+        int row = channelVolumes.length + 6;
         addSectionLabel(fields, row++, "Enhanced audio");
         addRow(fields, row++, "DSP preset", audioDspPreset);
         addRow(fields, row++, "DSP intensity", audioDspIntensity);
@@ -234,33 +241,40 @@ public class SettingsDialog extends JDialog {
     }
 
     private JPanel controlsPanel() {
+        JTabbedPane playerTabs = new JTabbedPane();
+        playerTabs.addTab("Player 1", playerControlsPanel(0));
+        playerTabs.addTab("Player 2", playerControlsPanel(1));
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(playerTabs, BorderLayout.CENTER);
+        JButton reset = new JButton("Reset tab defaults");
+        reset.addActionListener(event -> resetControlsDefaults());
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.add(reset, BorderLayout.EAST);
+        panel.add(footer, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private JScrollPane playerControlsPanel(int player) {
         JPanel fields = new JPanel(new GridBagLayout());
-        addSectionLabel(fields, 0, "Keyboard");
-        addControlHeader(fields, 1, 1, "Player 1");
-        addControlHeader(fields, 1, 2, "Player 2");
-        for (int i = 0; i < controllerKeys.length; i++) {
-            int row = i + 2;
-            addControlLabel(fields, row, AppSettings.CONTROLLER_BUTTON_NAMES[i]);
-            addControlButton(fields, row, 1, controllerKeys[i]);
-            addControlButton(fields, row, 2, player2ControllerKeys[i]);
+        int row = 0;
+        addSectionLabel(fields, row++, "Keyboard");
+        KeyCaptureButton[] keys = player == 0 ? controllerKeys : player2ControllerKeys;
+        for (int i = 0; i < keys.length; i++) {
+            addRow(fields, row++, AppSettings.CONTROLLER_BUTTON_NAMES[i], keys[i]);
         }
-        int row = controllerKeys.length + 3;
+
         addSectionLabel(fields, row++, "Gamepad");
-        addControlLabel(fields, row, "Device");
-        addControlComponent(fields, row, 1, gamepadDevices[0]);
-        addControlComponent(fields, row++, 2, gamepadDevices[1]);
-        addControlLabel(fields, row, "Deadzone %");
-        addControlComponent(fields, row, 1, gamepadDeadzones[0]);
-        addControlComponent(fields, row++, 2, gamepadDeadzones[1]);
-        addControlLabel(fields, row, "Detected inputs");
-        addControlComponent(fields, row, 1, showGamepadComponents[0]);
-        addControlComponent(fields, row++, 2, showGamepadComponents[1]);
+        addRow(fields, row++, "Device", gamepadDevices[player]);
+        addRow(fields, row++, "Deadzone %", gamepadDeadzones[player]);
+        addRow(fields, row++, "Detected inputs", showGamepadComponents[player]);
+        addHint(fields, row++, "Use Capture to replace a mapping with the next pressed button or axis.");
         for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {
-            addControlLabel(fields, row, AppSettings.CONTROLLER_BUTTON_NAMES[i]);
-            addControlComponent(fields, row, 1, gamepadMappingPanel(0, i));
-            addControlComponent(fields, row++, 2, gamepadMappingPanel(1, i));
+            addRow(fields, row++, AppSettings.CONTROLLER_BUTTON_NAMES[i], gamepadMappingPanel(player, i));
         }
-        return wrapPanel(fields, this::resetControlsDefaults);
+        JScrollPane scrollPane = new JScrollPane(fields);
+        scrollPane.setPreferredSize(new Dimension(720, 500));
+        return scrollPane;
     }
 
     private JPanel gamepadMappingPanel(int player, int buttonIndex) {
@@ -288,38 +302,6 @@ public class SettingsDialog extends JDialog {
         constraints.insets = new Insets(0, 6, 6, 6);
         constraints.anchor = GridBagConstraints.WEST;
         panel.add(new JLabel(text), constraints);
-    }
-
-    private void addControlHeader(JPanel panel, int row, int column, String text) {
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.gridx = column;
-        constraints.gridy = row;
-        constraints.insets = new Insets(4, 6, 8, 6);
-        constraints.anchor = GridBagConstraints.WEST;
-        panel.add(new JLabel(text), constraints);
-    }
-
-    private void addControlLabel(JPanel panel, int row, String text) {
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.gridx = 0;
-        constraints.gridy = row;
-        constraints.insets = new Insets(4, 6, 4, 10);
-        constraints.anchor = GridBagConstraints.WEST;
-        panel.add(new JLabel(text), constraints);
-    }
-
-    private void addControlButton(JPanel panel, int row, int column, KeyCaptureButton button) {
-        addControlComponent(panel, row, column, button);
-    }
-
-    private void addControlComponent(JPanel panel, int row, int column, java.awt.Component component) {
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.gridx = column;
-        constraints.gridy = row;
-        constraints.insets = new Insets(4, 6, 4, 6);
-        constraints.weightx = 1;
-        constraints.fill = GridBagConstraints.HORIZONTAL;
-        panel.add(component, constraints);
     }
 
     private JPanel wrapPanel(JPanel fields, Runnable resetAction) {
@@ -399,7 +381,9 @@ public class SettingsDialog extends JDialog {
                         audioChorusAmount.getValue(),
                         audioReverbAmount.getValue(),
                         selected(soundFontMode),
-                        soundFontPath.getText()
+                        soundFontPath.getText(),
+                        selectedAudioOutputDevice(),
+                        (int) audioOutputBufferMillis.getValue()
                 ),
                 keyValues,
                 player2KeyValues,
@@ -483,6 +467,38 @@ public class SettingsDialog extends JDialog {
         return combo;
     }
 
+    private JComboBox<String> audioOutputDeviceCombo(String selectedDeviceName) {
+        JComboBox<String> combo = new JComboBox<>();
+        combo.addItem("System default");
+        for (String deviceName : AudioOutput.outputDeviceNames(48_000)) {
+            combo.addItem(deviceName);
+        }
+        if (selectedDeviceName != null && !selectedDeviceName.isBlank()) {
+            if (!comboContains(combo, selectedDeviceName)) {
+                combo.addItem(selectedDeviceName);
+            }
+            combo.setSelectedItem(selectedDeviceName);
+        }
+        return combo;
+    }
+
+    private boolean comboContains(JComboBox<String> combo, String value) {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (value.equals(combo.getItemAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String selectedAudioOutputDevice() {
+        Object value = audioOutputDevice.getSelectedItem();
+        if (value == null || "System default".equals(value.toString())) {
+            return "";
+        }
+        return value.toString();
+    }
+
     private int findDeviceIndex(List<String> devices, AppSettings.GamepadConfig config) {
         String deviceName = config.deviceName();
         if (deviceName != null && !deviceName.isBlank()) {
@@ -523,6 +539,8 @@ public class SettingsDialog extends JDialog {
         masterVolume.setValue(defaults.audioMasterVolume());
         leftVolume.setValue(defaults.audioLeftVolume());
         rightVolume.setValue(defaults.audioRightVolume());
+        audioOutputDevice.setSelectedIndex(0);
+        audioOutputBufferMillis.setValue(enhancement.outputBufferMillis());
         for (int i = 0; i < channelVolumes.length; i++) {
             channelVolumes[i].setValue(defaults.audioChannelVolume(i + 1));
             channelMuted[i].setSelected(defaults.audioChannelMuted(i + 1));

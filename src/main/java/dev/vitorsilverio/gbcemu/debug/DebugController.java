@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 
-public class DebugController {
+public class DebugController implements DebuggerInterface {
 
     private final TreeSet<Integer> pcBreakpoints = new TreeSet<>();
     private final List<Watchpoint> watchpoints = new ArrayList<>();
@@ -29,17 +29,21 @@ public class DebugController {
     private int requestedScanlineSteps;
     private int requestedRunUntilHBlank;
     private int requestedRunUntilVBlank;
+    private boolean pauseRequested;
     private Runnable watchpointsChanged = () -> {
     };
 
+    @Override
     public synchronized void addPcBreakpoint(int pc) {
         pcBreakpoints.add(pc & 0xFFFF);
     }
 
+    @Override
     public synchronized void removePcBreakpoint(int pc) {
         pcBreakpoints.remove(pc & 0xFFFF);
     }
 
+    @Override
     public synchronized void togglePcBreakpoint(int pc) {
         pc &= 0xFFFF;
         if (pcBreakpoints.contains(pc)) {
@@ -49,42 +53,66 @@ public class DebugController {
         pcBreakpoints.add(pc);
     }
 
+    @Override
     public synchronized boolean hasPcBreakpoint(int pc) {
         return pcBreakpoints.contains(pc & 0xFFFF);
     }
 
+    @Override
     public synchronized List<Integer> pcBreakpoints() {
         return new ArrayList<>(pcBreakpoints);
     }
 
+    @Override
     public synchronized void addWatchpoint(AccessType accessType, int address, Integer value) {
         watchpoints.add(new Watchpoint(accessType, address & 0xFFFF, value == null ? null : value & 0xFF));
         watchpointsChanged.run();
     }
 
+    @Override
     public synchronized void clearWatchpoints() {
         watchpoints.clear();
         memoryBreakPending = false;
         watchpointsChanged.run();
     }
 
+    @Override
     public synchronized List<Watchpoint> watchpoints() {
         return new ArrayList<>(watchpoints);
     }
 
+    @Override
     public synchronized boolean hasWatchpoints() {
         return !watchpoints.isEmpty();
     }
 
+    @Override
     public MemoryAccessListener memoryAccessListener() {
         return memoryAccessListener;
     }
 
+    @Override
     public synchronized void setWatchpointsChangedListener(Runnable watchpointsChanged) {
         this.watchpointsChanged = watchpointsChanged == null ? () -> {
         } : watchpointsChanged;
     }
 
+    @Override
+    public synchronized void requestPause(String reason) {
+        breakReason = reason == null || reason.trim().isEmpty() ? "Manual debug pause" : reason;
+        pauseRequested = true;
+    }
+
+    @Override
+    public synchronized boolean consumePauseRequest() {
+        if (!pauseRequested) {
+            return false;
+        }
+        pauseRequested = false;
+        return true;
+    }
+
+    @Override
     public synchronized boolean shouldBreakAtPc(int pc) {
         pc &= 0xFFFF;
         if (pc == ignoredBreakpointPc) {
@@ -98,6 +126,7 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized boolean shouldBreakOnMemoryAccess() {
         if (!memoryBreakPending) {
             return false;
@@ -106,11 +135,13 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized void requestInstructionStep() {
         requestedInstructionSteps++;
         breakReason = "Step instruction";
     }
 
+    @Override
     public synchronized boolean consumeInstructionStep() {
         if (requestedInstructionSteps <= 0) {
             return false;
@@ -119,11 +150,13 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized void requestFrameStep() {
         requestedFrameSteps++;
         breakReason = "Step frame";
     }
 
+    @Override
     public synchronized boolean consumeFrameStep() {
         if (requestedFrameSteps <= 0) {
             return false;
@@ -132,11 +165,13 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized void requestScanlineStep() {
         requestedScanlineSteps++;
         breakReason = "Step scanline";
     }
 
+    @Override
     public synchronized boolean consumeScanlineStep() {
         if (requestedScanlineSteps <= 0) {
             return false;
@@ -145,11 +180,13 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized void requestRunUntilHBlank() {
         requestedRunUntilHBlank++;
         breakReason = "Run until HBlank";
     }
 
+    @Override
     public synchronized boolean consumeRunUntilHBlank() {
         if (requestedRunUntilHBlank <= 0) {
             return false;
@@ -158,11 +195,13 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized void requestRunUntilVBlank() {
         requestedRunUntilVBlank++;
         breakReason = "Run until VBlank";
     }
 
+    @Override
     public synchronized boolean consumeRunUntilVBlank() {
         if (requestedRunUntilVBlank <= 0) {
             return false;
@@ -171,10 +210,12 @@ public class DebugController {
         return true;
     }
 
+    @Override
     public synchronized void ignorePcBreakpointOnce(int pc) {
         ignoredBreakpointPc = pc & 0xFFFF;
     }
 
+    @Override
     public synchronized String breakReason() {
         return breakReason;
     }
@@ -200,33 +241,4 @@ public class DebugController {
         }
     }
 
-    public enum AccessType {
-        READ("Read"),
-        WRITE("Write");
-
-        private final String label;
-
-        AccessType(String label) {
-            this.label = label;
-        }
-
-        public String label() {
-            return label;
-        }
-    }
-
-    public record Watchpoint(AccessType accessType, int address, Integer value) {
-        public boolean matches(AccessType candidateAccessType, int candidateAddress, int candidateValue) {
-            return accessType == candidateAccessType
-                    && address == (candidateAddress & 0xFFFF)
-                    && (value == null || value == (candidateValue & 0xFF));
-        }
-
-        public String description() {
-            if (value == null) {
-                return String.format("%s %04X", accessType.label(), address);
-            }
-            return String.format("%s %04X == %02X", accessType.label(), address, value);
-        }
-    }
 }

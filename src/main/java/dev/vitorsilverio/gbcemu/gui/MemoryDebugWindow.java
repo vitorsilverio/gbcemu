@@ -1,6 +1,6 @@
 package dev.vitorsilverio.gbcemu.gui;
 
-import dev.vitorsilverio.gbcemu.memory.Bus;
+import dev.vitorsilverio.gbcemu.debug.DebugMemoryInterface;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
@@ -18,6 +18,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.Timer;
 import javax.swing.event.TableModelEvent;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -26,19 +27,21 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 public class MemoryDebugWindow {
 
-    public record Target(String name, Bus bus, BooleanSupplier pausedSupplier) {
+    public record Target(String name, DebugMemoryInterface memory, BooleanSupplier pausedSupplier) {
         @Override
         public String toString() {
             return name;
         }
     }
 
-    private Bus bus;
+    private DebugMemoryInterface memory;
     private BooleanSupplier pausedSupplier;
     private final JComboBox<Target> targetSelector;
+    private final Supplier<List<Target>> targetSupplier;
     private final JFrame frame = new JFrame("Memory Debug");
     private final JTextArea memoryMapText = new JTextArea();
     private final JTextField memoryStart = new JTextField("C000", 6);
@@ -66,18 +69,26 @@ public class MemoryDebugWindow {
     };
     private final JTable memoryTable = new JTable(memoryModel);
     private boolean updatingMemoryTable;
+    private boolean updatingTargetSelector;
 
-    public MemoryDebugWindow(Bus bus, BooleanSupplier pausedSupplier) {
-        this.bus = bus;
+    public MemoryDebugWindow(DebugMemoryInterface memory, BooleanSupplier pausedSupplier) {
+        this.memory = memory;
         this.pausedSupplier = pausedSupplier;
         this.targetSelector = null;
+        this.targetSupplier = null;
         initializeWindow();
     }
 
     public MemoryDebugWindow(List<Target> targets) {
+        this(() -> targets);
+    }
+
+    public MemoryDebugWindow(Supplier<List<Target>> targetSupplier) {
+        List<Target> targets = targetSupplier.get();
         if (targets.isEmpty()) {
             throw new IllegalArgumentException("At least one memory debug target is required");
         }
+        this.targetSupplier = targetSupplier;
         this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
         applyTarget(targets.getFirst());
         initializeWindow();
@@ -106,6 +117,9 @@ public class MemoryDebugWindow {
         JPanel controls = new JPanel();
         if (targetSelector != null) {
             targetSelector.addActionListener(event -> {
+                if (updatingTargetSelector) {
+                    return;
+                }
                 Target target = (Target) targetSelector.getSelectedItem();
                 if (target != null) {
                     applyTarget(target);
@@ -139,7 +153,7 @@ public class MemoryDebugWindow {
     }
 
     private void applyTarget(Target target) {
-        this.bus = target.bus();
+        this.memory = target.memory();
         this.pausedSupplier = target.pausedSupplier();
     }
 
@@ -172,8 +186,29 @@ public class MemoryDebugWindow {
     }
 
     private void refresh() {
+        refreshTargets();
         refreshMemoryTable();
         memoryMapText.setText(memoryMapText());
+    }
+
+    private void refreshTargets() {
+        if (targetSupplier == null || targetSelector == null) {
+            return;
+        }
+        List<Target> targets = targetSupplier.get();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Target selected = (Target) targetSelector.getSelectedItem();
+        Target next = selected != null && targets.contains(selected) ? selected : targets.getFirst();
+        updatingTargetSelector = true;
+        try {
+            targetSelector.setModel(new DefaultComboBoxModel<>(targets.toArray(Target[]::new)));
+            targetSelector.setSelectedItem(next);
+        } finally {
+            updatingTargetSelector = false;
+        }
+        applyTarget(next);
     }
 
     private void applyMemoryRegion() {
@@ -198,7 +233,7 @@ public class MemoryDebugWindow {
             values[0] = String.format("%04X", address);
             for (int column = 0; column < 16; column++) {
                 int cellAddress = (address + column) & 0xFFFF;
-                values[column + 1] = String.format("%02X", bus.read(cellAddress) & 0xFF);
+                values[column + 1] = String.format("%02X", memory.read(cellAddress) & 0xFF);
             }
             memoryModel.addRow(values);
         }
@@ -233,7 +268,7 @@ public class MemoryDebugWindow {
             refreshMemoryTable();
             return;
         }
-        bus.write(address, (byte) byteValue);
+        memory.writeHardware(address, (byte) byteValue);
         updatingMemoryTable = true;
         memoryModel.setValueAt(String.format("%02X", byteValue), row, column);
         updatingMemoryTable = false;
@@ -262,9 +297,9 @@ public class MemoryDebugWindow {
             refreshMemoryTable();
             return;
         }
-        target.bank().writeBank(target.bankIndex(), target.offset(), (byte) byteValue);
+        memory.writeRawBank(target.bank().bankName(), target.bankIndex(), target.offset(), (byte) byteValue);
         updatingMemoryTable = true;
-        memoryModel.setValueAt(String.format("%02X", bus.read(address) & 0xFF), row, column);
+        memoryModel.setValueAt(String.format("%02X", memory.read(address) & 0xFF), row, column);
         updatingMemoryTable = false;
     }
 
@@ -309,7 +344,7 @@ public class MemoryDebugWindow {
     }
 
     private MemoryBank findMemoryBank(String bankName) {
-        for (MemoryBank bank : bus.memoryBanks()) {
+        for (MemoryBank bank : memory.memoryBanks()) {
             if (bank.bankName().equals(bankName)) {
                 return bank;
             }
@@ -319,11 +354,11 @@ public class MemoryDebugWindow {
 
     private String memoryMapText() {
         StringBuilder builder = new StringBuilder("Runtime memory map\n");
-        for (Bus.MemoryMapEntry entry : bus.memoryMap()) {
+        for (DebugMemoryInterface.MemoryMapEntry entry : memory.memoryMap()) {
             builder.append(String.format("%04X-%04X  %s%n", entry.start(), entry.end(), entry.owner()));
         }
         builder.append("\nMemory banks\n");
-        for (var bank : bus.memoryBanks()) {
+        for (var bank : memory.memoryBanks()) {
             builder.append(String.format(
                     "%s  current=%d  banks=%d  size=%04X%n",
                     bank.bankName(),
@@ -349,10 +384,7 @@ public class MemoryDebugWindow {
     }
 
     private void dumpMemory() {
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
+        File target = DebugJson.debugDirectory();
         try {
             java.nio.file.Files.writeString(new File(target, "debug-memory-window.txt").toPath(),
                     memoryMapText() + "\n" + memoryTableText());
@@ -382,9 +414,9 @@ public class MemoryDebugWindow {
 
     private void appendMemoryMapJson(StringBuilder builder) {
         builder.append("  \"memoryMap\": [\n");
-        java.util.List<Bus.MemoryMapEntry> entries = bus.memoryMap();
+        java.util.List<DebugMemoryInterface.MemoryMapEntry> entries = memory.memoryMap();
         for (int index = 0; index < entries.size(); index++) {
-            Bus.MemoryMapEntry entry = entries.get(index);
+            DebugMemoryInterface.MemoryMapEntry entry = entries.get(index);
             builder.append("    {\n");
             DebugJson.appendString(builder, "start", String.format("%04X", entry.start()), true, 6);
             DebugJson.appendString(builder, "end", String.format("%04X", entry.end()), true, 6);
@@ -400,7 +432,7 @@ public class MemoryDebugWindow {
 
     private void appendMemoryBanksJson(StringBuilder builder) {
         builder.append("  \"memoryBanks\": [\n");
-        java.util.List<MemoryBank> banks = bus.memoryBanks();
+        java.util.List<MemoryBank> banks = memory.memoryBanks();
         for (int index = 0; index < banks.size(); index++) {
             MemoryBank bank = banks.get(index);
             builder.append("    {\n");

@@ -1,6 +1,8 @@
-package dev.vitorsilverio.gbcemu.controller;
+package dev.vitorsilverio.gbcemu.gui;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
+import dev.vitorsilverio.gbcemu.controller.ButtonType;
+import dev.vitorsilverio.gbcemu.controller.Controller;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -39,7 +41,7 @@ public class KeyboardController implements Controller, KeyListener {
         applyKeyCodes(updated, settings.turboKeyCode(), settings.turboToggleMode());
     }
 
-    private void applyKeyCodes(int[] controllerKeyCodes, int turboKeyCode, boolean turboToggleMode) {
+    public void applyKeyCodes(int[] controllerKeyCodes, int turboKeyCode, boolean turboToggleMode) {
         int[] updated = new int[AppSettings.CONTROLLER_BUTTON_NAMES.length + 1];
         int[] defaults = defaultKeyCodes();
         for (int i = 0; i < AppSettings.CONTROLLER_BUTTON_NAMES.length; i++) {

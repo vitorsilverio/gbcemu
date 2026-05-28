@@ -99,7 +99,7 @@ public class SaveStateStore {
         int dot = name.lastIndexOf('.');
         String withoutExtension = dot >= 0 ? name.substring(0, dot) : name;
         String sanitized = UNSAFE_FILE_CHARS.matcher(withoutExtension).replaceAll("_").trim();
-        return sanitized.isBlank() ? "savestate" : sanitized;
+        return sanitized.trim().isEmpty() ? "savestate" : sanitized;
     }
 
     public record Slot(int index, File file, SaveStateFile saveStateFile) {

@@ -1,14 +1,16 @@
 package dev.vitorsilverio.gbcemu.gui;
 
-import dev.vitorsilverio.gbcemu.audio.Apu;
 import dev.vitorsilverio.gbcemu.audio.ApuChannelDebugSnapshot;
 import dev.vitorsilverio.gbcemu.audio.ApuDebugSnapshot;
 import dev.vitorsilverio.gbcemu.audio.ApuRegisterWrite;
+import dev.vitorsilverio.gbcemu.debug.ApuDebugAudioInterface;
+import dev.vitorsilverio.gbcemu.debug.DebugAudioInterface;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -26,18 +28,20 @@ import java.awt.Insets;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class AudioDebugWindow {
 
-    public record Target(String name, Apu apu) {
+    public record Target(String name, DebugAudioInterface audio) {
         @Override
         public String toString() {
             return name;
         }
     }
 
-    private Apu apu;
+    private DebugAudioInterface audio;
     private final JComboBox<Target> targetSelector;
+    private final Supplier<List<Target>> targetSupplier;
     private final JFrame frame = new JFrame("Audio Debug");
     private final JTabbedPane tabs = new JTabbedPane();
     private final JLabel masterState = new JLabel();
@@ -66,21 +70,29 @@ public class AudioDebugWindow {
         }
     });
     private long lastDisplayedWriteSequence = -1;
+    private boolean updatingTargetSelector;
 
-    public AudioDebugWindow(Apu apu) {
-        this.apu = apu;
+    public AudioDebugWindow(dev.vitorsilverio.gbcemu.audio.Apu apu) {
+        this.audio = new ApuDebugAudioInterface(apu);
         this.targetSelector = null;
-        this.apu.setDebugWriteTraceEnabled(true);
+        this.targetSupplier = null;
+        this.audio.setWriteTraceEnabled(true);
         initializeWindow();
     }
 
     public AudioDebugWindow(List<Target> targets) {
+        this(() -> targets);
+    }
+
+    public AudioDebugWindow(Supplier<List<Target>> targetSupplier) {
+        List<Target> targets = targetSupplier.get();
         if (targets.isEmpty()) {
             throw new IllegalArgumentException("At least one audio debug target is required");
         }
+        this.targetSupplier = targetSupplier;
         this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
         applyTarget(targets.getFirst());
-        this.apu.setDebugWriteTraceEnabled(true);
+        this.audio.setWriteTraceEnabled(true);
         initializeWindow();
     }
 
@@ -117,11 +129,14 @@ public class AudioDebugWindow {
         JPanel actions = new JPanel();
         if (targetSelector != null) {
             targetSelector.addActionListener(event -> {
+                if (updatingTargetSelector) {
+                    return;
+                }
                 Target target = (Target) targetSelector.getSelectedItem();
                 if (target != null) {
-                    apu.setDebugWriteTraceEnabled(false);
+                    audio.setWriteTraceEnabled(false);
                     applyTarget(target);
-                    apu.setDebugWriteTraceEnabled(true);
+                    audio.setWriteTraceEnabled(true);
                     rebuildTabs();
                     refreshDebugState();
                 }
@@ -138,7 +153,7 @@ public class AudioDebugWindow {
     }
 
     private void applyTarget(Target target) {
-        this.apu = target.apu();
+        this.audio = target.audio();
         this.lastDisplayedWriteSequence = -1;
     }
 
@@ -152,11 +167,12 @@ public class AudioDebugWindow {
 
     private void disableTraceForAllTargets() {
         if (targetSelector == null) {
-            apu.setDebugWriteTraceEnabled(false);
+            audio.setWriteTraceEnabled(false);
             return;
         }
+        refreshTargets(false);
         for (int i = 0; i < targetSelector.getItemCount(); i++) {
-            targetSelector.getItemAt(i).apu().setDebugWriteTraceEnabled(false);
+            targetSelector.getItemAt(i).audio().setWriteTraceEnabled(false);
         }
     }
 
@@ -196,10 +212,10 @@ public class AudioDebugWindow {
     private JPanel buildMasterControls() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Master / stereo"));
-        addVolumeSlider(panel, 0, "Master", apu.debugMasterVolume(), apu::setDebugMasterVolume);
-        addVolumeSlider(panel, 1, "Left", apu.debugLeftVolume(), apu::setDebugLeftVolume);
-        addVolumeSlider(panel, 2, "Right", apu.debugRightVolume(), apu::setDebugRightVolume);
-        addFilterSlider(panel, 3, "Low-pass", apu.debugLowPassAlpha(), apu::setDebugLowPassAlpha);
+        addVolumeSlider(panel, 0, "Master", audio.masterVolume(), audio::setMasterVolume);
+        addVolumeSlider(panel, 1, "Left", audio.leftVolume(), audio::setLeftVolume);
+        addVolumeSlider(panel, 2, "Right", audio.rightVolume(), audio::setRightVolume);
+        addFilterSlider(panel, 3, "Low-pass", audio.lowPassAlpha(), audio::setLowPassAlpha);
         return panel;
     }
 
@@ -213,7 +229,7 @@ public class AudioDebugWindow {
         constraints.gridx = 0;
         panel.add(label, constraints);
 
-        JSlider volume = createSlider(apu.debugChannelVolume(channel));
+        JSlider volume = createSlider(audio.channelVolume(channel));
         constraints.gridx = 1;
         constraints.weightx = 1;
         constraints.fill = GridBagConstraints.HORIZONTAL;
@@ -225,16 +241,16 @@ public class AudioDebugWindow {
         constraints.fill = GridBagConstraints.NONE;
         panel.add(value, constraints);
 
-        JCheckBox mute = new JCheckBox("Mute", apu.debugChannelMuted(channel));
+        JCheckBox mute = new JCheckBox("Mute", audio.channelMuted(channel));
         constraints.gridx = 3;
         panel.add(mute, constraints);
 
         volume.addChangeListener(event -> {
-            apu.setDebugChannelVolume(channel, volume.getValue());
+            audio.setChannelVolume(channel, volume.getValue());
             value.setText(volume.getValue() + "%");
         });
         mute.addActionListener(event -> {
-            apu.setDebugChannelMuted(channel, mute.isSelected());
+            audio.setChannelMuted(channel, mute.isSelected());
         });
     }
 
@@ -314,7 +330,8 @@ public class AudioDebugWindow {
     }
 
     private void refreshDebugState() {
-        ApuDebugSnapshot snapshot = apu.debugSnapshot();
+        refreshTargets(true);
+        ApuDebugSnapshot snapshot = audio.snapshot();
         masterState.setText(String.format(
                 "NR50=%02X  NR51=%02X  NR52=%02X  FS=%d  sampleRate=%d  sampleAcc=%d  buffered=%d bytes  lowPass=%d",
                 snapshot.nr50(),
@@ -329,6 +346,31 @@ public class AudioDebugWindow {
         masterState.setToolTipText(snapshot.audioSink() + " lowPass=" + snapshot.lowPassAlpha());
         refreshChannelRows(snapshot);
         refreshWriteRows(snapshot.recentWrites());
+    }
+
+    private void refreshTargets(boolean keepCurrentTraceEnabled) {
+        if (targetSupplier == null || targetSelector == null) {
+            return;
+        }
+        List<Target> targets = targetSupplier.get();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Target selected = (Target) targetSelector.getSelectedItem();
+        Target next = selected != null && targets.contains(selected) ? selected : targets.getFirst();
+        updatingTargetSelector = true;
+        try {
+            targetSelector.setModel(new DefaultComboBoxModel<>(targets.toArray(Target[]::new)));
+            targetSelector.setSelectedItem(next);
+        } finally {
+            updatingTargetSelector = false;
+        }
+        if (audio != next.audio()) {
+            audio.setWriteTraceEnabled(false);
+            applyTarget(next);
+            audio.setWriteTraceEnabled(keepCurrentTraceEnabled);
+            rebuildTabs();
+        }
     }
 
     private void refreshChannelRows(ApuDebugSnapshot snapshot) {

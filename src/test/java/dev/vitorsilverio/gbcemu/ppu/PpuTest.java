@@ -2,9 +2,9 @@ package dev.vitorsilverio.gbcemu.ppu;
 
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
+import dev.vitorsilverio.gbcemu.util.RawImage;
 import org.junit.jupiter.api.Test;
 
-import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -302,9 +302,9 @@ class PpuTest {
         ppu.write(0x9800, (byte) 0);
         setTilePixel(ppu, 256, 0, 1);
 
-        BufferedImage image = ppu.debugTileMapImage(TileMapArea.IN_9800);
+        RawImage image = ppu.debugTileMapImage(TileMapArea.IN_9800);
 
-        assertEquals(0xFFFF0000, image.getRGB(0, 0));
+        assertEquals(0xFFFF0000, image.getArgb(0, 0));
     }
 
     @Test
@@ -591,6 +591,6 @@ class PpuTest {
     }
 
     private int getRenderedPixel(Ppu ppu, int x, int y) {
-        return ((BufferedImage) ppu.getFrameBuffer()).getRGB(x, y);
+        return ppu.getFrameBuffer().getArgb(x, y);
     }
 }

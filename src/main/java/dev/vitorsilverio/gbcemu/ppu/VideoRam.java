@@ -6,7 +6,6 @@ import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState> {
 
@@ -199,12 +198,6 @@ public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState
 
     @Override
     public String toString() {
-        var map = Map.of(
-                0, "█",
-                1, "▓",
-                2, "▒",
-                3, "░"
-        );
         StringBuilder sb = new StringBuilder();
         // print all tiles in a 32x24 grid
         for(int b= 0; b < 2; b++) {
@@ -215,7 +208,10 @@ public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState
                     Tile tile = tiles[b][tileIndex];
                     row.add(tile);
                 }
-                List<String[]> list = row.stream().map(t -> t.toString().split("\n")).toList();
+                List<String[]> list = new ArrayList<>();
+                for (Tile tile : row) {
+                    list.add(tile.toString().split("\n"));
+                }
                 for (int i = 0; i < 8; i++) {
                     for (String[] strings : list) {
                         sb.append(strings[i]);

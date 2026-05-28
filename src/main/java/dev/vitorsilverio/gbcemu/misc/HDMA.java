@@ -5,6 +5,7 @@ import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
@@ -14,7 +15,7 @@ public class HDMA implements MachineCycle, MemorySpace, Stateful<HdmaState> {
     private final int HDMA3 = 0xFF53;
     private final int HDMA4 = 0xFF54;
     private final int HDMA5 = 0xFF55;
-    private final List<Integer> HDMA_REGISTERS = List.of(
+    private final List<Integer> HDMA_REGISTERS = Arrays.asList(
             HDMA1, HDMA2, HDMA3, HDMA4, HDMA5
     );
 

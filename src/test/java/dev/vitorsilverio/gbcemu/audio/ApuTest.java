@@ -45,7 +45,8 @@ class ApuTest {
 
     @Test
     void triggeringPulseChannelSetsNr52StatusBitAndProducesSamples() {
-        Apu apu = newApu();
+        CapturingAudioOutput output = new CapturingAudioOutput();
+        Apu apu = newApu(output);
 
         apu.write(0xFF12, (byte) 0xF0);
         apu.write(0xFF13, (byte) 0x00);
@@ -55,7 +56,7 @@ class ApuTest {
 
         tickUntilSamplesAreBuffered(apu);
 
-        assertTrue(apu.bufferedSampleBytes() > 0);
+        assertTrue(output.bufferedSampleBytes() > 0);
     }
 
     @Test
@@ -71,12 +72,13 @@ class ApuTest {
 
     @Test
     void disabledMasterAudioKeepsProducingSilentSamples() {
-        Apu apu = newApu();
+        CapturingAudioOutput output = new CapturingAudioOutput();
+        Apu apu = newApu(output);
 
         apu.write(0xFF26, (byte) 0x00);
         tickUntilSamplesAreBuffered(apu);
 
-        assertTrue(apu.bufferedSampleBytes() > 0);
+        assertTrue(output.bufferedSampleBytes() > 0);
     }
 
     @Test
@@ -160,7 +162,11 @@ class ApuTest {
     }
 
     private Apu newApu() {
-        return new Apu(AudioOutput.muted());
+        return newApu(new CapturingAudioOutput());
+    }
+
+    private Apu newApu(AudioSampleOutput output) {
+        return new Apu(output);
     }
 
     private void tickUntilWaveDigitalOutputIsVisible(Apu apu) {
@@ -172,6 +178,46 @@ class ApuTest {
     private void tick(Apu apu, int ticks) {
         for (int i = 0; i < ticks; i++) {
             apu.tick();
+        }
+    }
+
+    private static final class CapturingAudioOutput implements AudioSampleOutput {
+        private int sampleBytes;
+        private int previousLeft;
+        private int previousRight;
+
+        @Override
+        public void writeStereoSample(int left, int right) {
+            previousLeft = left;
+            previousRight = right;
+            sampleBytes += 4;
+        }
+
+        @Override
+        public void writeSilentSample() {
+            writeStereoSample(0, 0);
+        }
+
+        @Override
+        public void restoreHighPassFilter(int leftCapacitor, int rightCapacitor) {
+            previousLeft = leftCapacitor;
+            previousRight = rightCapacitor;
+            sampleBytes = 0;
+        }
+
+        @Override
+        public int previousLeftSample() {
+            return previousLeft;
+        }
+
+        @Override
+        public int previousRightSample() {
+            return previousRight;
+        }
+
+        @Override
+        public int bufferedSampleBytes() {
+            return sampleBytes;
         }
     }
 }

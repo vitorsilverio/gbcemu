@@ -1,8 +1,6 @@
 package dev.vitorsilverio.gbcemu.config;
 
 import java.util.Arrays;
-import java.awt.event.KeyEvent;
-import java.util.prefs.Preferences;
 
 public record AppSettings(
         int screenScale,
@@ -43,46 +41,28 @@ public record AppSettings(
             int chorusAmount,
             int reverbAmount,
             String soundFontMode,
-            String soundFontPath
+            String soundFontPath,
+            String outputDeviceName,
+            int outputBufferMillis
     ) {
     }
-    private static final String SCREEN_SCALE = "screenScale";
-    private static final String SMOOTH_SCALING = "smoothScaling";
-    private static final String FULLSCREEN = "fullscreen";
-    private static final String REWIND_SECONDS = "rewindSeconds";
-    private static final String REWIND_CAPTURE_INTERVAL_FRAMES = "rewindCaptureIntervalFrames";
-    private static final String AUDIO_MASTER_VOLUME = "audioMasterVolume";
-    private static final String AUDIO_LEFT_VOLUME = "audioLeftVolume";
-    private static final String AUDIO_RIGHT_VOLUME = "audioRightVolume";
-    private static final String AUDIO_CHANNEL_VOLUME_PREFIX = "audioChannelVolume";
-    private static final String AUDIO_CHANNEL_MUTED_PREFIX = "audioChannelMuted";
-    private static final String AUDIO_DSP_PRESET = "audioDspPreset";
-    private static final String AUDIO_DSP_INTENSITY = "audioDspIntensity";
-    private static final String AUDIO_CHORUS_AMOUNT = "audioChorusAmount";
-    private static final String AUDIO_REVERB_AMOUNT = "audioReverbAmount";
-    private static final String AUDIO_SOUNDFONT_MODE = "audioSoundFontMode";
-    private static final String AUDIO_SOUNDFONT_PATH = "audioSoundFontPath";
-    private static final String CONTROLLER_KEY_PREFIX = "controllerKey";
-    private static final String PLAYER2_CONTROLLER_KEY_PREFIX = "player2ControllerKey";
-    private static final String GAMEPAD_DEVICE_PREFIX = "gamepadDevice";
-    private static final String GAMEPAD_DEVICE_NAME_PREFIX = "gamepadDeviceName";
-    private static final String GAMEPAD_PROFILE_PREFIX = "gamepadProfile.";
-    private static final String GAMEPAD_DEADZONE_PREFIX = "gamepadDeadzone";
-    private static final String GAMEPAD_MAPPING_PREFIX = "gamepadMapping";
-    private static final String TURBO_MULTIPLIER = "turboMultiplier";
-    private static final String TURBO_KEY = "turboKey";
-    private static final String TURBO_TOGGLE_MODE = "turboToggleMode";
-    private static final String XBRZ_FILTERING = "xbrzFiltering";
-    private static final String SUPER_GAME_BOY_BORDERS_ENABLED = "superGameBoyBordersEnabled";
-    private static final String DEFAULT_BIOS_PATH = "defaultBios";
-    private static final String RTC_OFFSET_HOURS = "rtcOffsetHours";
-    private static final String RTC_OFFSET_MINUTES = "rtcOffsetMinutes";
-    private static final String RTC_OFFSET_SECONDS = "rtcOffsetSeconds";
-    private static final String MULTIPLAYER_TCP_MODE = "multiplayerTcpMode";
-    private static final String MULTIPLAYER_HOST_MODE = "multiplayerHostMode";
-    private static final String MULTIPLAYER_LOCAL_PATH = "multiplayerLocalPath";
-    private static final String MULTIPLAYER_TCP_HOST = "multiplayerTcpHost";
-    private static final String MULTIPLAYER_TCP_PORT = "multiplayerTcpPort";
+    private static final int KEY_TAB = 9;
+    private static final int KEY_ENTER = 10;
+    private static final int KEY_SPACE = 32;
+    private static final int KEY_LEFT = 37;
+    private static final int KEY_UP = 38;
+    private static final int KEY_RIGHT = 39;
+    private static final int KEY_DOWN = 40;
+    private static final int KEY_A = 65;
+    private static final int KEY_D = 68;
+    private static final int KEY_S = 83;
+    private static final int KEY_W = 87;
+    private static final int KEY_X = 88;
+    private static final int KEY_Z = 90;
+    private static final int KEY_NUMPAD0 = 96;
+    private static final int KEY_NUMPAD1 = 97;
+    private static final int KEY_NUMPAD2 = 98;
+    private static final int KEY_NUMPAD3 = 99;
 
     public static AppSettings defaults() {
         return new AppSettings(
@@ -101,7 +81,7 @@ public record AppSettings(
                 defaultPlayer2ControllerKeyCodes(),
                 defaultGamepadConfigs(),
                 3,
-                KeyEvent.VK_TAB,
+                KEY_TAB,
                 false,
                 false,
                 false,
@@ -115,145 +95,6 @@ public record AppSettings(
                 "localhost",
                 26803
         );
-    }
-
-    public static AppSettings load(Preferences preferences) {
-        AppSettings defaults = defaults();
-        int[] channelVolumes = new int[4];
-        boolean[] channelMuted = new boolean[4];
-        int[] controllerKeyCodes = new int[CONTROLLER_BUTTON_NAMES.length];
-        int[] player2ControllerKeyCodes = new int[CONTROLLER_BUTTON_NAMES.length];
-        GamepadConfig[] gamepadConfigs = new GamepadConfig[2];
-        for (int i = 0; i < channelVolumes.length; i++) {
-            channelVolumes[i] = clampPercent(preferences.getInt(AUDIO_CHANNEL_VOLUME_PREFIX + (i + 1), defaults.audioChannelVolumes[i]));
-            channelMuted[i] = preferences.getBoolean(AUDIO_CHANNEL_MUTED_PREFIX + (i + 1), defaults.audioChannelMuted[i]);
-        }
-        for (int i = 0; i < controllerKeyCodes.length; i++) {
-            controllerKeyCodes[i] = preferences.getInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.controllerKeyCodes[i]);
-            player2ControllerKeyCodes[i] = preferences.getInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], defaults.player2ControllerKeyCodes[i]);
-        }
-        AudioEnhancementConfig audioEnhancement = new AudioEnhancementConfig(
-                preferences.get(AUDIO_DSP_PRESET, defaults.audioEnhancement().dspPreset()),
-                clamp(preferences.getInt(AUDIO_DSP_INTENSITY, defaults.audioEnhancement().dspIntensity()), 0, 100),
-                clamp(preferences.getInt(AUDIO_CHORUS_AMOUNT, defaults.audioEnhancement().chorusAmount()), 0, 100),
-                clamp(preferences.getInt(AUDIO_REVERB_AMOUNT, defaults.audioEnhancement().reverbAmount()), 0, 100),
-                preferences.get(AUDIO_SOUNDFONT_MODE, defaults.audioEnhancement().soundFontMode()),
-                preferences.get(AUDIO_SOUNDFONT_PATH, defaults.audioEnhancement().soundFontPath())
-        );
-        for (int player = 0; player < gamepadConfigs.length; player++) {
-            String[] mappings = new String[CONTROLLER_BUTTON_NAMES.length];
-            GamepadConfig defaultConfig = defaults.gamepadConfig(player);
-            for (int i = 0; i < mappings.length; i++) {
-                mappings[i] = preferences.get(GAMEPAD_MAPPING_PREFIX + (player + 1) + CONTROLLER_BUTTON_NAMES[i], defaultConfig.mappings()[i]);
-            }
-            String deviceName = preferences.get(GAMEPAD_DEVICE_NAME_PREFIX + (player + 1), defaultConfig.deviceName());
-            int deadzone = clamp(preferences.getInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), defaultConfig.deadzonePercent()), 0, 95);
-            if (!deviceName.isBlank()) {
-                String profileKey = gamepadProfileKey(deviceName);
-                deadzone = clamp(preferences.getInt(profileKey + ".deadzone", deadzone), 0, 95);
-                for (int i = 0; i < mappings.length; i++) {
-                    mappings[i] = preferences.get(profileKey + ".mapping." + CONTROLLER_BUTTON_NAMES[i], mappings[i]);
-                }
-            }
-            gamepadConfigs[player] = new GamepadConfig(
-                    preferences.getInt(GAMEPAD_DEVICE_PREFIX + (player + 1), defaultConfig.deviceIndex()),
-                    deviceName,
-                    deadzone,
-                    mappings
-            );
-        }
-        return new AppSettings(
-                clamp(preferences.getInt(SCREEN_SCALE, defaults.screenScale), 1, 8),
-                preferences.getBoolean(SMOOTH_SCALING, defaults.smoothScaling),
-                preferences.getBoolean(FULLSCREEN, defaults.fullscreen),
-                clamp(preferences.getInt(REWIND_SECONDS, defaults.rewindSeconds), 0, 120),
-                clamp(preferences.getInt(REWIND_CAPTURE_INTERVAL_FRAMES, defaults.rewindCaptureIntervalFrames), 1, 60),
-                clampPercent(preferences.getInt(AUDIO_MASTER_VOLUME, defaults.audioMasterVolume)),
-                clampPercent(preferences.getInt(AUDIO_LEFT_VOLUME, defaults.audioLeftVolume)),
-                clampPercent(preferences.getInt(AUDIO_RIGHT_VOLUME, defaults.audioRightVolume)),
-                channelVolumes,
-                channelMuted,
-                audioEnhancement,
-                controllerKeyCodes,
-                player2ControllerKeyCodes,
-                gamepadConfigs,
-                clamp(preferences.getInt(TURBO_MULTIPLIER, defaults.turboMultiplier), 1, 10),
-                preferences.getInt(TURBO_KEY, defaults.turboKeyCode),
-                preferences.getBoolean(TURBO_TOGGLE_MODE, defaults.turboToggleMode),
-                preferences.getBoolean(XBRZ_FILTERING, defaults.xBrzFiltering),
-                preferences.getBoolean(SUPER_GAME_BOY_BORDERS_ENABLED, defaults.superGameBoyBordersEnabled),
-                preferences.get(DEFAULT_BIOS_PATH, defaults.defaultBiosPath),
-                clamp(preferences.getInt(RTC_OFFSET_HOURS, defaults.rtcOffsetHours), -9999, 9999),
-                clamp(preferences.getInt(RTC_OFFSET_MINUTES, defaults.rtcOffsetMinutes), -59, 59),
-                clamp(preferences.getInt(RTC_OFFSET_SECONDS, defaults.rtcOffsetSeconds), -59, 59),
-                preferences.getBoolean(MULTIPLAYER_TCP_MODE, defaults.multiplayerTcpMode),
-                preferences.getBoolean(MULTIPLAYER_HOST_MODE, defaults.multiplayerHostMode),
-                preferences.get(MULTIPLAYER_LOCAL_PATH, defaults.multiplayerLocalPath),
-                preferences.get(MULTIPLAYER_TCP_HOST, defaults.multiplayerTcpHost),
-                clamp(preferences.getInt(MULTIPLAYER_TCP_PORT, defaults.multiplayerTcpPort), 1, 65535)
-        );
-    }
-
-    public void save(Preferences preferences) {
-        preferences.putInt(SCREEN_SCALE, screenScale);
-        preferences.putBoolean(SMOOTH_SCALING, smoothScaling);
-        preferences.putBoolean(XBRZ_FILTERING, xBrzFiltering);
-        preferences.putBoolean(FULLSCREEN, fullscreen);
-        preferences.putInt(REWIND_SECONDS, rewindSeconds);
-        preferences.putInt(REWIND_CAPTURE_INTERVAL_FRAMES, rewindCaptureIntervalFrames);
-        preferences.putInt(AUDIO_MASTER_VOLUME, audioMasterVolume);
-        preferences.putInt(AUDIO_LEFT_VOLUME, audioLeftVolume);
-        preferences.putInt(AUDIO_RIGHT_VOLUME, audioRightVolume);
-        for (int i = 0; i < audioChannelVolumes.length; i++) {
-            preferences.putInt(AUDIO_CHANNEL_VOLUME_PREFIX + (i + 1), audioChannelVolumes[i]);
-            preferences.putBoolean(AUDIO_CHANNEL_MUTED_PREFIX + (i + 1), audioChannelMuted[i]);
-        }
-        AudioEnhancementConfig enhancement = normalizedAudioEnhancement(audioEnhancement);
-        preferences.put(AUDIO_DSP_PRESET, enhancement.dspPreset());
-        preferences.putInt(AUDIO_DSP_INTENSITY, enhancement.dspIntensity());
-        preferences.putInt(AUDIO_CHORUS_AMOUNT, enhancement.chorusAmount());
-        preferences.putInt(AUDIO_REVERB_AMOUNT, enhancement.reverbAmount());
-        preferences.put(AUDIO_SOUNDFONT_MODE, enhancement.soundFontMode());
-        if (enhancement.soundFontPath().isBlank()) {
-            preferences.remove(AUDIO_SOUNDFONT_PATH);
-        } else {
-            preferences.put(AUDIO_SOUNDFONT_PATH, enhancement.soundFontPath());
-        }
-        for (int i = 0; i < controllerKeyCodes.length; i++) {
-            preferences.putInt(CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], controllerKeyCodes[i]);
-            preferences.putInt(PLAYER2_CONTROLLER_KEY_PREFIX + CONTROLLER_BUTTON_NAMES[i], player2ControllerKeyCodes[i]);
-        }
-        for (int player = 0; player < 2; player++) {
-            GamepadConfig config = gamepadConfig(player);
-            preferences.putInt(GAMEPAD_DEVICE_PREFIX + (player + 1), config.deviceIndex());
-            if (config.deviceName().isBlank()) {
-                preferences.remove(GAMEPAD_DEVICE_NAME_PREFIX + (player + 1));
-            } else {
-                preferences.put(GAMEPAD_DEVICE_NAME_PREFIX + (player + 1), config.deviceName());
-            }
-            preferences.putInt(GAMEPAD_DEADZONE_PREFIX + (player + 1), config.deadzonePercent());
-            for (int i = 0; i < CONTROLLER_BUTTON_NAMES.length; i++) {
-                preferences.put(GAMEPAD_MAPPING_PREFIX + (player + 1) + CONTROLLER_BUTTON_NAMES[i], config.mappings()[i]);
-            }
-            saveGamepadProfile(preferences, config);
-        }
-        preferences.putInt(TURBO_MULTIPLIER, turboMultiplier);
-        preferences.putInt(TURBO_KEY, turboKeyCode);
-        preferences.putBoolean(TURBO_TOGGLE_MODE, turboToggleMode);
-        preferences.putBoolean(SUPER_GAME_BOY_BORDERS_ENABLED, superGameBoyBordersEnabled);
-        preferences.putInt(RTC_OFFSET_HOURS, rtcOffsetHours);
-        preferences.putInt(RTC_OFFSET_MINUTES, rtcOffsetMinutes);
-        preferences.putInt(RTC_OFFSET_SECONDS, rtcOffsetSeconds);
-        preferences.putBoolean(MULTIPLAYER_TCP_MODE, multiplayerTcpMode);
-        preferences.putBoolean(MULTIPLAYER_HOST_MODE, multiplayerHostMode);
-        preferences.put(MULTIPLAYER_LOCAL_PATH, multiplayerLocalPath);
-        preferences.put(MULTIPLAYER_TCP_HOST, multiplayerTcpHost);
-        preferences.putInt(MULTIPLAYER_TCP_PORT, multiplayerTcpPort);
-        if (defaultBiosPath == null || defaultBiosPath.isBlank()) {
-            preferences.remove(DEFAULT_BIOS_PATH);
-        } else {
-            preferences.put(DEFAULT_BIOS_PATH, defaultBiosPath);
-        }
     }
 
     public int rewindCapacity() {
@@ -362,45 +203,45 @@ public record AppSettings(
                 player2Keys,
                 normalizedGamepads,
                 clamp(turboMultiplier, 1, 10),
-                turboKeyCode <= 0 ? KeyEvent.VK_TAB : turboKeyCode,
+                turboKeyCode <= 0 ? KEY_TAB : turboKeyCode,
                 turboToggleMode,
                 xBrzFiltering,
                 superGameBoyBordersEnabled,
-                defaultBiosPath == null ? "" : defaultBiosPath.strip(),
+                trim(defaultBiosPath),
                 clamp(rtcOffsetHours, -9999, 9999),
                 clamp(rtcOffsetMinutes, -59, 59),
                 clamp(rtcOffsetSeconds, -59, 59),
                 multiplayerTcpMode,
                 multiplayerHostMode,
-                multiplayerLocalPath == null || multiplayerLocalPath.isBlank() ? "gbcemu.sock" : multiplayerLocalPath.strip(),
-                multiplayerTcpHost == null || multiplayerTcpHost.isBlank() ? "localhost" : multiplayerTcpHost.strip(),
+                isBlank(multiplayerLocalPath) ? "gbcemu.sock" : multiplayerLocalPath.trim(),
+                isBlank(multiplayerTcpHost) ? "localhost" : multiplayerTcpHost.trim(),
                 clamp(multiplayerTcpPort, 1, 65535)
         );
     }
 
     private static int[] defaultControllerKeyCodes() {
         return new int[]{
-                KeyEvent.VK_Z,
-                KeyEvent.VK_X,
-                KeyEvent.VK_ENTER,
-                KeyEvent.VK_SPACE,
-                KeyEvent.VK_UP,
-                KeyEvent.VK_DOWN,
-                KeyEvent.VK_LEFT,
-                KeyEvent.VK_RIGHT
+                KEY_Z,
+                KEY_X,
+                KEY_ENTER,
+                KEY_SPACE,
+                KEY_UP,
+                KEY_DOWN,
+                KEY_LEFT,
+                KEY_RIGHT
         };
     }
 
     private static int[] defaultPlayer2ControllerKeyCodes() {
         return new int[]{
-                KeyEvent.VK_NUMPAD1,
-                KeyEvent.VK_NUMPAD2,
-                KeyEvent.VK_NUMPAD3,
-                KeyEvent.VK_NUMPAD0,
-                KeyEvent.VK_W,
-                KeyEvent.VK_S,
-                KeyEvent.VK_A,
-                KeyEvent.VK_D
+                KEY_NUMPAD1,
+                KEY_NUMPAD2,
+                KEY_NUMPAD3,
+                KEY_NUMPAD0,
+                KEY_W,
+                KEY_S,
+                KEY_A,
+                KEY_D
         };
     }
 
@@ -412,7 +253,7 @@ public record AppSettings(
     }
 
     private static AudioEnhancementConfig defaultAudioEnhancement() {
-        return new AudioEnhancementConfig("Raw", 35, 20, 15, "Off", "");
+        return new AudioEnhancementConfig("Raw", 35, 20, 15, "Off", "", "", 120);
     }
 
     private static AudioEnhancementConfig normalizedAudioEnhancement(AudioEnhancementConfig config) {
@@ -428,7 +269,9 @@ public record AppSettings(
                 clamp(config.chorusAmount(), 0, 100),
                 clamp(config.reverbAmount(), 0, 100),
                 soundFontMode,
-                config.soundFontPath() == null ? "" : config.soundFontPath().strip()
+                trim(config.soundFontPath()),
+                trim(config.outputDeviceName()),
+                clamp(config.outputBufferMillis(), 20, 500)
         );
     }
 
@@ -463,30 +306,22 @@ public record AppSettings(
         }
         String[] mappings = Arrays.copyOf(config.mappings() == null ? fallback.mappings() : config.mappings(), CONTROLLER_BUTTON_NAMES.length);
         for (int i = 0; i < mappings.length; i++) {
-            if (mappings[i] == null || mappings[i].isBlank()) {
+            if (isBlank(mappings[i])) {
                 mappings[i] = fallback.mappings()[i];
             } else {
-                mappings[i] = mappings[i].strip();
+                mappings[i] = mappings[i].trim();
             }
         }
-        String deviceName = config.deviceName() == null ? "" : config.deviceName().strip();
+        String deviceName = trim(config.deviceName());
         return new GamepadConfig(clamp(config.deviceIndex(), -1, 15), deviceName, clamp(config.deadzonePercent(), 0, 95), mappings);
     }
 
-    private static void saveGamepadProfile(Preferences preferences, GamepadConfig config) {
-        if (config.deviceName().isBlank()) {
-            return;
-        }
-        String profileKey = gamepadProfileKey(config.deviceName());
-        preferences.put(profileKey + ".name", config.deviceName());
-        preferences.putInt(profileKey + ".deadzone", config.deadzonePercent());
-        for (int i = 0; i < CONTROLLER_BUTTON_NAMES.length; i++) {
-            preferences.put(profileKey + ".mapping." + CONTROLLER_BUTTON_NAMES[i], config.mappings()[i]);
-        }
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
-    private static String gamepadProfileKey(String deviceName) {
-        return GAMEPAD_PROFILE_PREFIX + Integer.toHexString(deviceName.hashCode());
+    private static String trim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static int clampPercent(int value) {

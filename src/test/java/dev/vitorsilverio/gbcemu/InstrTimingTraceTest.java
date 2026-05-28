@@ -1,11 +1,11 @@
 package dev.vitorsilverio.gbcemu;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
-import dev.vitorsilverio.gbcemu.audio.AudioOutput;
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.controller.ButtonType;
 import dev.vitorsilverio.gbcemu.controller.Controller;
+import dev.vitorsilverio.gbcemu.core.ConsoleAudioOutput;
 import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.memory.Bus;
@@ -23,6 +23,7 @@ import dev.vitorsilverio.gbcemu.misc.Key1;
 import dev.vitorsilverio.gbcemu.peripherals.Joypad;
 import dev.vitorsilverio.gbcemu.peripherals.Timer;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.util.RawImage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -45,7 +46,7 @@ class InstrTimingTraceTest {
         Cpu cpu = new Cpu(bus);
         TraceTimer timer = new TraceTimer(bus, cpu::toString);
         Ppu ppu = new Ppu(bus);
-        Apu apu = new Apu(AudioOutput.muted());
+        Apu apu = new Apu(ConsoleAudioOutput.MUTED);
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -191,7 +192,7 @@ class InstrTimingTraceTest {
         Cpu cpu = new Cpu(bus);
         Timer timer = new Timer(bus);
         Ppu ppu = new Ppu(bus);
-        Apu apu = new Apu(AudioOutput.muted());
+        Apu apu = new Apu(ConsoleAudioOutput.MUTED);
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -259,7 +260,7 @@ class InstrTimingTraceTest {
         Timer timer = new Timer(bus);
         Cart cart = CartFactory.fromFile(new File(romPath), null);
         Ppu ppu = new Ppu(bus, cart.getHeader().isCgbCompatible());
-        Apu apu = new Apu(AudioOutput.muted());
+        Apu apu = new Apu(ConsoleAudioOutput.MUTED);
         HDMA hdma = new HDMA(bus);
         DMA dma = new DMA(bus);
         TraceSerial serial = new TraceSerial(bus);
@@ -301,9 +302,15 @@ class InstrTimingTraceTest {
 
         File output = new File(outputPath);
         output.getParentFile().mkdirs();
-        ImageIO.write((BufferedImage) ppu.getFrameBuffer(), "png", output);
+        ImageIO.write(toBufferedImage(ppu.getFrameBuffer()), "png", output);
         System.out.println(output.getAbsolutePath());
         System.out.println(serial.text());
+    }
+
+    private BufferedImage toBufferedImage(RawImage image) {
+        BufferedImage bufferedImage = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_ARGB);
+        bufferedImage.setRGB(0, 0, image.width(), image.height(), image.copyArgb(), 0, image.width());
+        return bufferedImage;
     }
 
     private void tickSystem(Bus bus, Cpu cpu, Timer timer, Ppu ppu, Apu apu, HDMA hdma, DMA dma, TraceSerial serial) {

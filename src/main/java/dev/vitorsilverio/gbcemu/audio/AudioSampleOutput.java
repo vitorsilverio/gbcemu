@@ -1,11 +1,19 @@
 package dev.vitorsilverio.gbcemu.audio;
 
 public interface AudioSampleOutput {
+    default int sampleRate() {
+        return 48_000;
+    }
+
     void writeStereoSample(int left, int right);
 
     void writeSilentSample();
 
     default void updateChannelState(int channel, boolean enabled, double frequencyHz, int volume, boolean noise) {
+    }
+
+    default boolean observesChannelState() {
+        return false;
     }
 
     default boolean suppressPcmOutput() {

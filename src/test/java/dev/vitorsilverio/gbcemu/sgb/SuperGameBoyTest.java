@@ -3,9 +3,8 @@ package dev.vitorsilverio.gbcemu.sgb;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.ppu.PpuState;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.util.RawImage;
 import org.junit.jupiter.api.Test;
-
-import java.awt.image.BufferedImage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -103,9 +102,9 @@ class SuperGameBoyTest {
 
         assertTrue(sgb.hasBorder());
         assertEquals("PCT_TRN", sgb.lastCommandName());
-        BufferedImage image = sgb.copyBorderImage();
+        RawImage image = sgb.copyBorderImage();
         assertNotNull(image);
-        assertEquals(0xFFFF0000, image.getRGB(0, 0));
+        assertEquals(0xFFFF0000, image.getArgb(0, 0));
     }
 
     private void fillTileOneWithColorOne(Ppu ppu) {

@@ -184,7 +184,10 @@ public class Disassembler {
 
         private String fillRight(String string, int size, char placeHolder) {
             var builder = new StringBuilder(string);
-            builder.append(String.valueOf(placeHolder).repeat(Math.max(0, size - string.length() + 1)));
+            int padding = Math.max(0, size - string.length() + 1);
+            for (int i = 0; i < padding; i++) {
+                builder.append(placeHolder);
+            }
             return builder.toString();
         }
     }

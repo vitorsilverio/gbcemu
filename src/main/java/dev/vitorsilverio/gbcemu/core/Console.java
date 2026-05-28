@@ -1,24 +1,21 @@
 package dev.vitorsilverio.gbcemu.core;
 
 import dev.vitorsilverio.gbcemu.audio.Apu;
-import dev.vitorsilverio.gbcemu.audio.AudioOutput;
 import dev.vitorsilverio.gbcemu.cartridge.Cart;
 import dev.vitorsilverio.gbcemu.cartridge.CartFactory;
 import dev.vitorsilverio.gbcemu.cartridge.CartState;
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.connection.DisconnectedPhysicalConnection;
-import dev.vitorsilverio.gbcemu.controller.CompositeController;
-import dev.vitorsilverio.gbcemu.controller.Controller;
-import dev.vitorsilverio.gbcemu.controller.GamepadController;
-import dev.vitorsilverio.gbcemu.controller.IdleController;
-import dev.vitorsilverio.gbcemu.controller.KeyboardController;
-import dev.vitorsilverio.gbcemu.controller.RumbleSink;
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
 import dev.vitorsilverio.gbcemu.cpu.CpuState;
-import dev.vitorsilverio.gbcemu.debug.CpuDebugWindow;
+import dev.vitorsilverio.gbcemu.debug.ApuDebugAudioInterface;
+import dev.vitorsilverio.gbcemu.debug.CartDebugInterface;
 import dev.vitorsilverio.gbcemu.debug.DebugController;
+import dev.vitorsilverio.gbcemu.debug.DebugImageSink;
+import dev.vitorsilverio.gbcemu.debug.BusDebugMemoryInterface;
+import dev.vitorsilverio.gbcemu.debug.ConsoleDebugPort;
+import dev.vitorsilverio.gbcemu.debug.DebuggerInterface;
 import dev.vitorsilverio.gbcemu.debug.Disassembler;
-import dev.vitorsilverio.gbcemu.gui.*;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.interrupt.InterruptState;
 import dev.vitorsilverio.gbcemu.memory.*;
@@ -36,9 +33,6 @@ import dev.vitorsilverio.gbcemu.snapshot.SaveStateFile;
 import dev.vitorsilverio.gbcemu.snapshot.SaveStateMetadata;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -46,7 +40,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 public class Console {
 
@@ -57,7 +51,7 @@ public class Console {
     private final Timer timer;
     private final Ppu ppu;
     private final Apu apu;
-    private final AudioOutput audioOutput;
+    private final ConsoleAudioOutput audioOutput;
     private final Serial serial;
     private final HDMA hdma;
     private final DMA dma;
@@ -68,11 +62,10 @@ public class Console {
     private final Key1 key1;
     private final InfraredPort infraredPort;
     private final CgbUndocumentedRegisters cgbUndocumentedRegisters;
-    private final EmulatorWindow window;
-    private EmulatorWindow detachedDisplayWindow;
-    private final KeyboardController keyboardController;
-    private final GamepadController gamepadController;
-    private final Controller controller;
+    private final ConsoleDisplay display;
+    private final Function<String, ConsoleDisplay> detachedDisplayFactory;
+    private ConsoleDisplay detachedDisplay;
+    private final ConsoleInput input;
     private final GameSharkDevice gameSharkDevice;
     private final Cart cart;
     private final SuperGameBoy superGameBoy;
@@ -80,8 +73,10 @@ public class Console {
     private final File saveFile;
     private final boolean throttled;
     private final boolean externallyThrottled;
+    private final boolean lockStateDuringExecution;
+    private final boolean headless;
     private final boolean cartridgeCgbCompatible;
-    private final DebugController debugController = new DebugController();
+    private final DebuggerInterface debugger = new DebugController();
     private final Bus bus;
     private RewindBuffer rewindBuffer;
     private AppSettings settings;
@@ -114,12 +109,12 @@ public class Console {
         this(biosFile, romFile, saveFile, headless, null);
     }
 
-    public Console(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window) {
-        this(biosFile, romFile, saveFile, headless, window, AppSettings.defaults());
+    public Console(File biosFile, File romFile, File saveFile, boolean headless, ConsoleDisplay display) {
+        this(biosFile, romFile, saveFile, headless, display, AppSettings.defaults());
     }
 
-    public Console(File biosFile, File romFile, File saveFile, boolean headless, EmulatorWindow window, AppSettings settings) {
-        this(biosFile, romFile, saveFile, headless, window, settings, null, null, null);
+    public Console(File biosFile, File romFile, File saveFile, boolean headless, ConsoleDisplay display, AppSettings settings) {
+        this(biosFile, romFile, saveFile, headless, display, settings, null, null, null);
     }
 
     public Console(
@@ -127,13 +122,13 @@ public class Console {
             File romFile,
             File saveFile,
             boolean headless,
-            EmulatorWindow window,
+            ConsoleDisplay display,
             AppSettings settings,
-            Controller controllerOverride,
-            KeyListener keyListenerOverride,
+            ConsoleInput input,
+            ConsoleAudioOutput audioOutput,
             LinkCable linkCableOverride
     ) {
-        this(biosFile, romFile, saveFile, headless, window, settings, controllerOverride, keyListenerOverride, linkCableOverride, false);
+        this(biosFile, romFile, saveFile, headless, display, settings, input, audioOutput, linkCableOverride, null);
     }
 
     public Console(
@@ -141,14 +136,14 @@ public class Console {
             File romFile,
             File saveFile,
             boolean headless,
-            EmulatorWindow window,
+            ConsoleDisplay display,
             AppSettings settings,
-            Controller controllerOverride,
-            KeyListener keyListenerOverride,
+            ConsoleInput input,
+            ConsoleAudioOutput audioOutput,
             LinkCable linkCableOverride,
-            boolean secondaryDisplay
+            Function<String, ConsoleDisplay> detachedDisplayFactory
     ) {
-        this(biosFile, romFile, saveFile, headless, window, settings, controllerOverride, keyListenerOverride, linkCableOverride, secondaryDisplay, false);
+        this(biosFile, romFile, saveFile, headless, display, settings, input, audioOutput, linkCableOverride, detachedDisplayFactory, false);
     }
 
     public Console(
@@ -156,18 +151,37 @@ public class Console {
             File romFile,
             File saveFile,
             boolean headless,
-            EmulatorWindow window,
+            ConsoleDisplay display,
             AppSettings settings,
-            Controller controllerOverride,
-            KeyListener keyListenerOverride,
+            ConsoleInput input,
+            ConsoleAudioOutput audioOutput,
             LinkCable linkCableOverride,
-            boolean secondaryDisplay,
+            Function<String, ConsoleDisplay> detachedDisplayFactory,
             boolean externallyThrottled
     ) {
+        this(biosFile, romFile, saveFile, headless, display, settings, input, audioOutput, linkCableOverride, detachedDisplayFactory, externallyThrottled, true);
+    }
+
+    public Console(
+            File biosFile,
+            File romFile,
+            File saveFile,
+            boolean headless,
+            ConsoleDisplay display,
+            AppSettings settings,
+            ConsoleInput input,
+            ConsoleAudioOutput audioOutput,
+            LinkCable linkCableOverride,
+            Function<String, ConsoleDisplay> detachedDisplayFactory,
+            boolean externallyThrottled,
+            boolean lockStateDuringExecution
+    ) {
+        this.headless = headless;
+        this.lockStateDuringExecution = lockStateDuringExecution;
         this.settings = settings.normalized();
         this.rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
         this.bus = new Bus();
-        this.debugController.setWatchpointsChangedListener(this::updateMemoryAccessListener);
+        this.debugger.setWatchpointsChangedListener(this::updateMemoryAccessListener);
         this.gameSharkDevice = new GameSharkDevice();
         this.bus.addMemorySpace(gameSharkDevice);
         this.romFile = romFile;
@@ -179,9 +193,9 @@ public class Console {
         this.timer = new Timer(bus);
         this.ppu = new Ppu(bus, !superGameBoyEnabled && (biosFile != null || cartridgeCgbCompatible));
         this.superGameBoy = new SuperGameBoy(superGameBoyEnabled, ppu);
-        this.audioOutput = headless ? AudioOutput.muted() : AudioOutput.createDefault(48_000);
-        this.audioOutput.applyEnhancement(this.settings.normalizedAudioEnhancement());
-        this.apu = new Apu(audioOutput);
+        this.audioOutput = audioOutput != null ? audioOutput : ConsoleAudioOutput.MUTED;
+        this.audioOutput.applyOutputSettings(this.settings.normalizedAudioEnhancement());
+        this.apu = new Apu(this.audioOutput);
         this.apu.applyDebugVolumes(
                 this.settings.audioMasterVolume(),
                 this.settings.audioLeftVolume(),
@@ -198,13 +212,9 @@ public class Console {
         bus.addMemorySpace(apu);
         bus.addMemorySpace(hdma);
         bus.addMemorySpace(dma);
-        keyboardController = headless || controllerOverride != null ? null : new KeyboardController(this.settings);
-        gamepadController = headless || controllerOverride != null ? null : new GamepadController(this.settings.gamepadConfig(0));
         this.externallyThrottled = externallyThrottled;
-        this.controller = controllerOverride != null
-                ? controllerOverride
-                : headless ? new IdleController() : new CompositeController(keyboardController, gamepadController);
-        var joypad = new Joypad(bus, this.controller, superGameBoy);
+        this.input = input != null ? input : ConsoleInput.IDLE;
+        var joypad = new Joypad(bus, this.input, superGameBoy);
         bus.addMemorySpace(joypad);
         workRam = new WorkRam();
         bus.addMemorySpace(workRam);
@@ -228,14 +238,10 @@ public class Console {
         bus.addMemorySpace(infraredPort);
         bus.addMemorySpace(cgbUndocumentedRegisters);
         bus.addMemorySpace(new UnusedIoRegisters());
-        this.window = headless ? null : window;
-        if (this.window != null) {
-            KeyListener keyListener = keyListenerOverride != null ? keyListenerOverride : keyboardController;
-            if (secondaryDisplay) {
-                this.window.attachSecondary(ppu, keyListener, superGameBoy);
-            } else {
-                this.window.attach(ppu, keyListener, superGameBoy);
-            }
+        this.display = headless ? null : display;
+        this.detachedDisplayFactory = headless ? null : detachedDisplayFactory;
+        if (this.display != null) {
+            this.display.attach(ppu, superGameBoy);
         }
         this.linkCable = linkCableOverride != null
                 ? linkCableOverride
@@ -248,17 +254,29 @@ public class Console {
 
     int tick() {
         long cyclesBefore = systemCycles;
-        boolean stepInstruction = debugController.consumeInstructionStep();
-        startPendingDebugStep();
-        if (stopped || paused && !stepInstruction) {
-            return 0;
+        if (!lockStateDuringExecution) {
+            if (stopped || paused) {
+                return 0;
+            }
+            tickCpuOrDma();
+            return cyclesAdvancedSince(cyclesBefore);
         }
-        if (!stepInstruction && debugController.shouldBreakAtPc(cpu.getPc())) {
+        boolean stepInstruction = debugger.consumeInstructionStep();
+        startPendingDebugStep();
+        if (!stepInstruction && debugger.consumePauseRequest()) {
             paused = true;
             debugStepMode = DebugStepMode.NONE;
             return 0;
         }
-        if (!stepInstruction && debugController.shouldBreakOnMemoryAccess()) {
+        if (stopped || paused && !stepInstruction) {
+            return 0;
+        }
+        if (!stepInstruction && debugger.shouldBreakAtPc(cpu.getPc())) {
+            paused = true;
+            debugStepMode = DebugStepMode.NONE;
+            return 0;
+        }
+        if (!stepInstruction && debugger.shouldBreakOnMemoryAccess()) {
             paused = true;
             debugStepMode = DebugStepMode.NONE;
             return 0;
@@ -267,17 +285,21 @@ public class Console {
             if (stopped) {
                 return 0;
             }
-            if (hdmaBlocksCpu()) {
-                tickSystemCycle();
-            } else {
-                cpu.tick();
-            }
+            tickCpuOrDma();
         }
         if (stepInstruction) {
             paused = true;
         }
         completeDebugStepIfNeeded();
         return cyclesAdvancedSince(cyclesBefore);
+    }
+
+    private void tickCpuOrDma() {
+        if (hdmaBlocksCpu()) {
+            tickSystemCycle();
+        } else {
+            cpu.tick();
+        }
     }
 
     private int cyclesAdvancedSince(long cyclesBefore) {
@@ -319,27 +341,33 @@ public class Console {
     }
 
     void detachDisplay() {
-        if (window != null) {
-            window.detach(ppu);
+        if (display != null) {
+            display.detach(ppu);
         }
         closeDetachedDisplay();
     }
 
     public void openDetachedDisplay(String title) {
-        if (detachedDisplayWindow != null && detachedDisplayWindow.isOpen()) {
-            detachedDisplayWindow.show();
+        if (detachedDisplay != null && detachedDisplay.isOpen()) {
+            detachedDisplay.show();
             return;
         }
-        detachedDisplayWindow = EmulatorWindow.detachedDisplay(title, settings);
-        detachedDisplayWindow.attach(ppu, null, superGameBoy);
-        detachedDisplayWindow.show();
-        detachedDisplayWindow.renderFrame(ppu);
+        if (detachedDisplayFactory == null) {
+            return;
+        }
+        detachedDisplay = detachedDisplayFactory.apply(title);
+        if (detachedDisplay == null) {
+            return;
+        }
+        detachedDisplay.attach(ppu, superGameBoy);
+        detachedDisplay.show();
+        detachedDisplay.renderFrame(ppu);
     }
 
     private void closeDetachedDisplay() {
-        if (detachedDisplayWindow != null) {
-            detachedDisplayWindow.dispose();
-            detachedDisplayWindow = null;
+        if (detachedDisplay != null) {
+            detachedDisplay.dispose();
+            detachedDisplay = null;
         }
     }
 
@@ -347,24 +375,24 @@ public class Console {
         if (!paused || debugStepMode != DebugStepMode.NONE) {
             return;
         }
-        if (debugController.consumeFrameStep()) {
+        if (debugger.consumeFrameStep()) {
             debugStepMode = DebugStepMode.FRAME;
             debugStepTargetFrame = frameNumber + 1;
             paused = false;
             return;
         }
-        if (debugController.consumeScanlineStep()) {
+        if (debugger.consumeScanlineStep()) {
             debugStepMode = DebugStepMode.SCANLINE;
             debugStepStartLine = ppu.debugSnapshot().line();
             paused = false;
             return;
         }
-        if (debugController.consumeRunUntilHBlank()) {
+        if (debugger.consumeRunUntilHBlank()) {
             debugStepMode = DebugStepMode.HBLANK;
             paused = false;
             return;
         }
-        if (debugController.consumeRunUntilVBlank()) {
+        if (debugger.consumeRunUntilVBlank()) {
             debugStepMode = DebugStepMode.VBLANK;
             paused = false;
         }
@@ -413,7 +441,7 @@ public class Console {
     }
 
     public void resume() {
-        debugController.ignorePcBreakpointOnce(cpu.getPc());
+        debugger.ignorePcBreakpointOnce(cpu.getPc());
         paused = false;
         frameStart = System.nanoTime();
         nextFrameDeadline = frameStart + NANOS_PER_FRAME;
@@ -430,13 +458,9 @@ public class Console {
         synchronized (stateLock) {
             cart.flushSave();
         }
-        if (controller instanceof AutoCloseable closeable) {
-            try {
-                closeable.close();
-            } catch (Exception ignored) {
-            }
-        } else if (gamepadController != null) {
-            gamepadController.close();
+        try {
+            input.close();
+        } catch (Exception ignored) {
         }
         updateRumbleOutput(false);
         linkCable.disconnect();
@@ -448,20 +472,13 @@ public class Console {
         stopAfterFrames = frames <= 0 ? -1 : frames;
     }
 
-    public void openCheats() {
-        new CheatsWindow(gameSharkDevice);
-    }
-
-    public void openAudioDebugger() {
-        new AudioDebugWindow(apu);
-    }
-
     public String serialTranscript() {
         return serial.transcript();
     }
 
     public void applySettings(AppSettings settings) {
         this.settings = settings.normalized();
+        var audioConfig = this.settings.normalizedAudioEnhancement();
         apu.applyDebugVolumes(
                 this.settings.audioMasterVolume(),
                 this.settings.audioLeftVolume(),
@@ -469,103 +486,62 @@ public class Console {
                 this.settings.audioChannelVolumes(),
                 this.settings.audioChannelMuted()
         );
-        audioOutput.applyEnhancement(this.settings.normalizedAudioEnhancement());
-        if (detachedDisplayWindow != null && detachedDisplayWindow.isOpen()) {
-            detachedDisplayWindow.applySettings(this.settings);
+        audioOutput.applyOutputSettings(audioConfig);
+        if (detachedDisplay != null && detachedDisplay.isOpen()) {
+            detachedDisplay.applySettings(this.settings);
         }
         rewindBuffer = new RewindBuffer(this.settings.rewindCapacity());
-        if (keyboardController != null) {
-            keyboardController.applySettings(this.settings);
-        }
-        if (gamepadController != null) {
-            gamepadController.applySettings(this.settings.gamepadConfig(0));
-        }
+        input.applySettings(this.settings, 0);
     }
 
     private long currentRtcEpochSeconds() {
         return Instant.now().getEpochSecond() + settings.rtcOffsetTotalSeconds();
     }
 
-    public void openMemoryDebugger() {
-        new MemoryDebugWindow(bus, this::isPaused);
-    }
-
-    public void openPpuDebugger() {
-        new PpuDebugWindow(ppu, superGameBoy);
-    }
-
-    public void openCpuDebugger() {
-        new CpuDebugWindow(cpu, bus, ppu, debugController, linkCable);
-    }
-
-    public void openCartDebugger() {
-        new CartDebugWindow(cart);
-    }
-
-    Bus debugBus() {
-        return bus;
-    }
-
-    Cpu debugCpu() {
-        return cpu;
-    }
-
-    Apu debugApu() {
-        return apu;
-    }
-
-    Cart debugCart() {
-        return cart;
-    }
-
-    DebugController debugController() {
-        return debugController;
-    }
-
-    LinkCable debugLinkCable() {
-        return linkCable;
-    }
-
-    BooleanSupplier debugPausedSupplier() {
-        return this::isPaused;
-    }
-
-    Ppu debugPpu() {
-        return ppu;
-    }
-
-    SuperGameBoy debugSuperGameBoy() {
-        return superGameBoy;
+    ConsoleDebugPort debugPort() {
+        return new ConsoleDebugPort(
+                cpu,
+                bus,
+                new BusDebugMemoryInterface(bus),
+                ppu,
+                new ApuDebugAudioInterface(apu),
+                new CartDebugInterface(cart),
+                gameSharkDevice,
+                debugger,
+                linkCable,
+                superGameBoy,
+                this::isPaused
+        );
     }
 
     private void updateMemoryAccessListener() {
-        bus.setMemoryAccessListener(debugController.hasWatchpoints() ? debugController.memoryAccessListener() : null);
+        bus.setMemoryAccessListener(debugger.hasWatchpoints() ? debugger.memoryAccessListener() : null);
     }
 
     public File dumpDebugBundle() {
-        return dumpDebugBundle("");
+        return dumpDebugBundle("", DebugImageSink.NOOP);
     }
 
     public File romFile() {
         return romFile;
     }
 
-    File dumpDebugBundle(String label) {
+    File dumpDebugBundle(String label, DebugImageSink imageSink) {
         synchronized (stateLock) {
-            String suffix = label == null || label.isBlank() ? "" : "-" + label.replaceAll("[^A-Za-z0-9._-]", "_");
+            String suffix = label == null || label.trim().isEmpty() ? "" : "-" + label.replaceAll("[^A-Za-z0-9._-]", "_");
             String baseName = "debug-bundle-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now()) + suffix;
             String frameFilename = baseName + "-frame.png";
             String sgbBorderFilename = baseName + "-sgb-border.png";
             String sgbFrameFilename = baseName + "-sgb-frame.png";
             String sgbAttributesFilename = baseName + "-sgb-attributes.png";
-            writeDebugFramePng(frameFilename);
-            boolean wroteSgbBorder = writeSgbBorderPng(sgbBorderFilename);
-            boolean wroteSgbFrame = writeSgbFramePng(sgbFrameFilename);
-            boolean wroteSgbAttributes = writeSgbAttributesPng(sgbAttributesFilename);
+            boolean wroteFrame = writeDebugFramePng(frameFilename, imageSink);
+            boolean wroteSgbBorder = writeSgbBorderPng(sgbBorderFilename, imageSink);
+            boolean wroteSgbFrame = writeSgbFramePng(sgbFrameFilename, imageSink);
+            boolean wroteSgbAttributes = writeSgbAttributesPng(sgbAttributesFilename, imageSink);
             return DebugJson.writeTargetFile(
                     baseName + ".json",
                     debugBundleJson(
-                            frameFilename,
+                            wroteFrame ? frameFilename : "",
                             wroteSgbBorder ? sgbBorderFilename : "",
                             wroteSgbFrame ? sgbFrameFilename : "",
                             wroteSgbAttributes ? sgbAttributesFilename : ""
@@ -575,82 +551,39 @@ public class Console {
         }
     }
 
-    private void writeDebugFramePng(String filename) {
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
-        try {
-            ImageIO.write(debugFrameImage(), "png", new File(target, filename));
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to dump debug frame", e);
-        }
+    private boolean writeDebugFramePng(String filename, DebugImageSink imageSink) {
+        return imageSink.writePng(filename, ppu.getFrameBuffer());
     }
 
-    private BufferedImage debugFrameImage() {
-        int[] pixels = ppu.copyFrameBufferArgb();
-        BufferedImage image = new BufferedImage(160, 144, BufferedImage.TYPE_INT_ARGB);
-        image.setRGB(0, 0, 160, 144, pixels, 0, 160);
-        return image;
-    }
-
-    private boolean writeSgbBorderPng(String filename) {
-        BufferedImage border = superGameBoy.copyBorderImage();
-        if (border == null) {
+    private boolean writeSgbBorderPng(String filename, DebugImageSink imageSink) {
+        if (superGameBoy == null || !superGameBoy.hasBorder()) {
             return false;
         }
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
-        try {
-            ImageIO.write(border, "png", new File(target, filename));
-            return true;
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to dump SGB border", e);
-        }
+        return imageSink.writePng(filename, superGameBoy.copyBorderImage());
     }
 
-    private boolean writeSgbFramePng(String filename) {
+    private boolean writeSgbFramePng(String filename, DebugImageSink imageSink) {
         if (superGameBoy == null || !superGameBoy.isEnabled()) {
             return false;
         }
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
-        try {
-            ImageIO.write(superGameBoy.colorizeFrame(ppu.getFrameBuffer()), "png", new File(target, filename));
-            return true;
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to dump SGB frame", e);
-        }
+        return imageSink.writePng(filename, superGameBoy.colorizeFrame(ppu.getFrameBuffer()));
     }
 
-    private boolean writeSgbAttributesPng(String filename) {
+    private boolean writeSgbAttributesPng(String filename, DebugImageSink imageSink) {
         if (superGameBoy == null || !superGameBoy.isEnabled()) {
             return false;
         }
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
-        try {
-            ImageIO.write(superGameBoy.debugAttributeImage(), "png", new File(target, filename));
-            return true;
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to dump SGB attribute map", e);
-        }
+        return imageSink.writePng(filename, superGameBoy.debugAttributeImage());
     }
 
     public File dumpMemoryBanks() {
         synchronized (stateLock) {
             String directoryName = "debug-memory-banks-" + DEBUG_DUMP_TIMESTAMP.format(Instant.now());
-            Path directory = Path.of("target", directoryName);
+            Path directory = DebugJson.debugDirectory().toPath().resolve(directoryName);
             try {
                 Files.createDirectories(directory);
                 String indexJson = writeMemoryBankDumps(directory);
-                Files.writeString(directory.resolve("index.json"), indexJson);
+                DebugJson.writeTextFile(directory.resolve("index.json"), indexJson);
                 return directory.toFile();
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to dump memory banks", e);
@@ -808,6 +741,7 @@ public class Console {
         appendSuperGameBoyDebugJson(builder);
         appendDmaDebugJson(builder, dmaState, hdmaState);
         appendCgbRegistersDebugJson(builder, key0State, key1State, cgbUndocumentedState, compatibilityPaletteSelection);
+        appendClockTimingDebugJson(builder, cpuState, timerState, serialState, key1State);
         builder.append("  \"ppu\": {\n");
         DebugJson.appendBoolean(builder, "cgbMode", ppuSnapshot.cgbMode(), true, 4);
         DebugJson.appendHex(builder, "lcdc", ppuSnapshot.lcdc(), true, 4, 2);
@@ -984,6 +918,36 @@ public class Console {
         builder.append("  },\n");
     }
 
+    private void appendClockTimingDebugJson(StringBuilder builder, CpuState cpuState, TimerState timerState, SerialState serialState, Key1State key1State) {
+        int tac = timerState.timerControl() & 0x07;
+        int timerBit = switch (tac & 0x03) {
+            case 0 -> 9;
+            case 1 -> 3;
+            case 2 -> 5;
+            case 3 -> 7;
+            default -> 9;
+        };
+        boolean internalSerialClock = (serialState.sc() & 0x01) != 0;
+        boolean fastSerialClock = (serialState.sc() & 0x02) != 0;
+        int serialCyclesPerTransfer = fastSerialClock ? 128 : 4096;
+        if (internalSerialClock && key1State.doubleSpeed()) {
+            serialCyclesPerTransfer /= 2;
+        }
+        builder.append("  \"clockTiming\": {\n");
+        DebugJson.appendNumber(builder, "cpuSpeedRate", cpuState.speedRate(), true, 4);
+        DebugJson.appendBoolean(builder, "key1DoubleSpeed", key1State.doubleSpeed(), true, 4);
+        DebugJson.appendBoolean(builder, "key1PrepareSpeedSwitch", key1State.prepareSpeedSwitch(), true, 4);
+        DebugJson.appendNumber(builder, "timerSystemCounterIncrementsPerMachineCycle", key1State.doubleSpeed() ? 2 : 1, true, 4);
+        DebugJson.appendNumber(builder, "timerSelectedCounterBit", timerBit, true, 4);
+        DebugJson.appendBoolean(builder, "timerEnabled", (tac & 0x04) != 0, true, 4);
+        DebugJson.appendNumber(builder, "apuFrameSequencerCounterBit", key1State.doubleSpeed() ? 13 : 12, true, 4);
+        DebugJson.appendBoolean(builder, "serialInternalClock", internalSerialClock, true, 4);
+        DebugJson.appendBoolean(builder, "serialFastClock", fastSerialClock, true, 4);
+        DebugJson.appendNumber(builder, "serialCyclesPerTransfer", serialCyclesPerTransfer, true, 4);
+        DebugJson.appendNumber(builder, "serialCyclesRemaining", serialState.transferCyclesRemaining(), false, 4);
+        builder.append("  },\n");
+    }
+
     private void appendDisassemblyDebugJson(StringBuilder builder, int pc) {
         builder.append("  \"disassembly\": [\n");
         int cursor = pc & 0xFFFF;
@@ -1055,9 +1019,9 @@ public class Console {
 
     private void appendWatchpointsDebugJson(StringBuilder builder) {
         builder.append("  \"watchpoints\": [\n");
-        java.util.List<DebugController.Watchpoint> watchpoints = debugController.watchpoints();
+        java.util.List<DebuggerInterface.Watchpoint> watchpoints = debugger.watchpoints();
         for (int index = 0; index < watchpoints.size(); index++) {
-            DebugController.Watchpoint watchpoint = watchpoints.get(index);
+            DebuggerInterface.Watchpoint watchpoint = watchpoints.get(index);
             builder.append("    {\n");
             DebugJson.appendString(builder, "type", watchpoint.accessType().name(), true, 6);
             DebugJson.appendHex(builder, "address", watchpoint.address(), true, 6, 4);
@@ -1100,14 +1064,14 @@ public class Console {
         if (ppu.consumeFrameReady()) {
             boolean transferFrame = superGameBoy.consumeTransferFrame();
             if (shouldRenderFrame() && !transferFrame && !superGameBoy.shouldSuppressFrame()) {
-                if (window != null) {
-                    window.renderFrame(ppu);
+                if (display != null) {
+                    display.renderFrame(ppu);
                 }
-                if (detachedDisplayWindow != null) {
-                    if (detachedDisplayWindow.isOpen()) {
-                        detachedDisplayWindow.renderFrame(ppu);
+                if (detachedDisplay != null) {
+                    if (detachedDisplay.isOpen()) {
+                        detachedDisplay.renderFrame(ppu);
                     } else {
-                        detachedDisplayWindow = null;
+                        detachedDisplay = null;
                     }
                 }
             }
@@ -1151,8 +1115,8 @@ public class Console {
         double speedPercent = fps * 100.0 / TARGET_FPS;
         performanceStatsFrames = 0;
         performanceStatsStart = now;
-        if (window != null) {
-            window.updatePerformanceStats(fps, speedPercent);
+        if (display != null) {
+            display.updatePerformanceStats(fps, speedPercent);
         }
     }
 
@@ -1171,7 +1135,7 @@ public class Console {
     }
 
     private boolean isFastForwardActive() {
-        return !isLinkConnectionActive() && keyboardController != null && keyboardController.isTurboPressed();
+        return !isLinkConnectionActive() && input.isTurboPressed();
     }
 
     private boolean shouldRenderFrame() {
@@ -1188,7 +1152,7 @@ public class Console {
             return;
         }
         fastForwardAudioMuted = active;
-        audioOutput.setSinkMuted(active);
+        audioOutput.setOutputMuted(active);
     }
 
     private void sleepUntil(long deadline) {
@@ -1226,9 +1190,7 @@ public class Console {
             return;
         }
         rumbleOutputActive = active;
-        if (controller instanceof RumbleSink rumbleSink) {
-            rumbleSink.setRumble(active);
-        }
+        input.setRumble(active);
     }
 
     private void sleepNanos(long nanos) {

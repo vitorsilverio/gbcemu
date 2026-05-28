@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.link;
 
 import dev.vitorsilverio.gbcemu.core.MachineCycle;
+import dev.vitorsilverio.gbcemu.connection.DisconnectedPhysicalConnection;
 import dev.vitorsilverio.gbcemu.connection.PhysicalConnection;
 import dev.vitorsilverio.gbcemu.connection.PhysicalConnectionListener;
 import dev.vitorsilverio.gbcemu.multiplayer.LinkPollMode;
@@ -27,6 +28,7 @@ public class LinkCable implements MachineCycle, PhysicalConnectionListener {
 
     private boolean helloSent;
     private boolean sessionConnected;
+    private final boolean permanentlyDisconnected;
     private long clockPulsesSent;
     private long clockPulsesReceived;
     private long clockResponsesSent;
@@ -39,6 +41,7 @@ public class LinkCable implements MachineCycle, PhysicalConnectionListener {
 
     public LinkCable(PhysicalConnection connection) {
         this.connection = connection;
+        this.permanentlyDisconnected = connection instanceof DisconnectedPhysicalConnection;
         this.connection.setListener(this);
     }
 
@@ -212,6 +215,9 @@ public class LinkCable implements MachineCycle, PhysicalConnectionListener {
 
     @Override
     public void tick() {
+        if (permanentlyDisconnected) {
+            return;
+        }
         boolean connectedBefore = sessionConnected || connection.isConnected();
         connection.tick();
 

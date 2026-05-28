@@ -10,13 +10,13 @@ import java.util.List;
 public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuContext {
 
     private static final int CPU_CLOCK_HZ = 4_194_304;
-    private static final int SAMPLE_RATE = 48_000;
     private static final int REGISTER_WRITE_HISTORY_SIZE = 8192;
 
     private final ApuRegisters registers = new ApuRegisters();
     private final AudioSampleOutput output;
     private final ApuMixer mixer;
     private final ApuFrameSequencer frameSequencer = new ApuFrameSequencer();
+    private final int sampleRate;
 
     private int sampleAccumulator;
     private boolean audioEnabled = true;
@@ -38,6 +38,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
 
     public Apu(AudioSampleOutput output) {
         this.output = output;
+        this.sampleRate = Math.max(8_000, Math.min(48_000, output.sampleRate()));
         this.mixer = new ApuMixer(output);
         for (int i = 0; i < lastRecordedRegisterValues.length; i++) {
             lastRecordedRegisterValues[i] = -1;
@@ -84,7 +85,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
             channel4.tick();
         }
 
-        sampleAccumulator += SAMPLE_RATE;
+        sampleAccumulator += sampleRate;
         if (sampleAccumulator >= CPU_CLOCK_HZ) {
             sampleAccumulator -= CPU_CLOCK_HZ;
             if (audioEnabled) {
@@ -138,7 +139,7 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
         return new ApuDebugSnapshot(
                 audioEnabled,
                 frameSequencer.step(),
-                SAMPLE_RATE,
+                sampleRate,
                 sampleAccumulator,
                 bufferedSampleBytes(),
                 registers.read(ApuAddress.NR50_MASTER_VOLUME) & 0xFF,
@@ -184,6 +185,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     private void updateOutputChannelState() {
+        if (!output.observesChannelState()) {
+            return;
+        }
         output.updateChannelState(1, channel1.enabled, channel1.frequencyHz(), channel1.currentVolume, false);
         output.updateChannelState(2, channel2.enabled, channel2.frequencyHz(), channel2.currentVolume, false);
         output.updateChannelState(3, channel3.enabled, channel3.frequencyHz(), channel3.soundFontVolume(), false);
@@ -400,6 +404,9 @@ public class Apu implements MemorySpace, MachineCycle, Stateful<ApuState>, ApuCo
     }
 
     private void silenceOutputChannels() {
+        if (!output.observesChannelState()) {
+            return;
+        }
         output.updateChannelState(1, false, 0, 0, false);
         output.updateChannelState(2, false, 0, 0, false);
         output.updateChannelState(3, false, 0, 0, false);

@@ -6,6 +6,7 @@ import dev.vitorsilverio.gbcemu.ppu.TileMapArea;
 import dev.vitorsilverio.gbcemu.ppu.VideoRamState;
 import dev.vitorsilverio.gbcemu.sgb.SuperGameBoy;
 import dev.vitorsilverio.gbcemu.util.DebugJson;
+import dev.vitorsilverio.gbcemu.util.RawImage;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -18,6 +19,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.Timer;
+import javax.swing.DefaultComboBoxModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -28,6 +30,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class PpuDebugWindow {
 
@@ -41,6 +44,7 @@ public class PpuDebugWindow {
     private Ppu ppu;
     private SuperGameBoy superGameBoy;
     private final JComboBox<Target> targetSelector;
+    private final Supplier<List<Target>> targetSupplier;
     private final JFrame frame = new JFrame("PPU Debug");
     private final ImagePanel tilesBank0 = new ImagePanel(3);
     private final ImagePanel tilesBank1 = new ImagePanel(3);
@@ -52,6 +56,7 @@ public class PpuDebugWindow {
     private final JTextArea sgbStatus = new JTextArea("SGB inactive", 2, 80);
     private final JCheckBox autoRefresh = new JCheckBox("Auto refresh");
     private Dimension lastSgbBorderPreferredSize = sgbBorder.getPreferredSize();
+    private boolean updatingTargetSelector;
     private final Timer autoRefreshTimer = new Timer(1000, event -> {
         if (autoRefresh.isSelected() && frame.isVisible()) {
             refresh();
@@ -66,13 +71,20 @@ public class PpuDebugWindow {
         this.ppu = ppu;
         this.superGameBoy = superGameBoy;
         this.targetSelector = null;
+        this.targetSupplier = null;
         initializeWindow();
     }
 
     public PpuDebugWindow(List<Target> targets) {
+        this(() -> targets);
+    }
+
+    public PpuDebugWindow(Supplier<List<Target>> targetSupplier) {
+        List<Target> targets = targetSupplier.get();
         if (targets.isEmpty()) {
             throw new IllegalArgumentException("At least one PPU debug target is required");
         }
+        this.targetSupplier = targetSupplier;
         this.targetSelector = new JComboBox<>(targets.toArray(Target[]::new));
         applyTarget(targets.getFirst());
         initializeWindow();
@@ -105,6 +117,9 @@ public class PpuDebugWindow {
         JPanel toolbar = new JPanel();
         if (targetSelector != null) {
             targetSelector.addActionListener(event -> {
+                if (updatingTargetSelector) {
+                    return;
+                }
                 Target target = (Target) targetSelector.getSelectedItem();
                 if (target != null) {
                     applyTarget(target);
@@ -152,6 +167,7 @@ public class PpuDebugWindow {
     }
 
     private void refresh() {
+        refreshTargets();
         tilesBank0.setImage(ppu.debugTileImage(0));
         tilesBank1.setImage(ppu.debugTileImage(1));
         bgMap9800.setImage(ppu.debugTileMapImage(TileMapArea.IN_9800));
@@ -163,8 +179,28 @@ public class PpuDebugWindow {
         repackWhenSgbBorderSizeChanges();
     }
 
+    private void refreshTargets() {
+        if (targetSupplier == null || targetSelector == null) {
+            return;
+        }
+        List<Target> targets = targetSupplier.get();
+        if (targets.isEmpty()) {
+            return;
+        }
+        Target selected = (Target) targetSelector.getSelectedItem();
+        Target next = selected != null && targets.contains(selected) ? selected : targets.getFirst();
+        updatingTargetSelector = true;
+        try {
+            targetSelector.setModel(new DefaultComboBoxModel<>(targets.toArray(Target[]::new)));
+            targetSelector.setSelectedItem(next);
+        } finally {
+            updatingTargetSelector = false;
+        }
+        applyTarget(next);
+    }
+
     private BufferedImage sgbPreviewImage() {
-        BufferedImage border = superGameBoy == null ? null : superGameBoy.copyBorderImage();
+        BufferedImage border = superGameBoy == null ? null : SwingImages.toBufferedImage(superGameBoy.copyBorderImage());
         if (border == null) {
             return null;
         }
@@ -172,7 +208,7 @@ public class PpuDebugWindow {
         Graphics2D graphics = preview.createGraphics();
         try {
             graphics.drawImage(border, 0, 0, null);
-            graphics.drawImage(superGameBoy.colorizeFrame(ppu.getFrameBuffer()), SuperGameBoy.GAME_SCREEN_X, SuperGameBoy.GAME_SCREEN_Y, 160, 144, null);
+            graphics.drawImage(SwingImages.toBufferedImage(superGameBoy.colorizeFrame(ppu.getFrameBuffer())), SuperGameBoy.GAME_SCREEN_X, SuperGameBoy.GAME_SCREEN_Y, 160, 144, null);
         } finally {
             graphics.dispose();
         }
@@ -223,30 +259,27 @@ public class PpuDebugWindow {
     }
 
     private void dump() {
-        File target = new File("target");
-        if (!target.exists()) {
-            target.mkdirs();
-        }
+        File target = DebugJson.debugDirectory();
         try {
-            ImageIO.write(ppu.debugTileImage(0), "png", new File(target, "debug-ppu-tiles-bank0.png"));
-            ImageIO.write(ppu.debugTileImage(1), "png", new File(target, "debug-ppu-tiles-bank1.png"));
-            ImageIO.write(ppu.debugTileMapImage(TileMapArea.IN_9800), "png", new File(target, "debug-ppu-tilemap-9800.png"));
-            ImageIO.write(ppu.debugTileMapImage(TileMapArea.IN_9C00), "png", new File(target, "debug-ppu-tilemap-9c00.png"));
-            ImageIO.write(ppu.debugPaletteImage(false), "png", new File(target, "debug-ppu-bg-palettes.png"));
-            ImageIO.write(ppu.debugPaletteImage(true), "png", new File(target, "debug-ppu-obj-palettes.png"));
-            BufferedImage border = superGameBoy == null ? null : superGameBoy.copyBorderImage();
+            ImageIO.write(SwingImages.toBufferedImage(ppu.debugTileImage(0)), "png", new File(target, "debug-ppu-tiles-bank0.png"));
+            ImageIO.write(SwingImages.toBufferedImage(ppu.debugTileImage(1)), "png", new File(target, "debug-ppu-tiles-bank1.png"));
+            ImageIO.write(SwingImages.toBufferedImage(ppu.debugTileMapImage(TileMapArea.IN_9800)), "png", new File(target, "debug-ppu-tilemap-9800.png"));
+            ImageIO.write(SwingImages.toBufferedImage(ppu.debugTileMapImage(TileMapArea.IN_9C00)), "png", new File(target, "debug-ppu-tilemap-9c00.png"));
+            ImageIO.write(SwingImages.toBufferedImage(ppu.debugPaletteImage(false)), "png", new File(target, "debug-ppu-bg-palettes.png"));
+            ImageIO.write(SwingImages.toBufferedImage(ppu.debugPaletteImage(true)), "png", new File(target, "debug-ppu-obj-palettes.png"));
+            BufferedImage border = superGameBoy == null ? null : SwingImages.toBufferedImage(superGameBoy.copyBorderImage());
             if (border != null) {
                 ImageIO.write(border, "png", new File(target, "debug-ppu-sgb-border.png"));
             }
             BufferedImage sgbFrame = superGameBoy == null || !superGameBoy.isEnabled()
                     ? null
-                    : superGameBoy.colorizeFrame(ppu.getFrameBuffer());
+                    : SwingImages.toBufferedImage(superGameBoy.colorizeFrame(ppu.getFrameBuffer()));
             if (sgbFrame != null) {
                 ImageIO.write(sgbFrame, "png", new File(target, "debug-ppu-sgb-frame.png"));
             }
             BufferedImage sgbAttributes = superGameBoy == null || !superGameBoy.isEnabled()
                     ? null
-                    : superGameBoy.debugAttributeImage();
+                    : SwingImages.toBufferedImage(superGameBoy.debugAttributeImage());
             if (sgbAttributes != null) {
                 ImageIO.write(sgbAttributes, "png", new File(target, "debug-ppu-sgb-attributes.png"));
             }
@@ -405,6 +438,15 @@ public class PpuDebugWindow {
         private ImagePanel(int scale) {
             this.scale = scale;
             setPreferredSize(new Dimension(512, 512));
+        }
+
+        private void setImage(RawImage image) {
+            this.image = SwingImages.toBufferedImage(image);
+            if (image != null) {
+                setPreferredSize(new Dimension(image.width() * scale, image.height() * scale));
+            }
+            revalidate();
+            repaint();
         }
 
         private void setImage(BufferedImage image) {
