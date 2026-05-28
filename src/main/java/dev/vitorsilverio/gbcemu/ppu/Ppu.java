@@ -578,7 +578,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 return;
             case WY:
                 windowY = value & 0xFF;
-                return;
         }
     }
 
@@ -678,10 +677,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         }
         frameReady = false;
         return true;
-    }
-
-    public long getFrameNumber() {
-        return frameNumber;
     }
 
     public boolean isHBlank() {
@@ -815,9 +810,8 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             return;
         }
 
-        if (mode == PpuMode.VRAM_READ && currentColumn >= 160) {
+        if (mode == PpuMode.VRAM_READ && currentColumn == 160) {
             mode = PpuMode.HBLANK;
-            currentColumn = 160;
         }
         updateStatSignal();
     }
@@ -916,22 +910,6 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         for (int y = 0; y < 144; y++) {
             for (int x = 0; x < 160; x++) {
                 pixels[y * 160 + x] = frameBuffer[x][y];
-            }
-        }
-        return pixels;
-    }
-
-    public int[] copyBgColorIndexesArgb() {
-        int[] pixels = new int[160 * 144];
-        for (int y = 0; y < 144; y++) {
-            for (int x = 0; x < 160; x++) {
-                pixels[y * 160 + x] = switch (bgColorIndexes[x][y] & 0x03) {
-                    case 0 -> 0xFFFFFFFF;
-                    case 1 -> 0xFFFF0000;
-                    case 2 -> 0xFF00FF00;
-                    case 3 -> 0xFF0000FF;
-                    default -> 0xFFFF00FF;
-                };
             }
         }
         return pixels;
