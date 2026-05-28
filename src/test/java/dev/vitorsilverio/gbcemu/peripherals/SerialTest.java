@@ -1,9 +1,9 @@
 package dev.vitorsilverio.gbcemu.peripherals;
 
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
+import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.misc.Key1;
-import dev.vitorsilverio.gbcemu.link.LinkCable;
 import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import org.junit.jupiter.api.Test;
 

@@ -1,9 +1,10 @@
 package dev.vitorsilverio.gbcemu.link;
 
 import dev.vitorsilverio.gbcemu.connection.PhysicalConnectionListener;
-import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import dev.vitorsilverio.gbcemu.multiplayer.LinkPollMode;
+import dev.vitorsilverio.gbcemu.multiplayer.Multiplayer;
 import org.junit.jupiter.api.Test;
+
 import java.util.Arrays;
 import java.util.OptionalInt;
 
@@ -11,11 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class LinkCableTest {
 
