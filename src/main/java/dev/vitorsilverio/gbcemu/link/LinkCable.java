@@ -1,9 +1,9 @@
 package dev.vitorsilverio.gbcemu.link;
 
-import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.connection.DisconnectedPhysicalConnection;
 import dev.vitorsilverio.gbcemu.connection.PhysicalConnection;
 import dev.vitorsilverio.gbcemu.connection.PhysicalConnectionListener;
+import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.multiplayer.LinkPollMode;
 import dev.vitorsilverio.gbcemu.multiplayer.LinkPollingConnection;
 

@@ -1,6 +1,5 @@
 package dev.vitorsilverio.gbcemu.multiplayer;
 
-import dev.vitorsilverio.gbcemu.core.MachineCycle;
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.connection.PhysicalConnectionListener;
 import org.slf4j.Logger;

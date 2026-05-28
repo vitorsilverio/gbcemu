@@ -1,15 +1,12 @@
 package dev.vitorsilverio.gbcemu.sgb;
 
 import dev.vitorsilverio.gbcemu.memory.Bus;
-import dev.vitorsilverio.gbcemu.ppu.PpuState;
 import dev.vitorsilverio.gbcemu.ppu.Ppu;
+import dev.vitorsilverio.gbcemu.ppu.PpuState;
 import dev.vitorsilverio.gbcemu.util.RawImage;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SuperGameBoyTest {
 

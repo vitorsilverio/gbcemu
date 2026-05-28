@@ -1,8 +1,6 @@
 package dev.vitorsilverio.gbcemu.cpu.instructions;
 
 import dev.vitorsilverio.gbcemu.cpu.Cpu;
-import dev.vitorsilverio.gbcemu.cpu.instructions.destinations.DestinationA;
-import dev.vitorsilverio.gbcemu.cpu.instructions.sources.SourceA;
 import dev.vitorsilverio.gbcemu.memory.Bus;
 import org.junit.jupiter.api.Test;
 

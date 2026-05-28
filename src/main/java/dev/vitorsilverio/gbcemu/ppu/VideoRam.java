@@ -1,7 +1,7 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.memory.MemoryBank;
+import dev.vitorsilverio.gbcemu.memory.MemorySpace;
 import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 
 import java.util.ArrayList;

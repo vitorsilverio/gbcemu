@@ -1,7 +1,7 @@
 package dev.vitorsilverio.gbcemu.memory;
 
-import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
+import dev.vitorsilverio.gbcemu.interrupt.InterruptManager;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;

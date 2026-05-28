@@ -1,19 +1,14 @@
 package dev.vitorsilverio.gbcemu.gui;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.controller.ButtonType;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.controller.RumbleSink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class GamepadController implements Controller, AutoCloseable, RumbleSink {

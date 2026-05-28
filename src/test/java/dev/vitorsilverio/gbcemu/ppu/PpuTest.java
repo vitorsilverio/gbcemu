@@ -1,16 +1,13 @@
 package dev.vitorsilverio.gbcemu.ppu;
 
-import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
+import dev.vitorsilverio.gbcemu.memory.Bus;
 import dev.vitorsilverio.gbcemu.util.RawImage;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PpuTest {
 
