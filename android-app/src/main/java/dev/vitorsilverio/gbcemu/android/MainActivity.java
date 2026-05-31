@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.android;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -85,7 +86,7 @@ public class MainActivity extends Activity {
         try {
             File romFile = romStore.importRom(uri);
             consoleHost.setRomFile(romFile);
-            Toast.makeText(this, "ROM imported: " + romFile.getName(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "ROM loaded: " + romFile.getName(), Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
             Toast.makeText(this, "Could not import ROM: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -130,6 +131,32 @@ public class MainActivity extends Activity {
     }
 
     private void openRomPicker() {
+        File[] importedRoms = romStore.importedRoms();
+        if (importedRoms.length == 0) {
+            importRomFromStorage();
+            return;
+        }
+        String[] items = new String[importedRoms.length + 1];
+        for (int i = 0; i < importedRoms.length; i++) {
+            items[i] = importedRoms[i].getName();
+        }
+        items[importedRoms.length] = "Import ROM...";
+        new AlertDialog.Builder(this)
+                .setTitle("ROMs")
+                .setItems(items, (dialog, which) -> {
+                    if (which == importedRoms.length) {
+                        importRomFromStorage();
+                        return;
+                    }
+                    File romFile = importedRoms[which];
+                    romStore.selectRom(romFile);
+                    consoleHost.setRomFile(romFile);
+                    Toast.makeText(this, "ROM loaded: " + romFile.getName(), Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
+    private void importRomFromStorage() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");

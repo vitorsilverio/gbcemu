@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class AndroidRomStore {
     private static final String PREFS = "gbcemu_android";
@@ -25,12 +27,12 @@ public class AndroidRomStore {
 
     public File importRom(Uri uri) throws IOException {
         String displayName = sanitizeDisplayName(displayName(uri));
-        File romDirectory = new File(context.getFilesDir(), "roms");
-        if (!romDirectory.exists() && !romDirectory.mkdirs()) {
-            throw new IOException("Could not create ROM directory: " + romDirectory);
+        File romDirectory = romDirectory();
+        File destination = new File(romDirectory, displayName);
+        if (destination.isFile()) {
+            preferences.edit().putString(LAST_ROM, destination.getAbsolutePath()).apply();
+            return destination;
         }
-
-        File destination = uniqueFile(romDirectory, displayName);
         try (InputStream input = context.getContentResolver().openInputStream(uri);
              FileOutputStream output = new FileOutputStream(destination)) {
             if (input == null) {
@@ -46,6 +48,13 @@ public class AndroidRomStore {
         return destination;
     }
 
+    public void selectRom(File romFile) {
+        if (romFile == null) {
+            return;
+        }
+        preferences.edit().putString(LAST_ROM, romFile.getAbsolutePath()).apply();
+    }
+
     public File lastRom() {
         String path = preferences.getString(LAST_ROM, null);
         if (path == null || path.trim().isEmpty()) {
@@ -53,6 +62,25 @@ public class AndroidRomStore {
         }
         File file = new File(path);
         return file.isFile() ? file : null;
+    }
+
+    public File[] importedRoms() {
+        File[] files = romDirectory().listFiles(file -> file.isFile() && isRomFile(file.getName()));
+        if (files == null) {
+            return new File[0];
+        }
+        Arrays.sort(files, Comparator.comparing(File::getName, String.CASE_INSENSITIVE_ORDER));
+        return files;
+    }
+
+    private File romDirectory() {
+        File romDirectory = new File(context.getFilesDir(), "roms");
+        if (!romDirectory.exists()) {
+            if (!romDirectory.mkdirs()) {
+                throw new IllegalStateException("Could not create ROM directory: " + romDirectory);
+            }
+        }
+        return romDirectory;
     }
 
     private String displayName(Uri uri) {
@@ -79,20 +107,8 @@ public class AndroidRomStore {
         return sanitized;
     }
 
-    private static File uniqueFile(File directory, String displayName) {
-        File destination = new File(directory, displayName);
-        if (!destination.exists()) {
-            return destination;
-        }
-
-        int dot = displayName.lastIndexOf('.');
-        String base = dot > 0 ? displayName.substring(0, dot) : displayName;
-        String extension = dot > 0 ? displayName.substring(dot) : "";
-        for (int i = 1; ; i++) {
-            destination = new File(directory, base + "-" + i + extension);
-            if (!destination.exists()) {
-                return destination;
-            }
-        }
+    private static boolean isRomFile(String name) {
+        String lower = name.toLowerCase();
+        return lower.endsWith(".gb") || lower.endsWith(".gbc") || lower.endsWith(".sgb");
     }
 }

@@ -45,6 +45,7 @@ public class AndroidConsoleHost {
         pausedByLifecycle = true;
         if (emulator != null) {
             emulator.pause();
+            emulator.flushSaves();
         }
         display.stop();
         audioOutput.stop();

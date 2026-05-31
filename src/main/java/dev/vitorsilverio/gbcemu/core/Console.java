@@ -476,9 +476,7 @@ public class Console {
         }
         stopped = true;
         paused = false;
-        synchronized (stateLock) {
-            cart.flushSave();
-        }
+        flushSave();
         try {
             input.close();
         } catch (Exception ignored) {
@@ -487,6 +485,12 @@ public class Console {
         linkCable.disconnect();
         apu.close();
         closeDetachedDisplay();
+    }
+
+    public void flushSave() {
+        synchronized (stateLock) {
+            cart.flushSave();
+        }
     }
 
     public void stopAfterFrames(long frames) {

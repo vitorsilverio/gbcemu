@@ -295,6 +295,12 @@ public class Emulator {
         }
     }
 
+    public void flushSaves() {
+        synchronized (consolesLock) {
+            consoles.forEach(Console::flushSave);
+        }
+    }
+
     public synchronized void stop() {
         if (stopped) {
             return;
