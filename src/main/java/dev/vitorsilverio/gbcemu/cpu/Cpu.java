@@ -7,6 +7,7 @@ import dev.vitorsilverio.gbcemu.snapshot.Stateful;
 import org.slf4j.Logger;
 
 import java.util.Optional;
+import java.util.function.IntConsumer;
 
 public class Cpu implements MachineCycle, Stateful<CpuState> {
 
@@ -18,7 +19,7 @@ public class Cpu implements MachineCycle, Stateful<CpuState> {
     private final Decoder decoder;
 
     private int instructionTicks;
-    private Runnable cycleCallback = () -> {
+    private IntConsumer cycleCallback = ticks -> {
     };
 
     private int speedRate = 1;
@@ -101,8 +102,8 @@ public class Cpu implements MachineCycle, Stateful<CpuState> {
         haltBug = state.haltBug();
     }
 
-    public void setCycleCallback(Runnable cycleCallback) {
-        this.cycleCallback = cycleCallback == null ? () -> {
+    public void setCycleCallback(IntConsumer cycleCallback) {
+        this.cycleCallback = cycleCallback == null ? ticks -> {
         } : cycleCallback;
     }
 
@@ -332,8 +333,8 @@ public class Cpu implements MachineCycle, Stateful<CpuState> {
     }
 
     private void waitTicks(int ticks) {
-        for (int i = 0; i < ticks; i++) {
-            cycleCallback.run();
+        if (ticks > 0) {
+            cycleCallback.accept(ticks);
         }
     }
 

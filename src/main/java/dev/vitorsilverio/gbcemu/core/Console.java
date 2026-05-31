@@ -86,6 +86,8 @@ public class Console {
     private boolean diagnosticSkipApu;
     private boolean diagnosticSkipPpu;
     private boolean diagnosticSkipRender;
+    private boolean autoFrameSkipEnabled;
+    private int autoFrameSkipInterval = 1;
     private DebugStepMode debugStepMode = DebugStepMode.NONE;
     private long debugStepTargetFrame;
     private int debugStepStartLine;
@@ -244,7 +246,13 @@ public class Console {
                 : new LinkCable(new DisconnectedPhysicalConnection());
         this.serial = new Serial(bus, linkCable);
         bus.addMemorySpace(serial);
-        cpu.setCycleCallback(this::tickSystemCycle);
+        cpu.setCycleCallback(this::tickSystemCycles);
+    }
+
+    private void tickSystemCycles(int ticks) {
+        for (int i = 0; i < ticks; i++) {
+            tickSystemCycle();
+        }
     }
 
 
@@ -333,6 +341,17 @@ public class Console {
         this.diagnosticSkipApu = skipApu;
         this.diagnosticSkipPpu = skipPpu;
         this.diagnosticSkipRender = skipRender;
+    }
+
+    public void setRuntimeDebugCaptureEnabled(boolean enabled) {
+        ppu.setPixelMetadataEnabled(enabled || superGameBoy.isEnabled());
+    }
+
+    public void setAutoFrameSkipEnabled(boolean enabled) {
+        autoFrameSkipEnabled = enabled;
+        if (!enabled) {
+            autoFrameSkipInterval = 1;
+        }
     }
 
     long targetFrameNanos() {
@@ -1121,10 +1140,34 @@ public class Console {
         double speedPercent = fps * 100.0 / TARGET_FPS;
         performanceStatsFrames = 0;
         performanceStatsStart = now;
+        updateAutoFrameSkip(speedPercent);
         if (display != null) {
             display.updatePerformanceStats(fps, speedPercent);
-            display.updatePerformanceDetails("");
+            display.updatePerformanceDetails(performanceDetailsText());
         }
+    }
+
+    private void updateAutoFrameSkip(double speedPercent) {
+        if (!autoFrameSkipEnabled || isFastForwardActive()) {
+            autoFrameSkipInterval = 1;
+            return;
+        }
+        if (speedPercent < 45.0) {
+            autoFrameSkipInterval = 4;
+        } else if (speedPercent < 65.0) {
+            autoFrameSkipInterval = 3;
+        } else if (speedPercent < 88.0) {
+            autoFrameSkipInterval = 2;
+        } else if (speedPercent > 96.0) {
+            autoFrameSkipInterval = 1;
+        }
+    }
+
+    private String performanceDetailsText() {
+        if (!autoFrameSkipEnabled || autoFrameSkipInterval <= 1) {
+            return "";
+        }
+        return "AFS x" + autoFrameSkipInterval;
     }
 
     private void throttleFrame() {
@@ -1146,6 +1189,9 @@ public class Console {
     }
 
     private boolean shouldRenderFrame() {
+        if (autoFrameSkipEnabled && autoFrameSkipInterval > 1 && frameNumber % autoFrameSkipInterval != 0) {
+            return false;
+        }
         if (!isFastForwardActive()) {
             return true;
         }

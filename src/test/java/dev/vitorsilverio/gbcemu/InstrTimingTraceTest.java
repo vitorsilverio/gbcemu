@@ -57,7 +57,7 @@ class InstrTimingTraceTest {
         bus.addMemorySpace(new InfraredPort());
         bus.addMemorySpace(new UnusedIoRegisters());
         bus.addMemorySpace(serial);
-        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial));
+        cpu.setCycleCallback(cycles -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial, cycles));
 
         Queue<String> pcs = new ArrayDeque<>();
         for (int tick = 0; tick < 5_000_000 && !serial.text().contains("Failed") && !serial.text().contains("Passed"); tick++) {
@@ -213,7 +213,7 @@ class InstrTimingTraceTest {
         cpu.setE((byte) 0xD8);
         cpu.setH((byte) 0x01);
         cpu.setL((byte) 0x4D);
-        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial));
+        cpu.setCycleCallback(cycles -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial, cycles));
 
         Queue<String> pcs = new ArrayDeque<>();
         for (int tick = 0; tick < 15_000_000; tick++) {
@@ -280,7 +280,7 @@ class InstrTimingTraceTest {
         cpu.setE((byte) 0xD8);
         cpu.setH((byte) 0x01);
         cpu.setL((byte) 0x4D);
-        cpu.setCycleCallback(() -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial));
+        cpu.setCycleCallback(cycles -> tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial, cycles));
 
         for (int tick = 0; tick < ticks; tick++) {
             if (!hdma.isActive() || !hdma.isGeneralPurposeMode()) {
@@ -319,6 +319,12 @@ class InstrTimingTraceTest {
         serial.tick();
         ppu.tick();
         apu.tick();
+    }
+
+    private void tickSystem(Bus bus, Cpu cpu, Timer timer, Ppu ppu, Apu apu, HDMA hdma, DMA dma, TraceSerial serial, int ticks) {
+        for (int tick = 0; tick < ticks; tick++) {
+            tickSystem(bus, cpu, timer, ppu, apu, hdma, dma, serial);
+        }
     }
 
     private void dump(Bus bus, int address, int length) {

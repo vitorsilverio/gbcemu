@@ -10,9 +10,10 @@ import java.util.List;
 public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState> {
 
     private static final int VBK = 0xFF4F;
+    private static final int TILE_MAP_BYTES = 0x800;
 
     private final Tile[][] tiles = new Tile[2][384];
-    private final TileMap[] tileMaps = new TileMap[256 * 256];
+    private final TileMap[] tileMaps = new TileMap[TILE_MAP_BYTES];
     private int bank = 0;
 
     public VideoRam() {
@@ -84,7 +85,7 @@ public class VideoRam implements MemorySpace, MemoryBank, Stateful<VideoRamState
     }
 
     public TileMap getTileMap(TileMapArea TileMapArea, int tileIndex) {
-        int index = (TileMapArea.getAddress() - 0x9800) & 0xFFFF;
+        int index = TileMapArea.getAddress() - 0x9800;
         return tileMaps[index + tileIndex];
     }
 

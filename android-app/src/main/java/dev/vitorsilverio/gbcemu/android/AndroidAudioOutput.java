@@ -155,11 +155,31 @@ public class AndroidAudioOutput implements ConsoleAudioOutput {
                 if (written >= 0) {
                     return written;
                 }
+                if (written == AudioTrack.ERROR_DEAD_OBJECT) {
+                    restartAudioTrack();
+                    return 0;
+                }
                 nonBlockingWriteSupported = false;
             }
-            return track.write(buffer, 0, length);
+            int written = track.write(buffer, 0, length);
+            if (written == AudioTrack.ERROR_DEAD_OBJECT) {
+                restartAudioTrack();
+                return 0;
+            }
+            return written;
         } catch (IllegalStateException e) {
+            restartAudioTrack();
             return 0;
+        }
+    }
+
+    private synchronized void restartAudioTrack() {
+        if (audioTrack == null) {
+            return;
+        }
+        stop();
+        if (!muted) {
+            start();
         }
     }
 

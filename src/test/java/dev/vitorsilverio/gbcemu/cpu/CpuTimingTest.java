@@ -56,9 +56,11 @@ class CpuTimingTest {
         cpu.setA((byte) 0x05);
         bus.write(0x0000, (byte) 0xE0);
         bus.write(0x0001, (byte) 0x07);
-        cpu.setCycleCallback(() -> {
-            ticks[0]++;
-            assertEquals(0x00, bus.read(0xFF07) & 0xFF);
+        cpu.setCycleCallback(cycles -> {
+            for (int i = 0; i < cycles; i++) {
+                ticks[0]++;
+                assertEquals(0x00, bus.read(0xFF07) & 0xFF);
+            }
         });
 
         cpu.tick();
@@ -184,7 +186,11 @@ class CpuTimingTest {
         for (int i = 0; i < 12; i++) {
             timer.tick();
         }
-        cpu.setCycleCallback(timer::tick);
+        cpu.setCycleCallback(cycles -> {
+            for (int i = 0; i < cycles; i++) {
+                timer.tick();
+            }
+        });
 
         cpu.tick();
 
@@ -292,7 +298,7 @@ class CpuTimingTest {
 
     private int[] countCpuCycles(Cpu cpu) {
         int[] ticks = new int[1];
-        cpu.setCycleCallback(() -> ticks[0]++);
+        cpu.setCycleCallback(cycles -> ticks[0] += cycles);
         return ticks;
     }
 

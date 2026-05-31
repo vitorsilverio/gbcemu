@@ -17,6 +17,8 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private static final int SCANLINE_CYCLES = 456;
     private static final int MIN_VRAM_READ_CYCLES = 172;
     private static final int VBLANK_CYCLES = 456;
+    private static final int SCREEN_WIDTH = 160;
+    private static final int SCREEN_HEIGHT = 144;
 
     private final int LCDC = 0xFF40;
     private final int STAT = 0xFF41;
@@ -47,10 +49,10 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     private final DmgPalette obj0PaletteDmg = new DmgPalette();
     private final DmgPalette obj1PaletteDmg = new DmgPalette();
     private final Stat stat = new Stat();
-    private final int[][] frameBuffer; // 160x144 pixels
-    private final int[][] bgColorIndexes; // 160x144 pixels
-    private final int[][] resolvedColorIndexes; // 160x144 pixels
-    private final boolean[][] bgPriorities; // 160x144 pixels
+    private final int[][] frameBuffer; // 144x160 pixels, row-major
+    private final int[][] bgColorIndexes; // 144x160 pixels, row-major
+    private final int[][] resolvedColorIndexes; // 144x160 pixels, row-major
+    private final boolean[][] bgPriorities; // 144x160 pixels, row-major
     private final int[] frameImagePixels;
     private boolean cgbMode;
 
@@ -69,6 +71,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     private boolean previousStatSignal;
     private volatile boolean frameReady;
+    private boolean pixelMetadataEnabled = true;
     private final ObjectAtribute[] spriteCandidates = new ObjectAtribute[10];
     private final int[] spriteCandidateIndexes = new int[10];
     private int spriteCandidateCount;
@@ -95,11 +98,11 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     public Ppu(Bus bus, boolean cgbMode) {
         this.bus = bus;
         this.cgbMode = cgbMode;
-        this.frameBuffer = new int[160][144];
-        this.bgColorIndexes = new int[160][144];
-        this.resolvedColorIndexes = new int[160][144];
-        this.bgPriorities = new boolean[160][144];
-        this.frameImagePixels = new int[160 * 144];
+        this.frameBuffer = new int[SCREEN_HEIGHT][SCREEN_WIDTH];
+        this.bgColorIndexes = new int[SCREEN_HEIGHT][SCREEN_WIDTH];
+        this.resolvedColorIndexes = new int[SCREEN_HEIGHT][SCREEN_WIDTH];
+        this.bgPriorities = new boolean[SCREEN_HEIGHT][SCREEN_WIDTH];
+        this.frameImagePixels = new int[SCREEN_WIDTH * SCREEN_HEIGHT];
         if (!cgbMode) {
             objectPriorityMode = ObjectPriorityMode.DMG;
             initializeDmgGrayCgbPalettes();
@@ -181,12 +184,16 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
             return;
         }
         loadBackgroundOrWindowPixel(currentColumn, currentLine);
-        bgColorIndexes[currentColumn][currentLine] = bgPixelColorIndex;
-        bgPriorities[currentColumn][currentLine] = bgPixelPriority;
+        if (pixelMetadataEnabled) {
+            bgColorIndexes[currentLine][currentColumn] = bgPixelColorIndex;
+            bgPriorities[currentLine][currentColumn] = bgPixelPriority;
+        }
         resolveSpritePixel(currentColumn, currentLine);
-        resolvedColorIndexes[currentColumn][currentLine] = resolvedPixelColorIndex;
-        frameBuffer[currentColumn][currentLine] = resolvedPixelColor;
-        frameImagePixels[currentLine * 160 + currentColumn] = resolvedPixelColor;
+        if (pixelMetadataEnabled) {
+            resolvedColorIndexes[currentLine][currentColumn] = resolvedPixelColorIndex;
+            frameBuffer[currentLine][currentColumn] = resolvedPixelColor;
+        }
+        frameImagePixels[currentLine * SCREEN_WIDTH + currentColumn] = resolvedPixelColor;
 
         currentColumn++;
         // when line finished then go to HBLANK
@@ -645,21 +652,25 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     }
 
     public RawImage getFrameBuffer() {
-        return RawImage.wrapCopy(160, 144, frameImagePixels);
+        return RawImage.wrapCopy(SCREEN_WIDTH, SCREEN_HEIGHT, frameImagePixels);
+    }
+
+    public void setPixelMetadataEnabled(boolean pixelMetadataEnabled) {
+        this.pixelMetadataEnabled = pixelMetadataEnabled;
     }
 
     public int getResolvedColorIndex(int x, int y) {
-        if (x < 0 || x >= 160 || y < 0 || y >= 144) {
+        if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) {
             return 0;
         }
-        return resolvedColorIndexes[x][y] & 0x03;
+        return resolvedColorIndexes[y][x] & 0x03;
     }
 
     public int getBackgroundColorIndex(int x, int y) {
-        if (x < 0 || x >= 160 || y < 0 || y >= 144) {
+        if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) {
             return 0;
         }
-        return bgColorIndexes[x][y] & 0x03;
+        return bgColorIndexes[y][x] & 0x03;
     }
 
     public boolean consumeFrameReady() {
@@ -690,7 +701,7 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
                 bgPaletteDmg.getData(),
                 obj0PaletteDmg.getData(),
                 obj1PaletteDmg.getData(),
-                copyIntMatrix(frameBuffer),
+                copyFrameBufferMatrix(),
                 copyIntMatrix(bgColorIndexes),
                 copyIntMatrix(resolvedColorIndexes),
                 copyBooleanMatrix(bgPriorities),
@@ -760,6 +771,17 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         return copy;
     }
 
+    private int[][] copyFrameBufferMatrix() {
+        if (pixelMetadataEnabled) {
+            return copyIntMatrix(frameBuffer);
+        }
+        int[][] copy = new int[SCREEN_HEIGHT][SCREEN_WIDTH];
+        for (int y = 0; y < SCREEN_HEIGHT; y++) {
+            System.arraycopy(frameImagePixels, y * SCREEN_WIDTH, copy[y], 0, SCREEN_WIDTH);
+        }
+        return copy;
+    }
+
     private boolean[][] copyBooleanMatrix(boolean[][] source) {
         boolean[][] copy = new boolean[source.length][];
         for (int i = 0; i < source.length; i++) {
@@ -769,22 +791,62 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
     }
 
     private void restoreIntMatrix(int[][] matrix, int[][] destination) {
+        if (isLegacyColumnMajorMatrix(matrix, destination)) {
+            restoreLegacyIntMatrix(matrix, destination);
+            return;
+        }
         for (int i = 0; i < Math.min(matrix.length, destination.length); i++) {
             System.arraycopy(matrix[i], 0, destination[i], 0, Math.min(matrix[i].length, destination[i].length));
         }
     }
 
+    private boolean isLegacyColumnMajorMatrix(int[][] matrix, int[][] destination) {
+        return destination.length == SCREEN_HEIGHT
+                && destination[0].length == SCREEN_WIDTH
+                && matrix.length == SCREEN_WIDTH
+                && matrix.length > 0
+                && matrix[0].length == SCREEN_HEIGHT;
+    }
+
+    private void restoreLegacyIntMatrix(int[][] matrix, int[][] destination) {
+        for (int x = 0; x < SCREEN_WIDTH; x++) {
+            for (int y = 0; y < SCREEN_HEIGHT; y++) {
+                destination[y][x] = matrix[x][y];
+            }
+        }
+    }
+
     private void restoreFrameImage() {
-        for (int y = 0; y < 144; y++) {
-            for (int x = 0; x < 160; x++) {
-                frameImagePixels[y * 160 + x] = frameBuffer[x][y];
+        for (int y = 0; y < SCREEN_HEIGHT; y++) {
+            for (int x = 0; x < SCREEN_WIDTH; x++) {
+                frameImagePixels[y * SCREEN_WIDTH + x] = frameBuffer[y][x];
             }
         }
     }
 
     private void restoreBooleanMatrix(boolean[][] matrix, boolean[][] destination) {
+        if (isLegacyColumnMajorMatrix(matrix, destination)) {
+            restoreLegacyBooleanMatrix(matrix, destination);
+            return;
+        }
         for (int i = 0; i < Math.min(matrix.length, destination.length); i++) {
             System.arraycopy(matrix[i], 0, destination[i], 0, Math.min(matrix[i].length, destination[i].length));
+        }
+    }
+
+    private boolean isLegacyColumnMajorMatrix(boolean[][] matrix, boolean[][] destination) {
+        return destination.length == SCREEN_HEIGHT
+                && destination[0].length == SCREEN_WIDTH
+                && matrix.length == SCREEN_WIDTH
+                && matrix.length > 0
+                && matrix[0].length == SCREEN_HEIGHT;
+    }
+
+    private void restoreLegacyBooleanMatrix(boolean[][] matrix, boolean[][] destination) {
+        for (int x = 0; x < SCREEN_WIDTH; x++) {
+            for (int y = 0; y < SCREEN_HEIGHT; y++) {
+                destination[y][x] = matrix[x][y];
+            }
         }
     }
 
@@ -828,9 +890,9 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
         int blackPixels = 0;
         int whitePixels = 0;
         int otherPixels = 0;
-        for (int y = 0; y < 144; y++) {
-            for (int x = 0; x < 160; x++) {
-                int rgb = frameBuffer[x][y] & 0x00FFFFFF;
+        for (int y = 0; y < SCREEN_HEIGHT; y++) {
+            for (int x = 0; x < SCREEN_WIDTH; x++) {
+                int rgb = frameImagePixels[y * SCREEN_WIDTH + x] & 0x00FFFFFF;
                 if (rgb == 0) {
                     blackPixels++;
                 } else if (rgb == 0x00FFFFFF) {
@@ -898,12 +960,15 @@ public class Ppu implements MemorySpace, MemoryBankProvider, MachineCycle, State
 
     public int[] copyFrameBufferArgb() {
         int[] pixels = new int[160 * 144];
-        for (int y = 0; y < 144; y++) {
-            for (int x = 0; x < 160; x++) {
-                pixels[y * 160 + x] = frameBuffer[x][y];
-            }
-        }
+        copyFrameBufferTo(pixels);
         return pixels;
+    }
+
+    public void copyFrameBufferTo(int[] target) {
+        if (target == null) {
+            return;
+        }
+        System.arraycopy(frameImagePixels, 0, target, 0, Math.min(target.length, frameImagePixels.length));
     }
 
     public RawImage debugTileMapImage(TileMapArea area) {

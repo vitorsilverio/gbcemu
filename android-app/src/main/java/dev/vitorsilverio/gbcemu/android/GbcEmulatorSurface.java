@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.os.Process;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -24,15 +25,21 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
     private final Paint statusBackgroundPaint = new Paint();
     private final Rect destination = new Rect();
     private final Object renderSignal = new Object();
+    private final Object frameLock = new Object();
     private Bitmap frame = Bitmap.createBitmap(GB_WIDTH, GB_HEIGHT, Bitmap.Config.ARGB_8888);
     private Thread renderThread;
     private volatile boolean running;
     private boolean dirty = true;
+    private boolean pendingFrame;
     private volatile String statusText = "Select a ROM";
     private volatile String performanceText = "";
     private volatile String performanceDetailText = "";
     private volatile String performanceSuffix = "";
-    private int[] framePixels = new int[GB_WIDTH * GB_HEIGHT];
+    private int frameWidth = GB_WIDTH;
+    private int frameHeight = GB_HEIGHT;
+    private int[] emulatorFramePixels = new int[GB_WIDTH * GB_HEIGHT];
+    private int[] pendingFramePixels = new int[GB_WIDTH * GB_HEIGHT];
+    private int[] renderFramePixels = new int[GB_WIDTH * GB_HEIGHT];
 
     public GbcEmulatorSurface(Context context) {
         super(context);
@@ -48,15 +55,36 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
         drawBootPlaceholder();
     }
 
-    public synchronized void setFrame(int[] argb, int width, int height) {
+    public void setFrame(int[] argb, int width, int height) {
         if (argb == null || width <= 0 || height <= 0) {
             return;
         }
-        if (frame.getWidth() != width || frame.getHeight() != height) {
-            frame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            updateDestination(getWidth(), getHeight());
+        ensureFrameBuffers(width, height);
+        System.arraycopy(argb, 0, emulatorFramePixels, 0, Math.min(argb.length, emulatorFramePixels.length));
+        publishFrame(width, height);
+    }
+
+    private void ensureFrameBuffers(int width, int height) {
+        int length = width * height;
+        if (emulatorFramePixels.length == length
+                && pendingFramePixels.length == length
+                && renderFramePixels.length == length) {
+            return;
         }
-        frame.setPixels(argb, 0, width, 0, 0, width, height);
+        emulatorFramePixels = new int[length];
+        pendingFramePixels = new int[length];
+        renderFramePixels = new int[length];
+    }
+
+    private void publishFrame(int width, int height) {
+        synchronized (frameLock) {
+            int[] oldPending = pendingFramePixels;
+            pendingFramePixels = emulatorFramePixels;
+            emulatorFramePixels = oldPending;
+            frameWidth = width;
+            frameHeight = height;
+            pendingFrame = true;
+        }
         requestRender();
     }
 
@@ -90,8 +118,9 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
         if (ppu == null) {
             return;
         }
-        ppu.copyFrameBufferTo(framePixels);
-        setFrame(framePixels, GB_WIDTH, GB_HEIGHT);
+        ensureFrameBuffers(GB_WIDTH, GB_HEIGHT);
+        ppu.copyFrameBufferTo(emulatorFramePixels);
+        publishFrame(GB_WIDTH, GB_HEIGHT);
     }
 
     @Override
@@ -160,6 +189,7 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
 
     @Override
     public void run() {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY);
         while (running) {
             waitForRenderRequest();
             if (!running) {
@@ -202,14 +232,34 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
         if (destination.isEmpty()) {
             updateDestination(canvas.getWidth(), canvas.getHeight());
         }
+        updateBitmapFromPendingFrame();
         canvas.drawColor(0xFF101418);
-        Bitmap currentFrame;
-        synchronized (this) {
-            currentFrame = frame;
-        }
-        canvas.drawBitmap(currentFrame, null, destination, paint);
+        canvas.drawBitmap(frame, null, destination, paint);
         drawStatus(canvas);
         drawPerformanceStats(canvas);
+    }
+
+    private void updateBitmapFromPendingFrame() {
+        int width;
+        int height;
+        boolean hasFrame;
+        synchronized (frameLock) {
+            hasFrame = pendingFrame;
+            if (!hasFrame) {
+                return;
+            }
+            int[] oldRender = renderFramePixels;
+            renderFramePixels = pendingFramePixels;
+            pendingFramePixels = oldRender;
+            width = frameWidth;
+            height = frameHeight;
+            pendingFrame = false;
+        }
+        if (frame.getWidth() != width || frame.getHeight() != height) {
+            frame = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            updateDestination(getWidth(), getHeight());
+        }
+        frame.setPixels(renderFramePixels, 0, width, 0, 0, width, height);
     }
 
     private void drawStatus(Canvas canvas) {
@@ -247,7 +297,7 @@ public class GbcEmulatorSurface extends SurfaceView implements SurfaceHolder.Cal
         }
         int frameWidth;
         int frameHeight;
-        synchronized (this) {
+        synchronized (frameLock) {
             frameWidth = frame.getWidth();
             frameHeight = frame.getHeight();
         }

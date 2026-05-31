@@ -50,6 +50,38 @@ class PpuTest {
     }
 
     @Test
+    void copyFrameBufferToCopiesRenderedPixelsWithoutAllocating() {
+        Ppu ppu = new Ppu(new Bus());
+        setBgPaletteColor(ppu, 1, 0x001F);
+        setTilePixel(ppu, 0, 0, 1);
+        ppu.write(0x9800, (byte) 0);
+        ppu.write(0xFF40, (byte) 0x91);
+        renderFirstPixel(ppu);
+
+        int[] pixels = new int[160 * 144];
+        ppu.copyFrameBufferTo(pixels);
+
+        assertEquals(0xFFFF0000, pixels[0]);
+    }
+
+    @Test
+    void disablingPixelMetadataKeepsFrameRenderingButSkipsDebugColorIndexes() {
+        Ppu ppu = new Ppu(new Bus());
+        ppu.setPixelMetadataEnabled(false);
+        setBgPaletteColor(ppu, 1, 0x001F);
+        setTilePixel(ppu, 0, 0, 1);
+        ppu.write(0x9800, (byte) 0);
+        ppu.write(0xFF40, (byte) 0x91);
+
+        renderFirstPixel(ppu);
+
+        assertEquals(0xFFFF0000, getRenderedPixel(ppu, 0, 0));
+        assertEquals(0xFFFF0000, ppu.saveState().frameBuffer()[0][0]);
+        assertEquals(0, ppu.getBackgroundColorIndex(0, 0));
+        assertEquals(0, ppu.getResolvedColorIndex(0, 0));
+    }
+
+    @Test
     void disablingWindowResetsCgbWindowLineCounter() {
         Ppu ppu = new Ppu(new Bus());
         ppu.write(0x9C00, (byte) 1);

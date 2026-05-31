@@ -1,5 +1,6 @@
 package dev.vitorsilverio.gbcemu.peripherals;
 
+import dev.vitorsilverio.gbcemu.controller.ButtonMaskProvider;
 import dev.vitorsilverio.gbcemu.controller.ButtonType;
 import dev.vitorsilverio.gbcemu.controller.Controller;
 import dev.vitorsilverio.gbcemu.interrupt.Interrupt;
@@ -15,6 +16,7 @@ public class Joypad implements MemorySpace {
 
     private final Bus bus;
     private final Controller controller;
+    private final ButtonMaskProvider buttonMaskProvider;
     private final SuperGameBoy superGameBoy;
 
     private int selectedLines = SELECT_DPAD | SELECT_BUTTONS;
@@ -26,6 +28,7 @@ public class Joypad implements MemorySpace {
     public Joypad(Bus bus, Controller controller, SuperGameBoy superGameBoy) {
         this.bus = bus;
         this.controller = controller;
+        this.buttonMaskProvider = controller instanceof ButtonMaskProvider provider ? provider : null;
         this.superGameBoy = superGameBoy;
         this.controller.eventEmitter(this::onButtonPress);
     }
@@ -58,6 +61,15 @@ public class Joypad implements MemorySpace {
     }
 
     private int getActionButtonsState(Controller controller) {
+        if (buttonMaskProvider != null) {
+            int mask = buttonMaskProvider.pressedButtonMask();
+            int state = 0x0F;
+            state &= (mask & ButtonMaskProvider.A) != 0 ? 0b1110 : 0x0F;
+            state &= (mask & ButtonMaskProvider.B) != 0 ? 0b1101 : 0x0F;
+            state &= (mask & ButtonMaskProvider.SELECT) != 0 ? 0b1011 : 0x0F;
+            state &= (mask & ButtonMaskProvider.START) != 0 ? 0b0111 : 0x0F;
+            return state;
+        }
         int state = 0x0F;
         state &= controller.isButtonA_Pressed() ? 0b1110 : 0x0F;
         state &= controller.isButtonB_Pressed() ? 0b1101 : 0x0F;
@@ -67,6 +79,15 @@ public class Joypad implements MemorySpace {
     }
 
     private int getDirectionalButtonsState(Controller controller) {
+        if (buttonMaskProvider != null) {
+            int mask = buttonMaskProvider.pressedButtonMask();
+            int state = 0x0F;
+            state &= (mask & ButtonMaskProvider.RIGHT) != 0 ? 0b1110 : 0x0F;
+            state &= (mask & ButtonMaskProvider.LEFT) != 0 ? 0b1101 : 0x0F;
+            state &= (mask & ButtonMaskProvider.UP) != 0 ? 0b1011 : 0x0F;
+            state &= (mask & ButtonMaskProvider.DOWN) != 0 ? 0b0111 : 0x0F;
+            return state;
+        }
         int state = 0x0F;
         state &= controller.isButtonRight_Pressed() ? 0b1110 : 0x0F;
         state &= controller.isButtonLeft_Pressed() ? 0b1101 : 0x0F;

@@ -1,6 +1,7 @@
 package dev.vitorsilverio.gbcemu.android;
 
 import android.content.Context;
+import android.os.Process;
 
 import dev.vitorsilverio.gbcemu.config.AppSettings;
 import dev.vitorsilverio.gbcemu.core.Console;
@@ -9,7 +10,7 @@ import dev.vitorsilverio.gbcemu.core.Emulator;
 import java.io.File;
 
 public class AndroidConsoleHost {
-    private static final boolean THROTTLE_ENABLED = false;
+    private static final boolean THROTTLE_ENABLED = true;
     private static final boolean DIAGNOSTIC_SKIP_APU = false;
     private static final boolean DIAGNOSTIC_SKIP_PPU = false;
     private static final boolean DIAGNOSTIC_SKIP_RENDER = false;
@@ -111,9 +112,14 @@ public class AndroidConsoleHost {
                 false
         );
         console.setDiagnosticBypassOptions(DIAGNOSTIC_SKIP_APU, DIAGNOSTIC_SKIP_PPU, DIAGNOSTIC_SKIP_RENDER);
+        console.setRuntimeDebugCaptureEnabled(false);
+        console.setAutoFrameSkipEnabled(true);
         emulator = new Emulator(console, THROTTLE_ENABLED);
         emulator.skipBios();
-        emulatorThread = new Thread(emulator::start, "gbcemu-android-runtime");
+        emulatorThread = new Thread(() -> {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY);
+            emulator.start();
+        }, "gbcemu-android-runtime");
         emulatorThread.setPriority(Thread.MAX_PRIORITY);
         emulatorThread.start();
         display.setStatusText("");

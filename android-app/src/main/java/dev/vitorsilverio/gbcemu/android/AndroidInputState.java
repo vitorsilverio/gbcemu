@@ -1,8 +1,9 @@
 package dev.vitorsilverio.gbcemu.android;
 
 import dev.vitorsilverio.gbcemu.core.ConsoleInput;
+import dev.vitorsilverio.gbcemu.controller.ButtonMaskProvider;
 
-public class AndroidInputState implements ConsoleInput {
+public class AndroidInputState implements ConsoleInput, ButtonMaskProvider {
     public static final int BUTTON_RIGHT = 0;
     public static final int BUTTON_LEFT = 1;
     public static final int BUTTON_UP = 2;
@@ -12,17 +13,19 @@ public class AndroidInputState implements ConsoleInput {
     public static final int BUTTON_SELECT = 6;
     public static final int BUTTON_START = 7;
 
-    private final boolean[] pressed = new boolean[8];
+    private volatile int pressedMask;
 
-    public synchronized void setButtonState(int button, boolean down) {
-        if (button < 0 || button >= pressed.length) {
+    public void setButtonState(int button, boolean down) {
+        if (button < 0 || button > BUTTON_START) {
             return;
         }
-        pressed[button] = down;
+        int bit = 1 << button;
+        int mask = pressedMask;
+        pressedMask = down ? mask | bit : mask & ~bit;
     }
 
-    public synchronized boolean isPressed(int button) {
-        return button >= 0 && button < pressed.length && pressed[button];
+    public boolean isPressed(int button) {
+        return button >= 0 && button <= BUTTON_START && (pressedMask & (1 << button)) != 0;
     }
 
     @Override
@@ -65,19 +68,16 @@ public class AndroidInputState implements ConsoleInput {
         return isPressed(BUTTON_RIGHT);
     }
 
-    public synchronized int buttonMask() {
-        int mask = 0;
-        for (int button = 0; button < pressed.length; button++) {
-            if (pressed[button]) {
-                mask |= 1 << button;
-            }
-        }
-        return mask;
+    public int buttonMask() {
+        return pressedButtonMask();
     }
 
-    public synchronized void clear() {
-        for (int button = 0; button < pressed.length; button++) {
-            pressed[button] = false;
-        }
+    @Override
+    public int pressedButtonMask() {
+        return pressedMask;
+    }
+
+    public void clear() {
+        pressedMask = 0;
     }
 }
