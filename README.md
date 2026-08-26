@@ -165,3 +165,13 @@ O plano de separacao esta em [ANDROID_FRONTEND_PLAN.md](ANDROID_FRONTEND_PLAN.md
 ## Roadmap
 
 As metas atuais ficam em [ROADMAP.md](ROADMAP.md).
+
+## Como contribuir
+
+Issues e pull requests são bem-vindos — ver [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Autor e contato
+
+Feito por [Vitor Silvério Rodrigues](https://vitorsilverio.dev/) — blog/currículo com mais
+detalhes sobre este e outros projetos. Contato: vitor.silverio.rodrigues@gmail.com ou uma
+[issue](https://github.com/vitorsilverio/gbcemu/issues) neste repositório.
