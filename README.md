@@ -175,3 +175,11 @@ Issues e pull requests são bem-vindos — ver [CONTRIBUTING.md](CONTRIBUTING.md
 Feito por [Vitor Silvério Rodrigues](https://vitorsilverio.dev/) — blog/currículo com mais
 detalhes sobre este e outros projetos. Contato: vitor.silverio.rodrigues@gmail.com ou uma
 [issue](https://github.com/vitorsilverio/gbcemu/issues) neste repositório.
+
+## Licença
+
+BSD 3-Clause — ver [LICENSE](LICENSE).
+
+Os binários de terceiros usados em testes e execução (BIOS, ROMs comerciais, ROMs de teste)
+**não** são cobertos por esta licença e não são redistribuídos por este projeto salvo quando a
+licença original permitir.
